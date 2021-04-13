@@ -2,7 +2,7 @@
 
 ViralUnit is a tool to perform quality control and viral genome reference assembly from Illumina paired end reads. While other pipelines have been developed for this purpose, we believe ViralUnit has a unique combination of efficiency, scalability and ease of use. 
 
-## Instalation
+## Installation
 
 ViralUnit is distributed as single bash script. Nevertheless, it relies on diverse dependencies to do its job. All these softwares have been conveniently documented on a single yaml file, suitable for construction of a conda environment. To do this, clone or download this repo and simply:
 
