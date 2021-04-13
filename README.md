@@ -38,7 +38,7 @@ While arguments 2, 3 and 4 are self-explanatory, argument 1 may demand clarifica
 
     2 directories, 4 files
 
-The script then iterates over these directories, performing QC, read mapping, variant calling and consensus sequence inferences. The results from all these analysis is stored in a directory with the suffix RESULTS/, created within the path specified by argument 1. 
+The script then iterates over these directories, performing QC, read mapping, variant calling and consensus sequence inferences. The results from all these analysis are stored in a directory with the suffix RESULTS/, created within the path specified by argument 1. 
 
 ### Run
 
