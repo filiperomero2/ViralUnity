@@ -64,7 +64,7 @@ FILE=$(echo $REF | sed 's/.*\///g')
 REFNAME=$(cat $REF | head -n 1 | sed 's/>//')
 REFPATH=$(echo $REF | sed "s/$FILE//g")
 cd $REFPATH
-bowtie2-build $REF reference
+bowtie2-build -q $REF reference
 REF2=$(pwd)/reference
 
 
@@ -108,7 +108,7 @@ do
 	NAME=$(echo $R1 | sed -E 's/_.+//g')
 
 	# QC report for raw data 
-	fastqc -t $THREADS *fastq
+	fastqc -q -t $THREADS *fastq
 	mv *zip ../$FILE.RESULTS/RAW_QC/
 	mv *html ../$FILE.RESULTS/RAW_QC/
 		
@@ -119,7 +119,7 @@ do
 	mv fastp.json $NAME.fastp.json
 
 	# QC report for filtered data
-	fastqc -t $THREADS trim*fastq
+	fastqc -q -t $THREADS trim*fastq
 	mv *json ../$FILE.RESULTS/FILTERED_QC/
 	mv *html ../$FILE.RESULTS/FILTERED_QC/
 	mv *zip ../$FILE.RESULTS/FILTERED_QC/
@@ -156,24 +156,37 @@ do
 	sed -i "s/$REFNAME/$NAME/"  masked.$NAME.consensus.fa
 
 	# Compute statistics and write to the stats report
+	# Number of masked bases
 	NBASES=$(grep -v '>' masked.$NAME.consensus.fa | tr -cd 'N' | wc -c)
+	# Genome size
 	LEN=$(wc -l $NAME.table_cov_basewise.txt | awk '{print $1}')
+	# Genome coverage
 	GENCOV=$(calc 1-$NBASES/$LEN)
+	# Number of raw reads
 	RAW=$(grep -cE "^\+$" *fastq | head -n 1 | sed -E 's/.+\://g')
 	RAW=$(calc $RAW*2)
+	# Number of paired filtered reads
 	PAIRED=$(grep -cE "^\+$" trim.p*fastq | sed -E 's/.+\://g' | head -n 1)
 	PAIRED=$(calc $PAIRED*2)
+	# Number of unpaired filtered reads
 	UNPAIRED=$(grep -cE "^\+$" $U | sed -E 's/.+\://g')
+	# Number of reads mapped
 	MAPPED=$(samtools view -c -F 260 $NAME.sorted.bam)
+	# Relative frequency of mapped reads
 	USAGE=$(calc $MAPPED/$RAW)
+	# Average depth
 	SUM=$(cat  $NAME.table_cov_basewise.txt | awk '{sum+=$3; print sum}' | tail -n 1)
 	COV=$(calc $SUM/$LEN)
+	# Percentage of genome coverage at 10x
 	TEMP=$(awk  '$3 > 10' $NAME.table_cov_basewise.txt | wc -l)
 	COV10=$(calc $TEMP/$LEN)
+	# Percentage of genome coverage at 100x
 	TEMP=$(awk  '$3 > 100' $NAME.table_cov_basewise.txt | wc -l)
 	COV100=$(calc $TEMP/$LEN)
+	# Percentage of genome coverage at 1000x
 	TEMP=$(awk  '$3 > 1000' $NAME.table_cov_basewise.txt | wc -l)
 	COV1000=$(calc $TEMP/$LEN)
+	# Print statistics to .csv file
 	echo "$NAME,$RAW,$PAIRED,$UNPAIRED,$MAPPED,$USAGE,$COV,$COV10,$COV100,$COV1000,$GENCOV" >> ../$FILE.stats_report.csv
 
     	# Move files to their respective directories
