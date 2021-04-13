@@ -4,13 +4,13 @@ ViralUnit is a tool to perform quality control and viral genome reference assemb
 
 ## Installation
 
-ViralUnit is distributed as single bash script. Nevertheless, it relies on diverse dependencies to do its job. All these softwares have been conveniently documented on a single yaml file, suitable for construction of a conda environment. To do this, clone or download this repo and simply:
+ViralUnit is distributed as single bash script. Nevertheless, it relies on diverse dependencies to do its job. All these softwares have been conveniently documented on a single yaml file, suitable for construction of a conda environment (*#####Link para instruções de como instalar o conda caso a pessoa já não o tenha. Será que não seria bom fazer uma parte inicial de pré-requisitos para rodar o script e o yml? Ex. conda, bash, #####*). To do this, clone or download this repo and simply:
 
     $ cd; git clone https://github.com/filiperomero2/ViralUnit.git
     $ cd ~/ViralUnit/ENV/
     $ conda create env --file ViralUnit.yml
 
-These commands will automatically create an environment with all necessary dependencies and the pipeline will be enabled.
+These commands will automatically create an environment with all necessary dependencies and the pipeline will be enabled, named ViralUnit.
 
 ## Usage
 
@@ -18,7 +18,7 @@ These commands will automatically create an environment with all necessary depen
 
 ViralUnit was designed to be as simple as possible, with the objective of making users go from raw reads to processed consensus genome sequences for entire batches of samples with a single command line. The script may take four positional arguments, being only the first two strictly required:
 
-    1 - The path for samples' root directory;
+    1 - The path for samples root directory;
     2 - The path for a reference genome in fasta format;
     3 - the minimum sequencing depth necessary to incorporate a base into the consensus sequence (default: 100);
     4 - the number of threads available for processing (default: 1).
