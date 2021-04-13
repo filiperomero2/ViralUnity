@@ -73,7 +73,7 @@ cd $LIBDIR
 mkdir -p $FILE.RESULTS/RAW_QC/ $FILE.RESULTS/FILTERED_QC/ $FILE.RESULTS/FILTERED_DATA/ $FILE.RESULTS/MAPPING/ $FILE.RESULTS/CONSENSUS/
 
 # Print the header of sequencing_stats.csv
-echo "sample,number_of_raw_reads,number_of_paired_filtered_reads,number_of_unpaired_filtered_reads,number_of_mapped_reads,efficiency,average_depth,coverage_10x,coverage_100x,coverage_1000x,genome_coverage" > stats_report.csv
+echo "sample,number_of_raw_reads,number_of_paired_filtered_reads,number_of_unpaired_filtered_reads,number_of_mapped_reads,efficiency,average_depth,coverage_10x,coverage_100x,coverage_1000x,genome_coverage" > $FILE.stats_report.csv
 
 # For each sample
 for SAMPLE in */
@@ -174,7 +174,7 @@ do
 	COV100=$(calc $TEMP/$LEN)
 	TEMP=$(awk  '$3 > 1000' $NAME.table_cov_basewise.txt | wc -l)
 	COV1000=$(calc $TEMP/$LEN)
-	echo "$NAME,$RAW,$PAIRED,$UNPAIRED,$MAPPED,$USAGE,$COV,$COV10,$COV100,$COV1000,$GENCOV" >> ../stats_report.csv
+	echo "$NAME,$RAW,$PAIRED,$UNPAIRED,$MAPPED,$USAGE,$COV,$COV10,$COV100,$COV1000,$GENCOV" >> ../$FILE.stats_report.csv
 
     	# Move files to their respective directories
 	gzip *fastq
@@ -196,7 +196,7 @@ done
 ##############################################################################################################################
 # Main loop finished, setting final results. 
 
-mv stats_report.csv $FILE.RESULTS/
+mv $FILE.stats_report.csv $FILE.RESULTS/
 
 cd $FILE.RESULTS/
 
