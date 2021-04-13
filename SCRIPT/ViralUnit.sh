@@ -176,7 +176,7 @@ do
 	COV1000=$(calc $TEMP/$LEN)
 	echo "$NAME,$RAW,$PAIRED,$UNPAIRED,$MAPPED,$USAGE,$COV,$COV10,$COV100,$COV1000,$GENCOV" >> ../stats_report.csv
 
-    # Move files to their respective directories
+    	# Move files to their respective directories
 	gzip *fastq
 	rm $NAME.temp.consensus.fa
 	mv trim.* ../$FILE.RESULTS/FILTERED_DATA/
