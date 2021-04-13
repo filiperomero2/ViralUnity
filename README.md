@@ -4,13 +4,15 @@ ViralUnit is a tool to perform quality control and viral genome reference assemb
 
 ## Installation
 
-ViralUnit is distributed as single bash script. Nevertheless, it relies on diverse dependencies to do its job. All these softwares have been conveniently documented on a single yaml file, suitable for construction of a conda environment (*#####Link para instruções de como instalar o conda caso a pessoa já não o tenha. Será que não seria bom fazer uma parte inicial de pré-requisitos para rodar o script e o yml? Ex. conda, bash, #####*). To do this, clone or download this repo and simply:
+ViralUnit is distributed as single bash script. Nevertheless, it relies on diverse dependencies to do its job and all these softwares have been conveniently documented on a single yaml file, suitable for construction of a conda environment. Conda is a python package manager and we suggest its use. Download links and installation instructions are available <a href="https://docs.conda.io/en/latest/miniconda.html">here</a>.
+
+To enable ViralUnit, clone or download this repo and simply:
 
     $ cd; git clone https://github.com/filiperomero2/ViralUnit.git
     $ cd ~/ViralUnit/ENV/
     $ conda create env --file ViralUnit.yml
 
-These commands will automatically create an environment with all necessary dependencies and the pipeline will be enabled, named ViralUnit.
+These commands will automatically create an environment with all necessary dependencies, named ViralUnit.
 
 ## Usage
 
@@ -43,7 +45,7 @@ The script then iterates over these directories, performing QC, read mapping, va
 To effectively run the pipeline, just activate the conda environment and use a simple command line, examplified as follows:
 
     $ conda activate ViralUnit
-    $ ./ViralUnit.sh ~/LIBRARIES/RUN_1/ ~/REFERENCE_GENOMES/reference.fasta 200 6
+    $ ~/ViralUnit/SCRIPT/ViralUnit.sh ~/LIBRARIES/RUN_1/ ~/REFERENCE_GENOMES/reference.fasta 200 6
 
 These lines would make all dependencies available, start the analysis for all samples stored in the first path, using as reference the fasta file specified in the second. Additionaly, consensus genome sequences sites with less then 200x depth would be masked and the analysis would use 6 threads. 
 
