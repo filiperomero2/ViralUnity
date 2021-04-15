@@ -1,6 +1,8 @@
 #!/bin/bash
 
-## GetConSeqVir.sh v.1 ##
+## ViralUnity.sh v.1 ##
+echo ""
+date
 
 # It is a simple pipeline for inference of viral consensus genome sequences from Illumina paired end data.
 # The pipeline performs QC, mapping, variant calling and consensus sequence inference using diverse tools.
@@ -21,6 +23,12 @@ THREADS=$4
 
 ##############################################################################################################################
 # Validate arguments and define a function
+
+echo ""
+echo "###############################"
+echo "Step 1: Arguments Verification"
+echo "###############################"
+echo ""
 
 if [[ -d $LIBDIR ]] 
 then 
@@ -59,6 +67,12 @@ calc() { awk "BEGIN{print $*}"; }
 ##############################################################################################################################
 # Start the pipeline
 
+echo ""
+echo "###############################"
+echo "Step 2: Start Assembly"
+echo "###############################"
+echo ""
+
 # Index reference genome 
 FILE=$(echo $REF | sed 's/.*\///g')
 REFNAME=$(cat $REF | head -n 1 | sed 's/>//')
@@ -70,6 +84,12 @@ REF2=$(pwd)/reference
 
 # Go to libraries' root directory and set $FILE.RESULTS/*/
 cd $LIBDIR
+if [[ -d $FILE.RESULTS ]]
+then
+	echo "Results directory already exists. Erasing and continuing..."
+	rm -rf $FILE.RESULTS
+fi
+
 mkdir -p $FILE.RESULTS/RAW_QC/ $FILE.RESULTS/FILTERED_QC/ $FILE.RESULTS/FILTERED_DATA/ $FILE.RESULTS/MAPPING/ $FILE.RESULTS/CONSENSUS/
 
 # Print the header of sequencing_stats.csv
@@ -85,8 +105,11 @@ do
 	fi
 
 	# Print sample directory name
-	echo "$SAMPLE"
-		
+	echo ""
+	echo "Working on -> $SAMPLE"
+    date
+	echo ""
+			
 	# Enter sample diretory
 	cd $SAMPLE
 
@@ -114,7 +137,7 @@ do
 		
 	# Filter data with fastp
 	echo "Performing strict QC..."
-	fastp --detect_adapter_for_pe --thread $THREADS -i $R1 -I $R2 -o trim.p.$R1 -O trim.p.$R2 --unpaired1 trim.u.$R1 --unpaired2 trim.u.$R2
+	fastp --detect_adapter_for_pe -l 50 -q 30 --thread $THREADS -i $R1 -I $R2 -o trim.p.$R1 -O trim.p.$R2 --unpaired1 trim.u.$R1 --unpaired2 trim.u.$R2
 	mv fastp.html $NAME.fastp.html
 	mv fastp.json $NAME.fastp.json
 
@@ -141,10 +164,10 @@ do
 	
 	# Call variants 
 	echo "Calling variants..."
-	bcftools mpileup --max-depth 20000 -E -Ou -f $REF $NAME.sorted.bam  | bcftools call --ploidy 1 -mv -Oz -o $NAME.calls.vcf.gz
-	bcftools norm -f $REF $NAME.calls.vcf.gz -Oz -o $NAME.calls.norm.vcf.gz
-	bcftools filter --IndelGap 5 $NAME.calls.norm.vcf.gz -Oz -o $NAME.calls.norm.flt-indels.vcf.gz
-    bcftools index $NAME.calls.norm.flt-indels.vcf.gz
+	bcftools mpileup --threads $THREADS --max-depth 20000 -E -Ou -f $REF $NAME.sorted.bam  | bcftools call --threads $THREADS --ploidy 1 -mv -Oz -o $NAME.calls.vcf.gz
+	bcftools norm --threads $THREADS -f $REF $NAME.calls.vcf.gz -Oz -o $NAME.calls.norm.vcf.gz
+	bcftools filter --threads $THREADS --IndelGap 5 $NAME.calls.norm.vcf.gz -Oz -o $NAME.calls.norm.flt-indels.vcf.gz
+    bcftools index --threads $THREADS $NAME.calls.norm.flt-indels.vcf.gz
 	
 	# Get consensus sequences
 	echo "Inferring consensus sequences..."
@@ -193,13 +216,15 @@ do
 	gzip *fastq
 	rm $NAME.temp.consensus.fa
 	mv trim.* ../$FILE.RESULTS/FILTERED_DATA/
-	mv *bam ../$FILE.RESULTS/MAPPING/
+	mv *sorted.bam ../$FILE.RESULTS/MAPPING/
+	rm *bam
 	mv *bai ../$FILE.RESULTS/MAPPING/
 	mv $NAME.calls* ../$FILE.RESULTS/MAPPING/
 	mv *.txt  ../$FILE.RESULTS/MAPPING/
 	mv masked.$NAME.consensus.fa ../$FILE.RESULTS/CONSENSUS/
 
 	echo ""
+	date
 	
 	# Go to the previous directory
 	cd ../
@@ -212,6 +237,12 @@ done
 mv $FILE.stats_report.csv $FILE.RESULTS/
 
 cd $FILE.RESULTS/
+
+echo ""
+echo "###############################"
+echo "Step 3: Final Compilation"
+echo "###############################"
+echo ""
 
 # Concatenate consensus sequences
 cat CONSENSUS/*fa > CONSENSUS/CONSENSUS.fasta
@@ -228,8 +259,13 @@ mv multiqc_* FILTERED_QC/
 
 cd ..
 
+echo ""
 echo "#######################"
 echo "####### The end #######"
 echo "#######################"
+echo ""
+
+date
+echo ""
 
 exit

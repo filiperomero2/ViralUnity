@@ -1,4 +1,4 @@
-name: assembly
+name: ViralUnity
 channels:
   - conda-forge
   - bioconda
@@ -94,6 +94,7 @@ dependencies:
   - six=1.15.0=pyh9f0ad1d_0
   - spectra=0.0.11=py_1
   - sqlite=3.34.0=h74cdb3f_0
+  - sra-tools=2.8.0=0
   - tbb=2020.2=h4bd325d_3
   - tk=8.6.10=h21135ba_1
   - tornado=6.1=py38h497a2fe_1
@@ -105,4 +106,4 @@ dependencies:
   - zipp=3.4.0=py_0
   - zlib=1.2.11=h516909a_1010
   - zstd=1.4.8=ha95c52a_1
-prefix: /home/fmoreira/miniconda3/envs/assembly
+prefix: /home/lddv/anaconda3/envs/ViralUnity

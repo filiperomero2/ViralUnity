@@ -1,31 +1,31 @@
 # ViralUnity
 
-ViralUnity is a tool to perform quality control and viral genome reference assembly from Illumina paired end reads. While other pipelines have been developed for this purpose, we believe ViralUnit has a unique combination of efficiency, scalability and ease of use. 
+ViralUnity is a tool to perform quality control and viral genome reference assembly from Illumina paired end reads. While other pipelines have been developed for this purpose, we believe ViralUnity has a unique combination of efficiency, scalability and ease of use. 
 
 ## Installation
 
-ViralUnit is distributed as single bash script. Nevertheless, it relies on diverse dependencies to do its job and all these softwares have been conveniently documented on a single yaml file, suitable for construction of a conda environment. Conda is a python package manager and we suggest its use. Download links and installation instructions are available <a href="https://docs.conda.io/en/latest/miniconda.html">here</a>.
+ViralUnity is distributed as single bash script. Nevertheless, it relies on diverse dependencies to do its job and all these softwares have been conveniently documented on a single yaml file, suitable for construction of a conda environment. Conda is a python package manager and we suggest its use. Download links and installation instructions are available <a href="https://docs.conda.io/en/latest/miniconda.html">here</a>.
 
-To enable ViralUnit, clone or download this repo and simply:
+To enable ViralUnity, clone or download this repo and simply:
 
-    $ cd; git clone https://github.com/filiperomero2/ViralUnit.git
-    $ cd ~/ViralUnit/ENV/
-    $ conda create env --file ViralUnit.yml
+    $ cd; git clone https://github.com/filiperomero2/ViralUnity.git
+    $ cd ~/ViralUnity/ENV/
+    $ conda create env --file ViralUnity.yml
 
-These commands will automatically create an environment with all necessary dependencies, named ViralUnit.
+These commands will automatically create an environment with all necessary dependencies, named ViralUnity.
 
 ## Usage
 
 ### Arguments and data organization requirements
 
-ViralUnit was designed to be as simple as possible, with the objective of making users go from raw reads to processed consensus genome sequences for entire batches of samples with a single command line. The script may take four positional arguments, being only the first two strictly required:
+ViralUnity was designed to be as simple as possible, with the objective of making users go from raw reads to processed consensus genome sequences for entire batches of samples with a single command line. The script may take four positional arguments, being only the first two strictly required:
 
     1 - The path for samples root directory;
     2 - The path for a reference genome in fasta format;
     3 - the minimum sequencing depth necessary to incorporate a base into the consensus sequence (default: 100);
     4 - the number of threads available for processing (default: 1).
 
-While arguments 2, 3 and 4 are self-explanatory, argument 1 may demand clarification. To be able to analyze entire sequencing runs from a single command line, ViralUnit needs data to be stored in a well specified structure of directories. The path in argument 1 refers to a directory that harbors samples' directories, each containing two fastq files (R1 and R2 reads), like in the example bellow:
+While arguments 2, 3 and 4 are self-explanatory, argument 1 may demand clarification. To be able to analyze entire sequencing runs from a single command line, ViralUnity needs data to be stored in a well specified structure of directories. The path in argument 1 refers to a directory that harbors samples' directories, each containing two fastq files (R1 and R2 reads), like in the example bellow:
 
     (base) fmoreira@DESKTOP-IIHQFUE:~/Desktop/pilot/DATA$ tree
     .
@@ -44,8 +44,8 @@ The script then iterates over these directories, performing QC, read mapping, va
 
 To effectively run the pipeline, just activate the conda environment and use a simple command line, examplified as follows:
 
-    $ conda activate ViralUnit
-    $ ~/ViralUnit/SCRIPT/ViralUnit.sh ~/LIBRARIES/RUN_1/ ~/REFERENCE_GENOMES/reference.fasta 200 6
+    $ conda activate ViralUnity
+    $ ~/ViralUnity/SCRIPT/ViralUnity.sh ~/LIBRARIES/RUN_1/ ~/REFERENCE_GENOMES/reference.fasta 200 6
 
 These lines would make all dependencies available, start the analysis for all samples stored in the first path, using as reference the fasta file specified in the second. Additionaly, consensus genome sequences sites with less then 200x depth would be masked and the analysis would use 6 threads. 
 
@@ -70,3 +70,5 @@ If you use this pipeline, please cite:
 <a href="https://github.com/vcftools/vcftools">VCFtools</a>: Danecek P, Auton A, Abecasis G, Albers CA, Banks E, DePristo MA, et al. The variant call format and VCFtools. Bioinformatics. 2011;27(15):2156–8.
 
 <a href="https://github.com/arq5x/bedtools2">BEDtools</a>: Quinlan AR, Hall IM. BEDTools: A flexible suite of utilities for comparing genomic features. Bioinformatics. 2010;26(6):841–2.
+
+For visualization of fasta and bam files, we recommend <a href="https://ormbunkar.se/aliview/">Aliview</a> and <a href="https://ics.hutton.ac.uk/tablet/">Tablet</a>, respectively.
