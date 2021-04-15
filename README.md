@@ -1,6 +1,6 @@
-# ViralUnit
+# ViralUnity
 
-ViralUnit is a tool to perform quality control and viral genome reference assembly from Illumina paired end reads. While other pipelines have been developed for this purpose, we believe ViralUnit has a unique combination of efficiency, scalability and ease of use. 
+ViralUnity is a tool to perform quality control and viral genome reference assembly from Illumina paired end reads. While other pipelines have been developed for this purpose, we believe ViralUnit has a unique combination of efficiency, scalability and ease of use. 
 
 ## Installation
 
