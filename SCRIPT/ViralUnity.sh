@@ -1,25 +1,107 @@
 #!/bin/bash
 
 ## ViralUnity.sh v.1 ##
-echo ""
-date
 
-# It is a simple pipeline for inference of viral consensus genome sequences from Illumina paired end data.
-# The pipeline performs QC, mapping, variant calling and consensus sequence inference using diverse tools.
-# It takes 2 positional arguments:
-#	1 - Absolute path for libraries' root directory;
-#	2 - Path for a reference genome in fasta format;
-#	4 - Minimum sequencing coverage to call a base on the consensus sequence (default = 100x)
-#	5 - Number of threads available for processing (default = 1)
-# Example usage:$ ./ViralUnit.sh ~/LIBRARIES/RUN_1/ ~/REFERENCE_GENOMES/reference.fasta 200 6
+# Written by Moreira et al. 2020. (doi:)
+
+
 
 ##############################################################################################################################
+# Set variables, functions and validate arguments
 
-# Set variables...
-LIBDIR=$1
-REF=$2
-MINCOV=$3
-THREADS=$4
+help(){
+
+echo "
+ViralUnity
+
+Description: ViralUnity is a pipeline for the inference of viral consensus genome sequences from Illumina paired end reads.
+
+It takes 2 positional arguments:
+	(1) --LIBDIR : Absolute path for libraries' root directory;
+	(2) --REF : Path for a reference genome in fasta format;
+	(3) --MINCOV : Minimum sequencing coverage to call a base on the consensus sequence (default = 100x)
+	(4) --THREADS : Number of threads available for processing (default = 1)
+
+Minimal usage:$ ./ViralUnity.sh --LIBDIR ~/LIBRARIES/RUN_1/ --REF ~/REFERENCE_GENOMES/reference.fasta
+
+Alternatively: $ ./ViralUnity.sh --LIBDIR ~/LIBRARIES/RUN_1/ --REF ~/REFERENCE_GENOMES/reference.fasta --MINCOV 200 --THREADS 6
+"
+}
+
+version(){
+	echo "ViralUnity v1.0"
+}
+
+clean(){
+	rm $NAME.temp.consensus.fa
+	mv trim.* ../$FILE.RESULTS/FILTERED_DATA/
+	mv *sorted.bam ../$FILE.RESULTS/MAPPING/
+	rm *bam
+	mv *bai ../$FILE.RESULTS/MAPPING/
+	mv $NAME.calls* ../$FILE.RESULTS/MAPPING/
+	mv *.txt  ../$FILE.RESULTS/MAPPING/
+	mv masked.$NAME.consensus.fa ../$FILE.RESULTS/CONSENSUS/
+}
+
+writestats(){
+	# Number of masked bases
+	NBASES=$(grep -v '>' masked.$NAME.consensus.fa | tr -cd 'N' | wc -c)
+	# Genome size
+	LEN=$(wc -l $NAME.table_cov_basewise.txt | awk '{print $1}')
+	# Genome coverage
+	GENCOV=$(calc 1-$NBASES/$LEN)
+	# Number of raw reads
+	RAW=$(grep -cE "^\+$" *fastq | head -n 1 | sed -E 's/.+\://g')
+	RAW=$(calc $RAW*2)
+	# Number of paired filtered reads
+	PAIRED=$(grep -cE "^\+$" trim.p*fastq | sed -E 's/.+\://g' | head -n 1)
+	PAIRED=$(calc $PAIRED*2)
+	# Number of unpaired filtered reads
+	UNPAIRED=$(grep -cE "^\+$" $U | sed -E 's/.+\://g')
+	# Number of reads mapped
+	MAPPED=$(samtools view -c -F 260 $NAME.sorted.bam)
+	# Relative frequency of mapped reads
+	USAGE=$(calc $MAPPED/$RAW)
+	# Average depth
+	SUM=$(cat  $NAME.table_cov_basewise.txt | awk '{sum+=$3; print sum}' | tail -n 1)
+	COV=$(calc $SUM/$LEN)
+	# Percentage of genome coverage at 10x
+	TEMP=$(awk  '$3 > 10' $NAME.table_cov_basewise.txt | wc -l)
+	COV10=$(calc $TEMP/$LEN)
+	# Percentage of genome coverage at 100x
+	TEMP=$(awk  '$3 > 100' $NAME.table_cov_basewise.txt | wc -l)
+	COV100=$(calc $TEMP/$LEN)
+	# Percentage of genome coverage at 1000x
+	TEMP=$(awk  '$3 > 1000' $NAME.table_cov_basewise.txt | wc -l)
+	COV1000=$(calc $TEMP/$LEN)
+	# Print statistics to .csv file
+	echo "$NAME,$RAW,$PAIRED,$UNPAIRED,$MAPPED,$USAGE,$COV,$COV10,$COV100,$COV1000,$GENCOV" >> ../$FILE.stats_report.csv
+
+}
+
+
+if [ -z "$1" ] || [[ $1 == -h ]] || [[ $1 == --help ]]; then
+	help
+	exit
+fi
+
+if [ -z "$1" ] || [[ $1 == -v ]] || [[ $1 == --version ]]; then
+	version
+	exit
+fi
+
+
+while [ $# -gt 0 ]; do
+   if [[ $1 == *"--"* ]]; then
+        param="${1/--/}"
+        declare $param="$2"
+        echo $1 $2
+   fi
+   shift
+done
+
+
+
 
 ##############################################################################################################################
 # Validate arguments and define a function
@@ -29,6 +111,8 @@ echo "###############################"
 echo "Step 1: Arguments Verification"
 echo "###############################"
 echo ""
+
+
 
 if [[ -d $LIBDIR ]] 
 then 
@@ -73,9 +157,14 @@ echo "Step 2: Start Assembly"
 echo "###############################"
 echo ""
 
+echo ""
+date
+
+
 # Index reference genome 
 FILE=$(echo $REF | sed 's/.*\///g')
-REFNAME=$(cat $REF | head -n 1 | sed 's/>//')
+echo "Reference file name -> $FILE"
+REFNAME=$(cat $REF | head -n 1 | sed 's/>//' | sed 's/\s.*//')
 REFPATH=$(echo $REF | sed "s/$FILE//g")
 cd $REFPATH
 bowtie2-build -q $REF reference
@@ -84,6 +173,9 @@ REF2=$(pwd)/reference
 
 # Go to libraries' root directory and set $FILE.RESULTS/*/
 cd $LIBDIR
+
+date > $FILE.timereport.txt
+
 if [[ -d $FILE.RESULTS ]]
 then
 	echo "Results directory already exists. Erasing and continuing..."
@@ -104,14 +196,18 @@ do
 		continue
 	fi
 
+	# Enter sample diretory
+	cd $SAMPLE
+
 	# Print sample directory name
 	echo ""
 	echo "Working on -> $SAMPLE"
     date
+	echo "Working on -> $SAMPLE" >> ../$FILE.timereport.txt
+	date >> ../$FILE.timereport.txt
 	echo ""
 			
-	# Enter sample diretory
-	cd $SAMPLE
+
 
 	# Decompress data
 	gunzip *gz
@@ -129,6 +225,7 @@ do
 	fi
 	
 	NAME=$(echo $R1 | sed -E 's/_.+//g')
+	#REFNAME2=$(echo $REFNAME | sed -E 's/ .+//g')
 
 	# QC report for raw data 
 	fastqc -q -t $THREADS *fastq
@@ -165,13 +262,15 @@ do
 	# Call variants 
 	echo "Calling variants..."
 	bcftools mpileup --threads $THREADS --max-depth 20000 -E -Ou -f $REF $NAME.sorted.bam  | bcftools call --threads $THREADS --ploidy 1 -mv -Oz -o $NAME.calls.vcf.gz
-	bcftools norm --threads $THREADS -f $REF $NAME.calls.vcf.gz -Oz -o $NAME.calls.norm.vcf.gz
+	#bcftools norm --threads $THREADS -f $REF $NAME.calls.vcf.gz -Oz -o $NAME.calls.norm.vcf.gz
+	bcftools norm -m +any --threads $THREADS -f $REF $NAME.calls.vcf.gz -Oz -o $NAME.calls.norm.vcf.gz
 	bcftools filter --threads $THREADS --IndelGap 5 $NAME.calls.norm.vcf.gz -Oz -o $NAME.calls.norm.flt-indels.vcf.gz
     bcftools index --threads $THREADS $NAME.calls.norm.flt-indels.vcf.gz
 	
 	# Get consensus sequences
 	echo "Inferring consensus sequences..."
-	cat $REF | bcftools consensus $NAME.calls.norm.flt-indels.vcf.gz > $NAME.temp.consensus.fa
+	#cat $REF | bcftools consensus $NAME.calls.norm.flt-indels.vcf.gz > $NAME.temp.consensus.fa
+	cat $REF | bcftools consensus -H A $NAME.calls.norm.flt-indels.vcf.gz > $NAME.temp.consensus.fa
 	bedtools genomecov -bga -ibam  $NAME.sorted.bam > $NAME.table_cov.txt
 	bedtools genomecov -d -ibam  $NAME.sorted.bam > $NAME.table_cov_basewise.txt
 	awk  '$4 < '$MINCOV'' $NAME.table_cov.txt > $NAME.table_coverage_min-cov-$MINCOV.txt
@@ -179,52 +278,15 @@ do
 	sed -i "s/$REFNAME/$NAME/"  masked.$NAME.consensus.fa
 
 	# Compute statistics and write to the stats report
-	# Number of masked bases
-	NBASES=$(grep -v '>' masked.$NAME.consensus.fa | tr -cd 'N' | wc -c)
-	# Genome size
-	LEN=$(wc -l $NAME.table_cov_basewise.txt | awk '{print $1}')
-	# Genome coverage
-	GENCOV=$(calc 1-$NBASES/$LEN)
-	# Number of raw reads
-	RAW=$(grep -cE "^\+$" *fastq | head -n 1 | sed -E 's/.+\://g')
-	RAW=$(calc $RAW*2)
-	# Number of paired filtered reads
-	PAIRED=$(grep -cE "^\+$" trim.p*fastq | sed -E 's/.+\://g' | head -n 1)
-	PAIRED=$(calc $PAIRED*2)
-	# Number of unpaired filtered reads
-	UNPAIRED=$(grep -cE "^\+$" $U | sed -E 's/.+\://g')
-	# Number of reads mapped
-	MAPPED=$(samtools view -c -F 260 $NAME.sorted.bam)
-	# Relative frequency of mapped reads
-	USAGE=$(calc $MAPPED/$RAW)
-	# Average depth
-	SUM=$(cat  $NAME.table_cov_basewise.txt | awk '{sum+=$3; print sum}' | tail -n 1)
-	COV=$(calc $SUM/$LEN)
-	# Percentage of genome coverage at 10x
-	TEMP=$(awk  '$3 > 10' $NAME.table_cov_basewise.txt | wc -l)
-	COV10=$(calc $TEMP/$LEN)
-	# Percentage of genome coverage at 100x
-	TEMP=$(awk  '$3 > 100' $NAME.table_cov_basewise.txt | wc -l)
-	COV100=$(calc $TEMP/$LEN)
-	# Percentage of genome coverage at 1000x
-	TEMP=$(awk  '$3 > 1000' $NAME.table_cov_basewise.txt | wc -l)
-	COV1000=$(calc $TEMP/$LEN)
-	# Print statistics to .csv file
-	echo "$NAME,$RAW,$PAIRED,$UNPAIRED,$MAPPED,$USAGE,$COV,$COV10,$COV100,$COV1000,$GENCOV" >> ../$FILE.stats_report.csv
+	writestats
 
-    	# Move files to their respective directories
+    # Compress fastq and move files to their respective directories
 	gzip *fastq
-	rm $NAME.temp.consensus.fa
-	mv trim.* ../$FILE.RESULTS/FILTERED_DATA/
-	mv *sorted.bam ../$FILE.RESULTS/MAPPING/
-	rm *bam
-	mv *bai ../$FILE.RESULTS/MAPPING/
-	mv $NAME.calls* ../$FILE.RESULTS/MAPPING/
-	mv *.txt  ../$FILE.RESULTS/MAPPING/
-	mv masked.$NAME.consensus.fa ../$FILE.RESULTS/CONSENSUS/
+	clean
 
 	echo ""
 	date
+	date  >> ../$FILE.timereport.txt
 	
 	# Go to the previous directory
 	cd ../
@@ -235,6 +297,7 @@ done
 # Main loop finished, setting final results. 
 
 mv $FILE.stats_report.csv $FILE.RESULTS/
+mv $FILE.timereport.txt $FILE.RESULTS/
 
 cd $FILE.RESULTS/
 
