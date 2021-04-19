@@ -19,7 +19,7 @@ Description: ViralUnity is a pipeline for the inference of viral consensus genom
 It takes 2 positional arguments:
 	(1) --LIBDIR : Absolute path for libraries' root directory;
 	(2) --REF : Path for a reference genome in fasta format;
-	(3) --MINCOV : Minimum sequencing coverage to call a base on the consensus sequence (default = 100x)
+	(3) --MINCOV : Minimum sequencing coverage to call a base on the consensus sequence (default = 100)
 	(4) --THREADS : Number of threads available for processing (default = 1)
 
 Minimal usage:$ ./ViralUnity.sh --LIBDIR ~/LIBRARIES/RUN_1/ --REF ~/REFERENCE_GENOMES/reference.fasta
