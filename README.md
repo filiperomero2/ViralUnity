@@ -45,7 +45,7 @@ The script then iterates over these directories, performing QC, read mapping, va
 To effectively run the pipeline, just activate the conda environment and use a simple command line, examplified as follows:
 
     $ conda activate ViralUnity
-    $ ~/ViralUnity/SCRIPT/ViralUnity.sh ~/LIBRARIES/RUN_1/ ~/REFERENCE_GENOMES/reference.fasta 200 6
+    $ ~/ViralUnity/SCRIPT/ViralUnity.sh --LIBDIR ~/LIBRARIES/RUN_1/ --REF ~/REFERENCE_GENOMES/reference.fasta --MINCOV 200 --THREADS 6
 
 These lines would make all dependencies available, start the analysis for all samples stored in the first path, using as reference the fasta file specified in the second. Additionaly, consensus genome sequences sites with less then 200x depth would be masked and the analysis would use 6 threads. 
 
