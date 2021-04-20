@@ -261,15 +261,13 @@ do
 	
 	# Call variants 
 	echo "Calling variants..."
-	bcftools mpileup --threads $THREADS --max-depth 20000 -E -Ou -f $REF $NAME.sorted.bam  | bcftools call --threads $THREADS --ploidy 1 -mv -Oz -o $NAME.calls.vcf.gz
-	#bcftools norm --threads $THREADS -f $REF $NAME.calls.vcf.gz -Oz -o $NAME.calls.norm.vcf.gz
+	bcftools mpileup --threads $THREADS --max-depth 20000 -E -Ou -f $REF $NAME.sorted.bam  | bcftools call --threads $THREADS -mv -Oz -o $NAME.calls.vcf.gz
 	bcftools norm -m +any --threads $THREADS -f $REF $NAME.calls.vcf.gz -Oz -o $NAME.calls.norm.vcf.gz
 	bcftools filter --threads $THREADS --IndelGap 5 $NAME.calls.norm.vcf.gz -Oz -o $NAME.calls.norm.flt-indels.vcf.gz
     bcftools index --threads $THREADS $NAME.calls.norm.flt-indels.vcf.gz
 	
 	# Get consensus sequences
 	echo "Inferring consensus sequences..."
-	#cat $REF | bcftools consensus $NAME.calls.norm.flt-indels.vcf.gz > $NAME.temp.consensus.fa
 	cat $REF | bcftools consensus -H A $NAME.calls.norm.flt-indels.vcf.gz > $NAME.temp.consensus.fa
 	bedtools genomecov -bga -ibam  $NAME.sorted.bam > $NAME.table_cov.txt
 	bedtools genomecov -d -ibam  $NAME.sorted.bam > $NAME.table_cov_basewise.txt
