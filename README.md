@@ -18,7 +18,7 @@ To enable ViralUnity, clone the repo and create the environment:
 
 ### Arguments and data organization requirements
 
-ViralUnity was designed to be as simple as possible, with the objective of making users go from raw reads to processed consensus genome sequences for entire batches of samples with a single command line. The script may take four positional arguments, being only the first three strictly required:
+ViralUnity was designed to be as simple as possible, with the objective of making users go from raw reads to processed consensus genome sequences for entire batches of samples with a single command line. The script may take six arguments, being only the first four strictly required:
 
     1 - The absolute path for samples root directory;
     2 - The absolute path for output directory;
