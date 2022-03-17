@@ -1,10 +1,10 @@
 # ViralUnity
 
-ViralUnity is yet another simple tool to perform data quality control and viral genome reference assembly from Illumina paired end reads. It is designed to be effective and easy to use.
+ViralUnity is yet another simple tool to perform data quality control and viral genome reference assembly from Illumina paired-end reads. It is designed to be effective and easy to use.
 
 ## Installation
 
-ViralUnity is distributed as single bash script. Nevertheless, it relies on diverse dependencies and all of them have been conveniently documented on a conda environment yaml file. From this file one can easily install required softwares and run the pipeline.
+ViralUnity is distributed as single bash script. Nevertheless, it relies on diverse dependencies and all of them have been conveniently documented on a conda environment YAML file. From this file one can easily install required softwares and run the pipeline.
 
 To enable ViralUnity, clone the repo and create the environment:
 
@@ -29,7 +29,7 @@ ViralUnity was designed to be as simple as possible, with the objective of makin
 
 While arguments 2 to 6 are self-explanatory, argument 1 may demand clarification. To be able to analyze entire sequencing runs from a single command line, ViralUnity needs data to be stored in a well specified structure of directories. The path in argument 1 refers to a directory that harbors samples' directories, each containing two fastq files (R1 and R2 reads), like in the example bellow:
 
-    (base) fmoreira@DESKTOP:~/Desktop/pilot/DATA$ tree
+    (base) username@DESKTOP:~/Desktop/pilot/DATA$ tree
     .
     ├── SEQ_176_L001_ds.5c9c29d7d8824301ae5a4ddee48ee059
     │   ├── SEQ-176_S74_L001_R1_001.fastq.gz
