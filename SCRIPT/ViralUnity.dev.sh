@@ -19,8 +19,7 @@ Description: ViralUnity is a pipeline for the inference of viral consensus genom
 It takes 2 positional arguments:
 	(1) --LIBDIR : Absolute path for libraries' root directory;
 	(2) --REF : Path for a reference genome in fasta format;
-	(3) --ADAPTERS : Absolute 62924_S11_L001_R1_001.fastq 62924_S11_L001_R2_001.fastq trim.p.62924_S11_L001_R1_001.fastq trim.u.62924_S11_L001_R1_001.fastq trim.p.62924_S11_L001_R2_001.fastq trim.u.62924_S11_L001_R2_001.fastq ILLUMINACLIP:/home/filipe/miniconda3/envs/ViralUnity/share/trimmomatic-0.39-1/adapters/adapters.fa:2:30:10 LEADING:10 TRAILING:10 SLIDINGWINDOW:4:15 HEADCROP:30 MINLEN:50
- path for trimmomatic adapters fasta file;
+	(3) --ADAPTERS : Absolute path for trimmomatic adapters fasta file;
 	(4) --MINCOV : Minimum sequencing coverage to call a base on the consensus sequence (default = 100)
 	(5) --THREADS : Number of threads available for processing (default = 1)
 
