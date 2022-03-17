@@ -4,7 +4,7 @@ ViralUnity is yet another simple tool to perform data quality control and viral 
 
 ## Installation
 
-ViralUnity is distributed as single bash script. Nevertheless, it relies on diverse dependencies and all of them have been conveniently documented on a conda environment yaml file. From this file one can easily install softwares required and run the pipeline.
+ViralUnity is distributed as single bash script. Nevertheless, it relies on diverse dependencies and all of them have been conveniently documented on a conda environment yaml file. From this file one can easily install required softwares and run the pipeline.
 
 To enable ViralUnity, clone the repo and create the environment:
 
@@ -42,11 +42,11 @@ While arguments 2 to 6 are self-explanatory, argument 1 may demand clarification
 
 Importantly, in case this directory organization is not strictly available, the pipeline will fail. Any directory outside these specifications on the root directory will halt execution. Each sample directory is expected to only have two (R1 and R2) fastq files (with .fastq or .fastq.gz extensions). Sample names should not include the underline character (_). 
 
-If the structure is followed, the script iterates over these directories, performing QC (trimmomatic), read mapping (Bowtie2), variant calling (bcftools) and consensus sequence inferences (bcftoools/bedtools). QC reports are generated with fastQC and multiQC. The results from all these analysis are stored in a directory with the suffix RESULTS/, created within the path specified by argument 1. 
+If the structure is correct, the script iterates over these directories, performing QC (trimmomatic), read mapping (Bowtie2), variant calling (bcftools) and consensus sequence inferences (bcftoools/bedtools). QC reports are generated with fastQC and multiQC. The results from all these analysis are stored in the specified output directory. 
 
 ### Run
 
-To effectively run the pipeline, just activate the conda environment and launch the analysis:
+To run the pipeline, just activate the conda environment and launch the analysis:
 
     $ conda activate ViralUnity
     $ ~/ViralUnity/SCRIPT/ViralUnity.sh --LIBDIR ~/LIBRARIES/RUN_1/ --OUTDIR ~/ANALYSIS/RUN1/ --REF ~/REFERENCE_GENOMES/reference.fasta --ADAPTERS ~/trimmomatic/adapter.fa
@@ -59,7 +59,7 @@ The output directory contains 2 report files, one with assembly statistics and o
 
 ### Note on segmented viruses
 
-Even though the pipeline has been originally designed to handle non-segmented viruses, it can be naively used to assemble segmented genomes. One just needs to specify one genomic segment as reference at a time. This will automatically create a RESULTS/ directory for each segment, which can be jointly analyzed in downstream workflows.
+Even though the pipeline has been originally designed to handle non-segmented viruses, it can be naively used to assemble segmented genomes. One just needs to specify one genomic segment as reference at a time. This will automatically create output directory for each segment, which can be analyzed in downstream workflows.
 
 ## Citation
 
