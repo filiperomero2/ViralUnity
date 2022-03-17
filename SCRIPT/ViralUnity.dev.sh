@@ -1,8 +1,8 @@
 #!/bin/bash
 
-## ViralUnity.sh v.1 ##
+## ViralUnity.sh v.1.0.0 ##
 
-# Written by Moreira et al. 2022. (doi:)
+# Written by Moreira et al. 2022.
 
 
 
@@ -30,7 +30,7 @@ Alternatively: $ ./ViralUnity.sh --LIBDIR ~/LIBRARIES/RUN_1/ --REF ~/REFERENCE_G
 }
 
 version(){
-	echo "ViralUnity v1.0"
+	echo "ViralUnity v1.0.0s"
 }
 
 clean(){
@@ -191,7 +191,7 @@ then
 	rm -rf $FILE.RESULTS
 fi
 
-mkdir -p $FILE.RESULTS/RAW_QC/ $FILE.RESULTS/FILTERED_QC/ $FILE.RESULTS/FILTERED_DATA/ $FILE.RESULTS/MAPPING/ $FILE.RESULTS/CONSENSUS/
+mkdir -p $FILE.RESULTS/QC_RAW/ $FILE.RESULTS/QC_FILTERED/ $FILE.RESULTS/FILTERED_DATA/ $FILE.RESULTS/MAPPING/ $FILE.RESULTS/CONSENSUS/
 
 # Print the header of sequencing_stats.csv
 echo "sample,number_of_raw_reads,number_of_paired_filtered_reads,number_of_unpaired_filtered_reads,number_of_mapped_reads,efficiency,average_depth,coverage_10x,coverage_100x,coverage_1000x,genome_coverage" > $FILE.stats_report.csv
@@ -237,8 +237,8 @@ do
 
 	# QC report for raw data 
 	fastqc -q -t $THREADS *fastq
-	mv *zip ../$FILE.RESULTS/RAW_QC/
-	mv *html ../$FILE.RESULTS/RAW_QC/
+	mv *zip ../$FILE.RESULTS/QC_RAW/
+	mv *html ../$FILE.RESULTS/QC_RAW/
 		
 	# Filter data with fastp
 	echo "Performing strict QC..."
@@ -246,8 +246,8 @@ do
 
 	# QC report for filtered data
 	fastqc -q -t $THREADS trim*fastq
-	mv *html ../$FILE.RESULTS/FILTERED_QC/
-	mv *zip ../$FILE.RESULTS/FILTERED_QC/
+	mv *html ../$FILE.RESULTS/QC_FILTERED/
+	mv *zip ../$FILE.RESULTS/QC_FILTERED/
 	
 	# Concatenate unpaired reads
 	cat trim.u.*fastq > trim.uni.$R1
@@ -256,7 +256,7 @@ do
 	U=trim.uni.$R1
 	R1=trim.p.$R1
 	R2=trim.p.$R2
-	
+
 	# Map reads against reference genome and handle the bam file
 	echo "Mapping..."
 	bowtie2 --very-sensitive --no-unal -p $THREADS -x $REF2 -1 $R1 -2 $R2 -U $U | samtools view -bS - > $NAME.bam   
@@ -314,14 +314,14 @@ echo ""
 cat CONSENSUS/*fa > CONSENSUS/CONSENSUS.fasta
 
 # Multiqc plot for raw data
-multiqc RAW_QC/
+multiqc QC_RAW/
 mv multiqc_report.html multiqc_report_RAW.html
-mv multiqc_* RAW_QC/
+mv multiqc_* QC_RAW/
 
 # Multiqc plot for filtered data
-multiqc FILTERED_QC/
+multiqc QC_FILTERED/
 mv multiqc_report.html multiqc_report_FILTERED.html
-mv multiqc_* FILTERED_QC/
+mv multiqc_* QC_FILTERED/
 
 cd ..
 
