@@ -16,32 +16,33 @@ ViralUnity
 
 Description: ViralUnity is a pipeline for the inference of viral consensus genome sequences from Illumina paired end reads.
 
-It takes 2 positional arguments:
+It takes as arguments:
 	(1) --LIBDIR : Absolute path for libraries' root directory;
-	(2) --REF : Path for a reference genome in fasta format;
-	(3) --ADAPTERS : Absolute path for trimmomatic adapters fasta file;
-	(4) --MINCOV : Minimum sequencing coverage to call a base on the consensus sequence (default = 100)
-	(5) --THREADS : Number of threads available for processing (default = 1)
+	(2) --OUTDIR : Absolute path for output directory;
+	(3) --REF : Path for a reference genome in fasta format;
+	(4) --ADAPTERS : Absolute path for trimmomatic adapters fasta file;
+	(5) --MINCOV : Minimum sequencing coverage to call a base on the consensus sequence (Optional; default = 100);
+	(6) --THREADS : Number of threads available for processing (Optional; default = 1).
 
-Minimal usage:$ ./ViralUnity.sh --LIBDIR ~/LIBRARIES/RUN_1/ --REF ~/REFERENCE_GENOMES/reference.fasta --ADAPTERS ~/trimmomatic/adapter.fa
+Minimal usage:$ ./ViralUnity.sh --LIBDIR ~/LIBRARIES/RUN_1/ --OUTDIR ~/ANALYSIS/RUN1/ --REF ~/REFERENCE_GENOMES/reference.fasta --ADAPTERS ~/trimmomatic/adapter.fa
 
-Alternatively: $ ./ViralUnity.sh --LIBDIR ~/LIBRARIES/RUN_1/ --REF ~/REFERENCE_GENOMES/reference.fasta --ADAPTERS ~/trimmomatic/adapter.fa --MINCOV 200 --THREADS 6
+Alternatively: $ ./ViralUnity.sh --LIBDIR ~/LIBRARIES/RUN_1/ --OUTDIR ~/ANALYSIS/RUN1/ --REF ~/REFERENCE_GENOMES/reference.fasta --ADAPTERS ~/trimmomatic/adapter.fa --MINCOV 200 --THREADS 6
 "
 }
 
 version(){
-	echo "ViralUnity v1.0.0s"
+	echo "ViralUnity v1.0.0"
 }
 
 clean(){
 	rm $NAME.temp.consensus.fa
-	mv trim.* ../$FILE.RESULTS/FILTERED_DATA/
-	mv *sorted.bam ../$FILE.RESULTS/MAPPING/
+	mv trim.* $OUTDIR/FILTERED_DATA/
+	mv *sorted.bam $OUTDIR/MAPPING/
 	rm *bam
-	mv *bai ../$FILE.RESULTS/MAPPING/
-	mv $NAME.calls* ../$FILE.RESULTS/MAPPING/
-	mv *.txt  ../$FILE.RESULTS/MAPPING/
-	mv masked.$NAME.consensus.fa ../$FILE.RESULTS/CONSENSUS/
+	mv *bai $OUTDIR/MAPPING/
+	mv $NAME.calls* $OUTDIR/MAPPING/
+	mv *.txt  $OUTDIR/MAPPING/
+	mv masked.$NAME.consensus.fa $OUTDIR/CONSENSUS/
 }
 
 writestats(){
@@ -123,6 +124,18 @@ else
 	exit
 fi
 
+
+if [[ -d $OUTDIR ]] 
+then 
+	echo "Output directory indentified ->  $OUTDIR"
+	echo "Please specify another to avoid overwriting previous analysis."
+	exit
+else 
+	echo "Samples directory created -> $OUTDIR"
+	mkdir $OUTDIR
+fi
+
+
 if [[ -f $REF ]] 
 then 
 	echo "Reference genome file indentified ->  $REF"
@@ -175,23 +188,18 @@ FILE=$(echo $REF | sed 's/.*\///g')
 echo "Reference file name -> $FILE"
 REFNAME=$(cat $REF | head -n 1 | sed 's/>//' | sed 's/\s.*//')
 REFPATH=$(echo $REF | sed "s/$FILE//g")
+
 cd $REFPATH
 bowtie2-build -q $REF reference
 REF2=$(pwd)/reference
 
 
-# Go to libraries' root directory and set $FILE.RESULTS/*/
+# Go to libraries' root directory and set $OUTDIR/*/
 cd $LIBDIR
 
 date > $FILE.timereport.txt
 
-if [[ -d $FILE.RESULTS ]]
-then
-	echo "Results directory already exists. Erasing and continuing..."
-	rm -rf $FILE.RESULTS
-fi
-
-mkdir -p $FILE.RESULTS/QC_RAW/ $FILE.RESULTS/QC_FILTERED/ $FILE.RESULTS/FILTERED_DATA/ $FILE.RESULTS/MAPPING/ $FILE.RESULTS/CONSENSUS/
+mkdir -p $OUTDIR/QC_RAW/ $OUTDIR/QC_FILTERED/ $OUTDIR/FILTERED_DATA/ $OUTDIR/MAPPING/ $OUTDIR/CONSENSUS/
 
 # Print the header of sequencing_stats.csv
 echo "sample,number_of_raw_reads,number_of_paired_filtered_reads,number_of_unpaired_filtered_reads,number_of_mapped_reads,efficiency,average_depth,coverage_10x,coverage_100x,coverage_1000x,genome_coverage" > $FILE.stats_report.csv
@@ -199,8 +207,8 @@ echo "sample,number_of_raw_reads,number_of_paired_filtered_reads,number_of_unpai
 # For each sample
 for SAMPLE in */
 do
-	# Skip $FILE.RESULTS/
-	if [ $SAMPLE == "$FILE.RESULTS/" ]
+	# Skip $OUTDIR/
+	if [ $SAMPLE == "$OUTDIR/" ]
 	then
 		continue
 	fi
@@ -229,16 +237,18 @@ do
 		R2="$(ls *fastq | tail -1)"
 	else
 		echo "Please provide only two fastq files (R1 and R2) for each sample."
-		echo "Different number of files found in directory $SAMPLE"
+		echo "Only files with the .fastq extension are used."
+		echo "Different number of files found in directory $SAMPLE."
 		exit
 	fi
 	
+	# Get sample name. It should never include a _ character (used as separator)
 	NAME=$(echo $R1 | sed -E 's/_.+//g')
 
 	# QC report for raw data 
 	fastqc -q -t $THREADS *fastq
-	mv *zip ../$FILE.RESULTS/QC_RAW/
-	mv *html ../$FILE.RESULTS/QC_RAW/
+	mv *zip $OUTDIR/QC_RAW/
+	mv *html $OUTDIR/QC_RAW/
 		
 	# Filter data with fastp
 	echo "Performing strict QC..."
@@ -246,8 +256,8 @@ do
 
 	# QC report for filtered data
 	fastqc -q -t $THREADS trim*fastq
-	mv *html ../$FILE.RESULTS/QC_FILTERED/
-	mv *zip ../$FILE.RESULTS/QC_FILTERED/
+	mv *html $OUTDIR/QC_FILTEREDresults/
+	mv *zip $OUTDIR/QC_FILTERED/
 	
 	# Concatenate unpaired reads
 	cat trim.u.*fastq > trim.uni.$R1
@@ -299,10 +309,10 @@ done
 ##############################################################################################################################
 # Main loop finished, setting final results. 
 
-mv $FILE.stats_report.csv $FILE.RESULTS/
-mv $FILE.timereport.txt $FILE.RESULTS/
+mv $FILE.stats_report.csv $OUTDIR/
+mv $FILE.timereport.txt $OUTDIR/
 
-cd $FILE.RESULTS/
+cd $OUTDIR/
 
 echo ""
 echo "###############################"
@@ -323,7 +333,7 @@ multiqc QC_FILTERED/
 mv multiqc_report.html multiqc_report_FILTERED.html
 mv multiqc_* QC_FILTERED/
 
-cd ..
+
 
 echo ""
 echo "#######################"
@@ -332,6 +342,10 @@ echo "#######################"
 echo ""
 
 date
+echo "Finished" >> $FILE.timereport.txt
+date  >> $FILE.timereport.txt
 echo ""
+
+cd
 
 exit
