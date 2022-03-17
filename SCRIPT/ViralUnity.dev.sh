@@ -2,7 +2,7 @@
 
 ## ViralUnity.sh v.1 ##
 
-# Written by Moreira et al. 2020. (doi:)
+# Written by Moreira et al. 2022. (doi:)
 
 
 
@@ -19,12 +19,14 @@ Description: ViralUnity is a pipeline for the inference of viral consensus genom
 It takes 2 positional arguments:
 	(1) --LIBDIR : Absolute path for libraries' root directory;
 	(2) --REF : Path for a reference genome in fasta format;
-	(3) --MINCOV : Minimum sequencing coverage to call a base on the consensus sequence (default = 100)
-	(4) --THREADS : Number of threads available for processing (default = 1)
+	(3) --ADAPTERS : Absolute 62924_S11_L001_R1_001.fastq 62924_S11_L001_R2_001.fastq trim.p.62924_S11_L001_R1_001.fastq trim.u.62924_S11_L001_R1_001.fastq trim.p.62924_S11_L001_R2_001.fastq trim.u.62924_S11_L001_R2_001.fastq ILLUMINACLIP:/home/filipe/miniconda3/envs/ViralUnity/share/trimmomatic-0.39-1/adapters/adapters.fa:2:30:10 LEADING:10 TRAILING:10 SLIDINGWINDOW:4:15 HEADCROP:30 MINLEN:50
+ path for trimmomatic adapters fasta file;
+	(4) --MINCOV : Minimum sequencing coverage to call a base on the consensus sequence (default = 100)
+	(5) --THREADS : Number of threads available for processing (default = 1)
 
-Minimal usage:$ ./ViralUnity.sh --LIBDIR ~/LIBRARIES/RUN_1/ --REF ~/REFERENCE_GENOMES/reference.fasta
+Minimal usage:$ ./ViralUnity.sh --LIBDIR ~/LIBRARIES/RUN_1/ --REF ~/REFERENCE_GENOMES/reference.fasta --ADAPTERS ~/trimmomatic/adapter.fa
 
-Alternatively: $ ./ViralUnity.sh --LIBDIR ~/LIBRARIES/RUN_1/ --REF ~/REFERENCE_GENOMES/reference.fasta --MINCOV 200 --THREADS 6
+Alternatively: $ ./ViralUnity.sh --LIBDIR ~/LIBRARIES/RUN_1/ --REF ~/REFERENCE_GENOMES/reference.fasta --ADAPTERS ~/trimmomatic/adapter.fa --MINCOV 200 --THREADS 6
 "
 }
 
@@ -130,6 +132,14 @@ else
 	exit
 fi
 
+if [[ -f $ADAPTERS ]] 
+then 
+	echo "Trimmomatic adapters fasta file identified ->  $ADAPTERS"
+else 
+	echo "Trimmomatic adapters fasta file not found. Please specify."
+	exit
+fi
+
 if [ -z "$MINCOV" ];
 then
       echo "Minimum coverage is not defined, using the default (100x)"
@@ -225,8 +235,6 @@ do
 	fi
 	
 	NAME=$(echo $R1 | sed -E 's/_.+//g')
-	#NAME=$(echo $R1 | sed -E 's/\..+//g')
-	#REFNAME2=$(echo $REFNAME | sed -E 's/ .+//g')
 
 	# QC report for raw data 
 	fastqc -q -t $THREADS *fastq
@@ -235,13 +243,10 @@ do
 		
 	# Filter data with fastp
 	echo "Performing strict QC..."
-	fastp --detect_adapter_for_pe -l 50 -q 30 --thread $THREADS -i $R1 -I $R2 -o trim.p.$R1 -O trim.p.$R2 --unpaired1 trim.u.$R1 --unpaired2 trim.u.$R2
-	mv fastp.html $NAME.fastp.html
-	mv fastp.json $NAME.fastp.json
+	trimmomatic PE -threads $THREADS -phred33 $R1 $R2 trim.p.$R1 trim.u.$R1 trim.p.$R2 trim.u.$R2 ILLUMINACLIP:$ADAPTERS:2:30:10 LEADING:10 TRAILING:10 SLIDINGWINDOW:4:15 HEADCROP:30 MINLEN:50
 
 	# QC report for filtered data
 	fastqc -q -t $THREADS trim*fastq
-	mv *json ../$FILE.RESULTS/FILTERED_QC/
 	mv *html ../$FILE.RESULTS/FILTERED_QC/
 	mv *zip ../$FILE.RESULTS/FILTERED_QC/
 	
