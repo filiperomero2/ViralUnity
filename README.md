@@ -21,12 +21,13 @@ To enable ViralUnity, clone the repo and create the environment:
 ViralUnity was designed to be as simple as possible, with the objective of making users go from raw reads to processed consensus genome sequences for entire batches of samples with a single command line. The script may take four positional arguments, being only the first three strictly required:
 
     1 - The absolute path for samples root directory;
-    2 - The absolute path for a reference genome in fasta format;
-    3 - The absolute path for trimmomatic adapters fasta file;
-    4 - the minimum sequencing depth necessary to incorporate a base into the consensus sequence (default: 100);
-    5 - the number of threads available for processing (default: 1).
+    2 - The absolute path for output directory;
+    3 - The absolute path for a reference genome in fasta format;
+    4 - The absolute path for trimmomatic adapters fasta file;
+    5 - the minimum sequencing depth necessary to incorporate a base into the consensus sequence (default: 100);
+    6 - the number of threads available for processing (default: 1).
 
-While arguments 2 to 5 are self-explanatory, argument 1 may demand clarification. To be able to analyze entire sequencing runs from a single command line, ViralUnity needs data to be stored in a well specified structure of directories. The path in argument 1 refers to a directory that harbors samples' directories, each containing two fastq files (R1 and R2 reads), like in the example bellow:
+While arguments 2 to 6 are self-explanatory, argument 1 may demand clarification. To be able to analyze entire sequencing runs from a single command line, ViralUnity needs data to be stored in a well specified structure of directories. The path in argument 1 refers to a directory that harbors samples' directories, each containing two fastq files (R1 and R2 reads), like in the example bellow:
 
     (base) fmoreira@DESKTOP:~/Desktop/pilot/DATA$ tree
     .
@@ -39,18 +40,22 @@ While arguments 2 to 5 are self-explanatory, argument 1 may demand clarification
 
     2 directories, 4 files
 
-Importantly, in case this directory organization is not strictly available, the pipeline will fail. Each sample directory is expected to only have two (R1 and R2) fastq files. Sample names should not include the underline character (_). 
+Importantly, in case this directory organization is not strictly available, the pipeline will fail. Any directory outside these specifications on the root directory will halt execution. Each sample directory is expected to only have two (R1 and R2) fastq files (with .fastq or .fastq.gz extensions). Sample names should not include the underline character (_). 
 
 If the structure is followed, the script iterates over these directories, performing QC (trimmomatic), read mapping (Bowtie2), variant calling (bcftools) and consensus sequence inferences (bcftoools/bedtools). QC reports are generated with fastQC and multiQC. The results from all these analysis are stored in a directory with the suffix RESULTS/, created within the path specified by argument 1. 
 
 ### Run
 
-To effectively run the pipeline, just activate the conda environment and use a simple command line, examplified as follows:
+To effectively run the pipeline, just activate the conda environment and launch the analysis:
 
     $ conda activate ViralUnity
-    $ ~/ViralUnity/SCRIPT/ViralUnity.sh --LIBDIR ~/LIBRARIES/RUN_1/ --REF ~/REFERENCE_GENOMES/reference.fasta --ADAPTERS ~/trimmomatic/adapters.fa --MINCOV 200 --THREADS 6
+    $ ~/ViralUnity/SCRIPT/ViralUnity.sh --LIBDIR ~/LIBRARIES/RUN_1/ --OUTDIR ~/ANALYSIS/RUN1/ --REF ~/REFERENCE_GENOMES/reference.fasta --ADAPTERS ~/trimmomatic/adapter.fa
 
-These lines would make all dependencies available, start the analysis for all samples stored in the first path, using as reference the fasta file specified in the second. Additionaly, consensus genome sequences sites with less then 200x depth would be masked and the analysis would use 6 threads. 
+One may also specify custom depth thresholds and number of processing threads:
+
+    $ ~/ViralUnity/SCRIPT/ViralUnity.sh --LIBDIR ~/LIBRARIES/RUN_1/ --OUTDIR ~/ANALYSIS/RUN1/ --REF ~/REFERENCE_GENOMES/reference.fasta --ADAPTERS ~/trimmomatic/adapter.fa --MINCOV 200 --THREADS 6
+
+The output directory contains 2 report files, one with assembly statistics and other with a timestamp for each sample processing. In addition, four directories are also created, comprehending QC reports for raw and filtered data, mapping and variants associated files and consensus sequences. 
 
 ### Note on segmented viruses
 
