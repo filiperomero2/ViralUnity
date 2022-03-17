@@ -2,12 +2,10 @@
 
 ## ViralUnity.sh v.1.0.0 ##
 
-# Written by Moreira et al. 2022.
-
-
+# Written by Moreira and D'arc 2022.
 
 ##############################################################################################################################
-# Set variables, functions and validate arguments
+# Set functions
 
 help(){
 
@@ -81,6 +79,18 @@ writestats(){
 
 }
 
+calc() { awk "BEGIN{print $*}"; }
+
+
+##############################################################################################################################
+# Validate arguments
+
+echo ""
+echo "###############################"
+echo "Step 1: Arguments Verification"
+echo "###############################"
+echo ""
+
 
 if [ -z "$1" ] || [[ $1 == -h ]] || [[ $1 == --help ]]; then
 	help
@@ -101,19 +111,6 @@ while [ $# -gt 0 ]; do
    fi
    shift
 done
-
-
-
-
-##############################################################################################################################
-# Validate arguments and define a function
-
-echo ""
-echo "###############################"
-echo "Step 1: Arguments Verification"
-echo "###############################"
-echo ""
-
 
 
 if [[ -d $LIBDIR ]] 
@@ -168,7 +165,6 @@ else
       echo "Number of threads available for processing: $THREADS"
 fi
 
-calc() { awk "BEGIN{print $*}"; }
 
 ##############################################################################################################################
 # Start the pipeline
@@ -256,7 +252,7 @@ do
 
 	# QC report for filtered data
 	fastqc -q -t $THREADS trim*fastq
-	mv *html $OUTDIR/QC_FILTEREDresults/
+	mv *html $OUTDIR/QC_FILTERED/
 	mv *zip $OUTDIR/QC_FILTERED/
 	
 	# Concatenate unpaired reads
