@@ -1,0 +1,7 @@
+fastqc v0.11.9
+multiqc v1.9
+trimmomatic v0.39
+bowtie2 v2.4.2
+samtools v1.11
+bcftools v1.11
+bedtools v2.30.0

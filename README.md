@@ -1,6 +1,6 @@
 # ViralUnity
 
-ViralUnity is yet another simple tool to perform data quality control and viral genome reference assembly from Illumina paired-end reads. It is designed to be effective and easy to use.
+ViralUnity is yet another simple tool to perform data quality control and viral genome reference assembly from Illumina paired-end reads. It is designed to be effective and easy to use. It runs on *nix systems and is able to process complete Illumina MiSeq runs in a couple of hours on a regular laptop.
 
 ## Installation
 
@@ -13,21 +13,38 @@ To enable ViralUnity, clone the repo and create the environment:
     $ cd ~/ViralUnity/ENV/
     $ conda env create --file ViralUnity.yml
 
+In case of compatibility issues between OS and versions specified in the yaml file, one may create the environment and download dependencies manually from the bioconda channel:
+
+    $ conda create --name ViralUnity
+    $ conda activate ViralUnity
+    $ conda install -c bioconda fastqc multiqc trimmomatic bowtie2 samtools bcftools bedtools -y
+
+Keep in mind this pipeline has been developed and tested on the following dependencies versions:
+
+* fastqc v0.11.9
+* multiqc v1.9
+* trimmomatic v0.39
+* bowtie2 v2.4.2
+* samtools v1.11
+* bcftools v1.11
+* bedtools v2.30.0
 
 ## Usage
 
 ### Arguments and data organization requirements
 
-ViralUnity was designed to be as simple as possible, with the objective of making users go from raw reads to processed consensus genome sequences for entire batches of samples with a single command line. The script may take six arguments, being only the first four strictly required:
+ViralUnity was designed to be as simple as possible, with the objective of making users go from raw reads to processed consensus genome sequences for entire batches of samples with a single command line. The script may take eight arguments, being only the first four strictly required:
 
-    1 - The absolute path for samples root directory;
-    2 - The absolute path for output directory;
-    3 - The absolute path for a reference genome in fasta format;
-    4 - The absolute path for trimmomatic adapters fasta file;
-    5 - the minimum sequencing depth necessary to incorporate a base into the consensus sequence (default: 100);
-    6 - the number of threads available for processing (default: 1).
+    --LIBDIR - The absolute path for samples root directory;
+    --OUTDIR - The absolute path for output directory;
+    --REF - The absolute path for a reference genome in fasta format;
+    --ADAPTERS - The absolute path for trimmomatic adapters fasta file;
+    --MINCOV - the minimum sequencing depth necessary to incorporate a base into the consensus sequence (default: 100);
+    --MINLEN - Minimum read length (Optional; default = 50);
+	--HEADCROP - Number of bases to trim from the start of the read, useful for primer sequences removal (Optional; default = 30);
+    --THREADS - the number of threads available for processing (default: 1).
 
-While arguments 2 to 6 are self-explanatory, argument 1 may demand clarification. To be able to analyze entire sequencing runs from a single command line, ViralUnity needs data to be stored in a well specified structure of directories. The path in argument 1 refers to a directory that harbors samples' directories, each containing two fastq files (R1 and R2 reads), like in the example bellow:
+The first argument may demand clarification. To be able to analyze entire sequencing runs from a single command line, ViralUnity needs data to be stored in a well specified structure of directories. The path in argument 1 refers to a directory that harbors samples' directories, each containing two fastq files (R1 and R2 reads), like in the example bellow:
 
     (base) username@DESKTOP:~/Desktop/pilot/DATA$ tree
     .
@@ -51,11 +68,13 @@ To run the pipeline, just activate the conda environment and launch the analysis
     $ conda activate ViralUnity
     $ ~/ViralUnity/SCRIPT/ViralUnity.sh --LIBDIR ~/LIBRARIES/RUN_1/ --OUTDIR ~/ANALYSIS/RUN1/ --REF ~/REFERENCE_GENOMES/reference.fasta --ADAPTERS ~/trimmomatic/adapter.fa
 
-One may also specify custom depth thresholds and number of processing threads:
+One may also specify other parameters:
 
-    $ ~/ViralUnity/SCRIPT/ViralUnity.sh --LIBDIR ~/LIBRARIES/RUN_1/ --OUTDIR ~/ANALYSIS/RUN1/ --REF ~/REFERENCE_GENOMES/reference.fasta --ADAPTERS ~/trimmomatic/adapter.fa --MINCOV 200 --THREADS 6
+    $ ~/ViralUnity/SCRIPT/ViralUnity.sh --LIBDIR ~/LIBRARIES/RUN_1/ --OUTDIR ~/ANALYSIS/RUN1/ --REF ~/REFERENCE_GENOMES/reference.fasta --ADAPTERS ~/trimmomatic/adapter.fa --MINCOV 200 --MINLEN 30 --HEADCROP 20 --THREADS 6
 
 The output directory contains 2 report files, one with assembly statistics and other with a timestamp for each sample processing. In addition, four directories are also created, comprehending QC reports for raw and filtered data, mapping and variants associated files and consensus sequences. 
+
+## Notes
 
 ### Note on segmented viruses
 
@@ -63,7 +82,7 @@ Even though the pipeline has been originally designed to handle non-segmented vi
 
 ### Note on primer sequences removal
 
-The removal of primer associated SNPs is a mandatory step in processing sequences generated from targetted sequencing approaches. While this pipeline does not use any tool that specifically query for primer sequences, it does crop out the initial 30 bp of all reads with trimmomatic. As primer sequences hardly extends more than 30 bp, this step avoids the introduction of artefactual SNPs. Users analyzing data generated under alternative protocols (e.g., metagenomics) may want to change this behavior by removing the HEADCROP:30 trimmomatic argument from the script.
+The removal of primer associated SNPs is a mandatory step in processing sequences generated from targetted sequencing approaches. While this pipeline does not use any tool that specifically query for primer sequences, its default mode trim out the initial 30 bp of all reads with trimmomatic. As primer sequences hardly extends more than 30 bp, this step avoids the introduction of artefactual SNPs. Users analyzing data generated under alternative protocols (e.g., metagenomics) may want to change this behavior by setting the value of --HEADCROP to 0 (zero).
 
 
 ## Citation

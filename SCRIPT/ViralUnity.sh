@@ -1,6 +1,6 @@
 #!/bin/bash
 
-## ViralUnity.sh v.1.0.0 ##
+## ViralUnity.sh v.1.0.2-beta ##
 
 # Written by Moreira and D'arc 2022.
 
@@ -15,21 +15,24 @@ ViralUnity
 Description: ViralUnity is a pipeline for the inference of viral consensus genome sequences from Illumina paired end reads.
 
 It takes as arguments:
-	(1) --LIBDIR : Absolute path for libraries' root directory;
-	(2) --OUTDIR : Absolute path for output directory;
-	(3) --REF : Path for a reference genome in fasta format;
-	(4) --ADAPTERS : Absolute path for trimmomatic adapters fasta file;
-	(5) --MINCOV : Minimum sequencing coverage to call a base on the consensus sequence (Optional; default = 100);
-	(6) --THREADS : Number of threads available for processing (Optional; default = 1).
+
+	--LIBDIR - Absolute path for libraries' root directory;
+	--OUTDIR - Absolute path for output directory;
+	--REF - Path for a reference genome in fasta format;
+	--ADAPTERS - Absolute path for trimmomatic adapters fasta file;
+	--MINCOV - Minimum sequencing coverage to call a base on the consensus sequence (Optional; default = 100);
+	--MINLEN - Minimum read length (Optional; default = 50);
+	--HEADCROP - Number of bases to trim from the start of the read, useful for primer sequences removal (Optional; default = 30);
+	--THREADS - Number of threads available for processing (Optional; default = 1).
 
 Minimal usage:$ ./ViralUnity.sh --LIBDIR ~/LIBRARIES/RUN_1/ --OUTDIR ~/ANALYSIS/RUN1/ --REF ~/REFERENCE_GENOMES/reference.fasta --ADAPTERS ~/trimmomatic/adapter.fa
 
-Alternatively: $ ./ViralUnity.sh --LIBDIR ~/LIBRARIES/RUN_1/ --OUTDIR ~/ANALYSIS/RUN1/ --REF ~/REFERENCE_GENOMES/reference.fasta --ADAPTERS ~/trimmomatic/adapter.fa --MINCOV 200 --THREADS 6
+Alternatively: $ ./ViralUnity.sh --LIBDIR ~/LIBRARIES/RUN_1/ --OUTDIR ~/ANALYSIS/RUN1/ --REF ~/REFERENCE_GENOMES/reference.fasta --ADAPTERS ~/trimmomatic/adapter.fa --MINCOV 200 --MINLEN 40 --HEADCROP 20 --THREADS 6
 "
 }
 
 version(){
-	echo "ViralUnity v1.0.0"
+	echo "ViralUnity v1.0.2-beta"
 }
 
 clean(){
@@ -85,13 +88,6 @@ calc() { awk "BEGIN{print $*}"; }
 ##############################################################################################################################
 # Validate arguments
 
-echo ""
-echo "###############################"
-echo "Step 1: Arguments Verification"
-echo "###############################"
-echo ""
-
-
 if [ -z "$1" ] || [[ $1 == -h ]] || [[ $1 == --help ]]; then
 	help
 	exit
@@ -101,6 +97,12 @@ if [ -z "$1" ] || [[ $1 == -v ]] || [[ $1 == --version ]]; then
 	version
 	exit
 fi
+
+echo ""
+echo "###############################"
+echo "Step 1: Arguments Verification"
+echo "###############################"
+echo ""
 
 
 while [ $# -gt 0 ]; do
@@ -156,6 +158,23 @@ then
 else
       echo "Minimum coverage threshold identified: $MINCOV"
 fi
+
+if [ -z "$MINLEN" ]
+then
+      echo "Minimum read length not specified, using the default (50bp)"
+	  MINLEN=50
+else
+      echo "Minimum read length: $MINLEN"
+fi
+
+if [ -z "$HEADCROP" ]
+then
+      echo "Number of bases to trim from the beggining of read not specified, using the default (30bp)"
+	  HEADCROP=30
+else
+      echo "Number of bases to trim from the beggining of read: $HEADCROP"
+fi
+
 
 if [ -z "$THREADS" ]
 then
@@ -248,7 +267,12 @@ do
 		
 	# Filter data with fastp
 	echo "Performing strict QC..."
-	trimmomatic PE -threads $THREADS -phred33 $R1 $R2 trim.p.$R1 trim.u.$R1 trim.p.$R2 trim.u.$R2 ILLUMINACLIP:$ADAPTERS:2:30:10 LEADING:10 TRAILING:10 SLIDINGWINDOW:4:15 HEADCROP:30 MINLEN:50
+	if [ $HEADCROP -eq 0 ]
+	then
+		trimmomatic PE -threads $THREADS -phred33 $R1 $R2 trim.p.$R1 trim.u.$R1 trim.p.$R2 trim.u.$R2 ILLUMINACLIP:$ADAPTERS:2:30:10 LEADING:10 TRAILING:10 SLIDINGWINDOW:4:15 MINLEN:$MINLEN
+	else
+		trimmomatic PE -threads $THREADS -phred33 $R1 $R2 trim.p.$R1 trim.u.$R1 trim.p.$R2 trim.u.$R2 ILLUMINACLIP:$ADAPTERS:2:30:10 LEADING:10 TRAILING:10 SLIDINGWINDOW:4:15 HEADCROP:$HEADCROP MINLEN:$MINLEN
+	fi
 
 	# QC report for filtered data
 	fastqc -q -t $THREADS trim*fastq
