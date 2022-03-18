@@ -82,7 +82,7 @@ Even though the pipeline has been originally designed to handle non-segmented vi
 
 ### Note on primer sequences removal
 
-The removal of primer associated SNPs is a mandatory step in processing sequences generated from targetted sequencing approaches. While this pipeline does not use any tool that specifically query for primer sequences, its default mode trim out the initial 30 bp of all reads with trimmomatic. As primer sequences hardly extends more than 30 bp, this step avoids the introduction of artefactual SNPs. Users analyzing data generated under alternative protocols (e.g., metagenomics) may want to change this behavior by setting the value of --HEADCROP to 0 (zero).
+The removal of primer associated SNPs is a mandatory step in processing sequences generated from targetted sequencing approaches. While this pipeline does not use any tool that specifically query for primer sequences, its default mode trim out the initial 30 bp of all reads with trimmomatic. As primer sequences hardly extends for more than 30 bp, this step avoids the introduction of artefactual SNPs. Users analyzing data generated under alternative protocols (e.g., metagenomics) may want to change this behavior by setting the value of --HEADCROP to 0 (zero).
 
 
 ## Citation
