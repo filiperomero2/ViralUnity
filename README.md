@@ -99,7 +99,7 @@ If you use this pipeline, please cite this github repo and also:
 
 <a href="https://github.com/samtools/samtools">Samtools</a>: Li H, Handsaker B, Wysoker A, Fennell T, Ruan J, Homer N, et al. The Sequence Alignment/Map format and SAMtools. Bioinformatics. 2009; 25(16):2078–9.
 
-<a href="https://samtools.github.io/bcftools/">BCFtools</a>: Heng Li. A statistical framework for SNP calling, mutation discovery, association mapping and population genetical parameter estimation from sequencing data, Bioinformatics. 2011; 27(21):2987–2993. 
+<a href="https://samtools.github.io/bcftools/">BCFtools</a>: Heng Li. A statistical framework for SNP calling, mutation discovery, association mapping and population genetical parameter estimation from sequencing data. Bioinformatics. 2011; 27(21):2987–2993. 
 
 <a href="https://github.com/arq5x/bedtools2">BEDtools</a>: Quinlan AR, Hall IM. BEDTools: A flexible suite of utilities for comparing genomic features. Bioinformatics. 2010; 26(6):841–2.
 
