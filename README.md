@@ -72,7 +72,7 @@ One may also specify other parameters:
 
     $ ~/ViralUnity/SCRIPT/ViralUnity.sh --LIBDIR ~/LIBRARIES/RUN_1/ --OUTDIR ~/ANALYSIS/RUN1/ --REF ~/REFERENCE_GENOMES/reference.fasta --ADAPTERS ~/trimmomatic/adapter.fa --MINCOV 200 --MINLEN 30 --HEADCROP 20 --THREADS 6
 
-The output directory contains 2 report files, one with assembly statistics and other with a timestamp for each sample processing. In addition, four directories are also created, comprehending QC reports for raw and filtered data, mapping and variants associated files and consensus sequences. 
+The output directory contains 2 report files, one with assembly statistics and other with a timestamp for each sample processing. In addition, three directories are also created, comprehending QC reports for raw and filtered data, mapping and variants associated files and consensus sequences. 
 
 ## Notes
 

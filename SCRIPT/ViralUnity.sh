@@ -38,11 +38,11 @@ version(){
 clean(){
 	rm $NAME.temp.consensus.fa
 	mv trim.* $OUTDIR/FILTERED_DATA/
-	mv *sorted.bam $OUTDIR/MAPPING/
+	mv *sorted.bam $OUTDIR/MAPPING_VARIANTS/
 	rm *bam
-	mv *bai $OUTDIR/MAPPING/
-	mv $NAME.calls* $OUTDIR/MAPPING/
-	mv *.txt  $OUTDIR/MAPPING/
+	mv *bai $OUTDIR/MAPPING_VARIANTS/
+	mv $NAME.calls* $OUTDIR/MAPPING_VARIANTS/
+	mv *.txt  $OUTDIR/MAPPING_VARIANTS/
 	mv masked.$NAME.consensus.fa $OUTDIR/CONSENSUS/
 }
 
@@ -78,7 +78,7 @@ writestats(){
 	TEMP=$(awk  '$3 > 1000' $NAME.table_cov_basewise.txt | wc -l)
 	COV1000=$(calc $TEMP/$LEN)
 	# Print statistics to .csv file
-	echo "$NAME,$RAW,$PAIRED,$UNPAIRED,$MAPPED,$USAGE,$COV,$COV10,$COV100,$COV1000,$GENCOV" >> ../$FILE.stats_report.csv
+	echo "$NAME,$RAW,$PAIRED,$UNPAIRED,$MAPPED,$USAGE,$COV,$COV10,$COV100,$COV1000,$GENCOV" >> ../stats_report.csv
 
 }
 
@@ -212,12 +212,12 @@ REF2=$(pwd)/reference
 # Go to libraries' root directory and set $OUTDIR/*/
 cd $LIBDIR
 
-date > $FILE.timereport.txt
+date > timereport.txt
 
-mkdir -p $OUTDIR/QC_RAW/ $OUTDIR/QC_FILTERED/ $OUTDIR/FILTERED_DATA/ $OUTDIR/MAPPING/ $OUTDIR/CONSENSUS/
+mkdir -p $OUTDIR/QC/RAW/ $OUTDIR/QC/FILTERED/ $OUTDIR/FILTERED_DATA/ $OUTDIR/MAPPING_VARIANTS/ $OUTDIR/CONSENSUS/
 
 # Print the header of sequencing_stats.csv
-echo "sample,number_of_raw_reads,number_of_paired_filtered_reads,number_of_unpaired_filtered_reads,number_of_mapped_reads,efficiency,average_depth,coverage_10x,coverage_100x,coverage_1000x,genome_coverage" > $FILE.stats_report.csv
+echo "sample,number_of_raw_reads,number_of_paired_filtered_reads,number_of_unpaired_filtered_reads,number_of_mapped_reads,efficiency,average_depth,coverage_10x,coverage_100x,coverage_1000x,genome_coverage" > stats_report.csv
 
 # For each sample
 for SAMPLE in */
@@ -235,8 +235,8 @@ do
 	echo ""
 	echo "Working on -> $SAMPLE"
     date
-	echo "Working on -> $SAMPLE" >> ../$FILE.timereport.txt
-	date >> ../$FILE.timereport.txt
+	echo "Working on -> $SAMPLE" >> ../timereport.txt
+	date >> ../timereport.txt
 	echo ""
 			
 
@@ -262,8 +262,8 @@ do
 
 	# QC report for raw data 
 	fastqc -q -t $THREADS *fastq
-	mv *zip $OUTDIR/QC_RAW/
-	mv *html $OUTDIR/QC_RAW/
+	mv *zip $OUTDIR/QC/RAW/
+	mv *html $OUTDIR/QC/RAW/
 		
 	# Filter data with fastp
 	echo "Performing strict QC..."
@@ -276,8 +276,8 @@ do
 
 	# QC report for filtered data
 	fastqc -q -t $THREADS trim*fastq
-	mv *html $OUTDIR/QC_FILTERED/
-	mv *zip $OUTDIR/QC_FILTERED/
+	mv *html $OUTDIR/QC/FILTERED/
+	mv *zip $OUTDIR/QC/FILTERED/
 	
 	# Concatenate unpaired reads
 	cat trim.u.*fastq > trim.uni.$R1
@@ -319,7 +319,7 @@ do
 
 	echo ""
 	date
-	date  >> ../$FILE.timereport.txt
+	date  >> ../timereport.txt
 	
 	# Go to the previous directory
 	cd ../
@@ -329,8 +329,8 @@ done
 ##############################################################################################################################
 # Main loop finished, setting final results. 
 
-mv $FILE.stats_report.csv $OUTDIR/
-mv $FILE.timereport.txt $OUTDIR/
+mv stats_report.csv $OUTDIR/
+mv timereport.txt $OUTDIR/
 
 cd $OUTDIR/
 
@@ -344,14 +344,14 @@ echo ""
 cat CONSENSUS/*fa > CONSENSUS/CONSENSUS.fasta
 
 # Multiqc plot for raw data
-multiqc QC_RAW/
+multiqc QC/RAW/
 mv multiqc_report.html multiqc_report_RAW.html
-mv multiqc_* QC_RAW/
+mv multiqc_* QC/RAW/
 
 # Multiqc plot for filtered data
-multiqc QC_FILTERED/
+multiqc QC/FILTERED/
 mv multiqc_report.html multiqc_report_FILTERED.html
-mv multiqc_* QC_FILTERED/
+mv multiqc_* QC/FILTERED/
 
 
 
@@ -362,8 +362,8 @@ echo "#######################"
 echo ""
 
 date
-echo "Finished" >> $FILE.timereport.txt
-date  >> $FILE.timereport.txt
+echo "Finished" >> timereport.txt
+date  >> timereport.txt
 echo ""
 
 cd
