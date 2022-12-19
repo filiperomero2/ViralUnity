@@ -1,6 +1,6 @@
 #!/bin/bash
 
-## ViralUnity.sh v.1.0.2-beta ##
+## ViralUnity.sh v.1.0.3-beta ##
 
 # Written by Moreira and D'arc 2022.
 
@@ -39,7 +39,6 @@ clean(){
 	rm $NAME.temp.consensus.fa
 	mv trim.* $OUTDIR/FILTERED_DATA/
 	mv *sorted.bam $OUTDIR/MAPPING_VARIANTS/
-	rm *bam
 	mv *bai $OUTDIR/MAPPING_VARIANTS/
 	mv $NAME.calls* $OUTDIR/MAPPING_VARIANTS/
 	mv *.txt  $OUTDIR/MAPPING_VARIANTS/
@@ -202,11 +201,6 @@ date
 FILE=$(echo $REF | sed 's/.*\///g')
 echo "Reference file name -> $FILE"
 REFNAME=$(cat $REF | head -n 1 | sed 's/>//' | sed 's/\s.*//')
-REFPATH=$(echo $REF | sed "s/$FILE//g")
-
-cd $REFPATH
-bowtie2-build -q $REF reference
-REF2=$(pwd)/reference
 
 
 # Go to libraries' root directory and set $OUTDIR/*/
@@ -289,9 +283,7 @@ do
 
 	# Map reads against reference genome and handle the bam file
 	echo "Mapping..."
-	bowtie2 --very-sensitive --no-unal -p $THREADS -x $REF2 -1 $R1 -2 $R2 -U $U | samtools view -bS - > $NAME.bam   
-    samtools faidx $REF 
-	samtools sort $NAME.bam -o $NAME.sorted.bam
+	minimap2 -a -t $THREADS -x sr  $REF $R1 $R2 | samtools view -bS -F 4 - | samtools sort -o $NAME.sorted.bam -
 	samtools index $NAME.sorted.bam 
 	
 	# Call variants 
