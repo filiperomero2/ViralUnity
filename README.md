@@ -17,14 +17,14 @@ In case of compatibility issues between OS and versions specified in the yaml fi
 
     $ conda create --name ViralUnity
     $ conda activate ViralUnity
-    $ conda install -c bioconda fastqc multiqc trimmomatic bowtie2 samtools bcftools bedtools -y
+    $ conda install -c bioconda fastqc multiqc trimmomatic minimap2 samtools bcftools bedtools -y
 
 Keep in mind this pipeline has been developed and tested on the following dependencies versions:
 
 * fastqc v0.11.9
 * multiqc v1.9
 * trimmomatic v0.39
-* bowtie2 v2.4.2
+* minimap2 v2.17
 * samtools v1.11
 * bcftools v1.11
 * bedtools v2.30.0
@@ -41,7 +41,7 @@ ViralUnity was designed to be as simple as possible, with the objective of makin
     --ADAPTERS - The absolute path for trimmomatic adapters fasta file;
     --MINCOV - the minimum sequencing depth necessary to incorporate a base into the consensus sequence (default: 100);
     --MINLEN - Minimum read length (Optional; default = 50);
-	--HEADCROP - Number of bases to trim from the start of the read, useful for primer sequences removal (Optional; default = 30);
+    --HEADCROP - Number of bases to trim from the start of the read, useful for primer sequences removal (Optional; default = 30);
     --THREADS - the number of threads available for processing (default: 1).
 
 The first argument may demand clarification. To be able to analyze entire sequencing runs from a single command line, ViralUnity needs data to be stored in a well specified structure of directories. The path in argument 1 refers to a directory that harbors samples' directories, each containing two fastq files (R1 and R2 reads), like in the example bellow:
@@ -59,7 +59,7 @@ The first argument may demand clarification. To be able to analyze entire sequen
 
 Importantly, in case this directory organization is not strictly available, the pipeline will fail. Any directory outside these specifications on the root directory will halt execution. Each sample directory is expected to only have two (R1 and R2) fastq files (with .fastq or .fastq.gz extensions). Sample names should not include the underline character (_). 
 
-If the structure is correct, the script iterates over these directories, performing QC (trimmomatic), read mapping (Bowtie2), variant calling (bcftools) and consensus sequence inferences (bcftoools/bedtools). QC reports are generated with fastQC and multiQC. The results from all these analysis are stored in the specified output directory. 
+If the structure is correct, the script iterates over these directories, performing QC (trimmomatic), read mapping (minimap2), variant calling (bcftools) and consensus sequence inferences (bcftoools/bedtools). QC reports are generated with fastQC and multiQC. The results from all these analysis are stored in the specified output directory. 
 
 ### Run
 
