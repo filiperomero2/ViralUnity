@@ -1,4 +1,4 @@
-name: ViralUnity
+name: viralunity
 channels:
   - conda-forge
   - bioconda

@@ -8,18 +8,23 @@ ViralUnity is distributed as single bash script. Nevertheless, it relies on dive
 
 To enable ViralUnity, clone the repo and create the environment:
 
-    $ cd
     $ git clone https://github.com/filiperomero2/ViralUnity.git
-    $ cd ~/ViralUnity/ENV/
-    $ conda env create --file ViralUnity.yml
+    $ cd ViralUnity/
+    $ conda env create --file ENV/viralunity.yml
 
-In case of compatibility issues between OS and versions specified in the yaml file, one may create the environment and download dependencies manually from the bioconda channel:
+Alternatively, in case of compatibility issues between OS and versions specified in the yaml file, one may create the environment and download dependencies manually from the bioconda channel:
 
-    $ conda create --name ViralUnity
-    $ conda activate ViralUnity
+    $ conda create --name viralunity
+    $ conda activate viralunity
     $ conda install -c bioconda fastqc multiqc trimmomatic minimap2 samtools bcftools bedtools -y
 
-Keep in mind this pipeline has been developed and tested on the following dependencies versions:
+To make the script available throughout the system, one may add it to the path:
+
+    $ cd SCRIPT
+    $ my_local=(pwd)
+    $ export PATH="$my_local:$PATH" # to make this permanent, one needs to edit the ~/.bashrc file
+
+Keep in mind this pipeline has been developed and tested with the following dependencies versions:
 
 * fastqc v0.11.9
 * multiqc v1.9
@@ -33,16 +38,18 @@ Keep in mind this pipeline has been developed and tested on the following depend
 
 ### Arguments and data organization requirements
 
-ViralUnity was designed to be as simple as possible, with the objective of making users go from raw reads to processed consensus genome sequences for entire batches of samples with a single command line. The script may take eight arguments, being only the first four strictly required:
+ViralUnity was designed to be as simple as possible, with the objective of making users go from raw reads to processed consensus genome sequences for entire batches of samples with a single command line. The script may take ten arguments, being only the first four strictly required:
 
-    --LIBDIR - The absolute path for samples root directory;
-    --OUTDIR - The absolute path for output directory;
-    --REF - The absolute path for a reference genome in fasta format;
-    --ADAPTERS - The absolute path for trimmomatic adapters fasta file;
-    --MINCOV - the minimum sequencing depth necessary to incorporate a base into the consensus sequence (default: 100);
-    --MINLEN - Minimum read length (Optional; default = 50);
-    --HEADCROP - Number of bases to trim from the start of the read, useful for primer sequences removal (Optional; default = 30);
-    --THREADS - the number of threads available for processing (default: 1).
+    --input - The absolute path for samples root directory;
+    --output - The absolute path for output directory;
+    --reference - The absolute path for a reference genome in fasta format;
+    --adapters - The absolute path for trimmomatic adapters fasta file;
+    --minimum_depth - The minimum sequencing depth necessary to incorporate a base into the consensus sequence (default = 100);
+    --minimum_length - Minimum read length (default = 50);
+    --trim - Number of bases to trim from the start of the read, useful for primer sequences removal (Odefault = 30);
+    --threads - Number of threads available for processing (default = 1);
+    --version - exhibits the software verion;
+    --help - exhibits a help message.
 
 The first argument may demand clarification. To be able to analyze entire sequencing runs from a single command line, ViralUnity needs data to be stored in a well specified structure of directories. The path in argument 1 refers to a directory that harbors samples' directories, each containing two fastq files (R1 and R2 reads), like in the example bellow:
 
@@ -65,12 +72,13 @@ If the structure is correct, the script iterates over these directories, perform
 
 To run the pipeline, just activate the conda environment and launch the analysis:
 
-    $ conda activate ViralUnity
-    $ ~/ViralUnity/SCRIPT/ViralUnity.sh --LIBDIR ~/LIBRARIES/RUN_1/ --OUTDIR ~/ANALYSIS/RUN1/ --REF ~/REFERENCE_GENOMES/reference.fasta --ADAPTERS ~/trimmomatic/adapter.fa
+    $ conda activate viralunity
+    $ cd ViralUnity/SCRIPT/
+    $ ./viralunity.sh --input ~/LIBRARIES/RUN_1/ --output ~/ANALYSIS/RUN1/ --reference ~/REFERENCE_GENOMES/reference.fasta --adapters ~/trimmomatic/adapter.fa
 
 One may also specify other parameters:
 
-    $ ~/ViralUnity/SCRIPT/ViralUnity.sh --LIBDIR ~/LIBRARIES/RUN_1/ --OUTDIR ~/ANALYSIS/RUN1/ --REF ~/REFERENCE_GENOMES/reference.fasta --ADAPTERS ~/trimmomatic/adapter.fa --MINCOV 200 --MINLEN 30 --HEADCROP 20 --THREADS 6
+    $ ./viralunity.sh --input ~/LIBRARIES/RUN_1/ --output ~/ANALYSIS/RUN1/ --reference ~/REFERENCE_GENOMES/reference.fasta --adapters ~/trimmomatic/adapter.fa --minimum_depth 200 --minimum_length 40 --trim 20 --threads 6
 
 The output directory contains 2 report files, one with assembly statistics and other with a timestamp for each sample processing. In addition, three directories are also created, comprehending QC reports for raw and filtered data, mapping and variants associated files and consensus sequences. 
 
