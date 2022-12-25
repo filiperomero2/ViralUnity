@@ -1,8 +1,8 @@
 #!/bin/bash
 
-## ViralUnity.sh v.1.0.3-beta ##
+## ViralUnity.sh v.1.0.5 ##
 
-# Written by Moreira and D'arc 2022.
+# Written by Moreira et al 2022.
 
 ##############################################################################################################################
 # Set functions
@@ -32,7 +32,7 @@ Alternatively: $ ./viralunity.sh --input ~/LIBRARIES/RUN_1/ --output ~/ANALYSIS/
 }
 
 version(){
-	echo "ViralUnity v1.0.2-beta"
+	echo "ViralUnity v1.0.5"
 }
 
 clean(){
