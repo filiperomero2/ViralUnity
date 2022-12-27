@@ -46,12 +46,6 @@ clean(){
 }
 
 writestats(){
-	# Number of masked bases
-	nbases=$(grep -v '>' masked.$name.consensus.fa | tr -cd 'N' | wc -c)
-	# Genome size
-	length=$(wc -l $name.table_cov_basewise.txt | awk '{print $1}')
-	# Genome coverage
-	coverage=$(calc 1-$nbases/$length)
 	# Number of raw reads
 	raw=$(grep -cE "^\+$" *fastq | head -n 1 | sed -E 's/.+\://g')
 	raw=$(calc $raw*2)
@@ -64,9 +58,14 @@ writestats(){
 	mapped=$(samtools view -c -F 260 $name.sorted.bam)
 	# Relative frequency of mapped reads
 	usage=$(calc $mapped/$raw)
+	# Genome size
+	length=$(wc -l $name.table_cov_basewise.txt | awk '{print $1}')
 	# Average depth
 	sum=$(cat  $name.table_cov_basewise.txt | awk '{sum+=$3; print sum}' | tail -n 1)
 	average_depth=$(calc $sum/$length)
+	# Percentage of genome coverage at --minimum_depth
+	temp=$(awk  -v md=$minimum_depth '$3 > md' $name.table_cov_basewise.txt | wc -l)
+	coverage=$(calc $temp/$length)
 	# Percentage of genome coverage at 10x
 	temp=$(awk  '$3 > 10' $name.table_cov_basewise.txt | wc -l)
 	cov10=$(calc $temp/$length)
@@ -77,7 +76,7 @@ writestats(){
 	temp=$(awk  '$3 > 1000' $name.table_cov_basewise.txt | wc -l)
 	cov1000=$(calc $temp/$length)
 	# Print statistics to .csv file
-	echo "$name,$raw,$paired,$Uunpaired,$mapped,$usage,$average_depth,$cov10,$cov100,$cov1000,$coverage" >> ../stats_report.csv
+	echo "$name,$raw,$paired,$unpaired,$mapped,$usage,$average_depth,$cov10,$cov100,$cov1000,$coverage" >> ../stats_report.csv
 
 }
 
@@ -196,6 +195,8 @@ echo ""
 echo ""
 date
 
+# Save current directory
+base_directory=$(pwd)
 
 # Get reference genome info
 reference_file_name=$(echo $reference | sed 's/.*\///g')
@@ -251,7 +252,7 @@ do
 		exit
 	fi
 	
-	# Get sample name. It should never include a _ character (used as separator)
+	# Get sample name. It should never include a _ character (as it is used as separator)
 	name=$(echo $R1 | sed -E 's/_.+//g')
 
 	# QC report for raw data 
@@ -288,19 +289,32 @@ do
 	
 	# Call variants 
 	echo "Calling variants..."
-	bcftools mpileup --threads $threads --max-depth 20000 -E -Ou -f $reference $name.sorted.bam  | bcftools call --ploidy 1 --threads $threads -mv -Oz -o $name.calls.vcf.gz
+	bcftools mpileup --threads $threads --max-depth 2000 -E -Ou -f $reference $name.sorted.bam  | bcftools call --ploidy 1 --threads $threads -mv -Oz -o $name.calls.vcf.gz
 	bcftools norm --threads $threads -f $reference $name.calls.vcf.gz -Oz -o $name.calls.norm.vcf.gz
 	bcftools filter --threads $threads --IndelGap 5 $name.calls.norm.vcf.gz -Oz -o $name.calls.norm.flt-indels.vcf.gz
     bcftools index --threads $threads $name.calls.norm.flt-indels.vcf.gz
 	
-	# Get consensus sequences
+	# Get preliminary consensus sequence
 	echo "Inferring consensus sequences..."
 	bcftools consensus -f $reference $name.calls.norm.flt-indels.vcf.gz > $name.temp.consensus.fa
+	
+	# Calculate coverage (depth) statistics
 	bedtools genomecov -bga -ibam  $name.sorted.bam > $name.table_cov.txt
 	bedtools genomecov -d -ibam  $name.sorted.bam > $name.table_cov_basewise.txt
+	
+	# Mask sites if necessary
 	awk  '$4 < '$minimum_depth'' $name.table_cov.txt > $name.table_coverage_min-cov-$minimum_depth.txt
-	bedtools maskfasta -fi  $name.temp.consensus.fa -fo masked.$name.consensus.fa -bed $name.table_coverage_min-cov-$minimum_depth.txt
+	sites_to_mask=$(wc -l $name.table_coverage_min-cov-$minimum_depth.txt | sed 's/\s.*//')
+	if [ $sites_to_mask -gt 0 ]
+	then
+		bedtools maskfasta -fi  $name.temp.consensus.fa -fo masked.$name.consensus.fa -bed $name.table_coverage_min-cov-$minimum_depth.txt		
+	else
+		cp $name.temp.consensus.fa masked.$name.consensus.fa
+	fi
+
+	# Rename consensus sequence with sample name
 	sed -i "s/$reference_name/$name/"  masked.$name.consensus.fa
+	
 
 	# Compute statistics and write to the stats report
 	writestats
@@ -321,16 +335,20 @@ done
 ##############################################################################################################################
 # Main loop finished, setting final results. 
 
+# Move reports to output directory
 mv stats_report.csv $output/
 mv timereport.txt $output/
 
-cd $output/
+
 
 echo ""
 echo "###############################"
 echo "Step 3: Final Compilation"
 echo "###############################"
 echo ""
+
+# Go to output directory
+cd $output/
 
 # Concatenate consensus sequences
 cat consensus/*fa > consensus/consensus.fasta
@@ -358,6 +376,6 @@ echo "Finished" >> timereport.txt
 date  >> timereport.txt
 echo ""
 
-cd
+cd $base_directory
 
 exit
