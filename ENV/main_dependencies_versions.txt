@@ -1,7 +1,0 @@
-fastqc v0.11.9
-multiqc v1.9
-trimmomatic v0.39
-minimap2 v2.17
-samtools v1.11
-bcftools v1.11
-bedtools v2.30.0
