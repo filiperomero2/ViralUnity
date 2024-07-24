@@ -1,101 +1,161 @@
 # ViralUnity
 
-ViralUnity is yet another simple tool to perform data quality control and viral genome reference assembly from Illumina paired-end reads. It is designed to be effective and easy to use. It runs on *nix systems and is able to process complete Illumina MiSeq runs in a couple of hours on a regular laptop.
+ViralUnity is a simple tool to perform analysis of viral high-throughput sequencing data, especifically Illumina paired-end reads. It comprises a collection of python scripts and snakemake workflows, including several software dependecies, to perform data quality control, taxonomic assignments and reference genome assembly.
+
+ViralUnity runs on *nix systems and is able to process entire sequencing runs in minimal time on a regular computer.
 
 ## Installation
 
-ViralUnity is distributed as single bash script. Nevertheless, it relies on diverse dependencies and all of them have been conveniently documented on a conda environment YAML file. From this file one can easily install required softwares and run the pipeline.
+ViralUnity is a collection of python scripts and snakemake workflows. All dependencies have been conveniently documented on a conda environment file (vu_dependencies.yml). From this file, one can easily install required softwares to run the pipeline. We recommend using <a href="https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html">mamba</a> for this purpose. 
 
 To enable ViralUnity, clone the repo and create the environment:
 
-    $ git clone https://github.com/filiperomero2/ViralUnity.git
-    $ cd ViralUnity/
-    $ conda env create --file ENV/viralunity.yml
+    git clone https://github.com/filiperomero2/ViralUnity.git
+    cd viralunity/
+    mamba env create -n viralunity
+    mamba env update -n viralunity --file envs/vu_dependencies.yml
 
-Alternatively, in case of compatibility issues between OS and versions specified in the yaml file, one may create the environment and download dependencies manually from the bioconda channel:
+Tip: On macOS (with chips m1 or later), one may need to further configure the environment before installing dependencies:
 
-    $ conda create --name viralunity
-    $ conda activate viralunity
-    $ conda install -c bioconda fastqc multiqc trimmomatic minimap2 samtools bcftools bedtools -y
+    mamba create -n viralunity
+    mamba activate viralunity
+    conda config --env --set subdir osx-64
+    mamba env update -n viralunity --file envs/vu_dependencies.yml
 
-To make the script available throughout the system, one may add it to the path:
-
-    $ cd SCRIPT
-    $ my_local=(pwd)
-    $ export PATH="$my_local:$PATH" # to make this permanent, one needs to edit the ~/.bashrc file
-
-Keep in mind this pipeline has been developed and tested with the following dependencies versions:
-
-* fastqc v0.11.9
-* multiqc v1.9
-* trimmomatic v0.39
-* minimap2 v2.17
-* samtools v1.11
-* bcftools v1.11
-* bedtools v2.30.0
+It is a good practice to verify whether all required dependencies (available on envs/vu_dependecies.yml) are available before running the pipeline. In case any installation fail, try re-installing separetely on the command line with mamba. On certain systems, it might be necessary to manually set conda channels priority.
 
 ## Usage
 
-### Arguments and data organization requirements
+ViralUnity comprehends two main pipelines, embodied in separate scripts and snakemake workflows, for respectivelly performing reference genome assembly (viralunity_consensus.py) and reads taxonomic assignment (viralunity_meta.py). 
 
-ViralUnity was designed to be as simple as possible, with the objective of making users go from raw reads to processed consensus genome sequences for entire batches of samples with a single command line. The script may take ten arguments, being only the first four strictly required:
+### Reference viral genome assembly
 
-    --input - The absolute path for samples root directory;
-    --output - The absolute path for output directory;
-    --reference - The absolute path for a reference genome in fasta format;
-    --adapters - The absolute path for trimmomatic adapters fasta file;
-    --minimum_depth - The minimum sequencing depth necessary to incorporate a base into the consensus sequence (default = 100);
-    --minimum_length - Minimum read length (default = 50);
-    --trim - Number of bases to trim from the start of the read, useful for primer sequences removal (Odefault = 30);
-    --threads - Number of threads available for processing (default = 1);
-    --version - exhibits the software verion;
-    --help - exhibits a help message.
+The viralunity consensus sequence pipeline was designed to be as simple as possible, with the objective of making users go from raw reads to processed consensus genome sequences with a single command line. The core script is called viralunity_consensus.py and accepts several arguments:
 
-The first argument may demand clarification. To be able to analyze entire sequencing runs from a single command line, ViralUnity needs data to be stored in a well specified structure of directories. The path in argument 1 refers to a directory that harbors samples' directories, each containing two fastq files (R1 and R2 reads), like in the example bellow:
+    --sample-sheet          Complete path for a csv file with samples data paths and metadata
+    --config-file           Complete path for input (viralunity config) file to be created.
+    --output                Complete path for output directory to be created by viralunity.
+    --run-name              Name for the sequencing run (optional).
+    --reference             Complete path for the reference genome in fasta format
+    --annotation            Complete path for the gff3 reference annotation file
+    --adapters              Complete path for Illumina adapters sequences in fasta format
+    --minimum-read-length   Minimum read length threshold (Default = 50)
+    --minimum-coverage      Minimum sequencing coverage for including base in consensus sequence (Default = 20)
+    --trim                  Number of bases to trim from the 5' end of reads (Default = 0)
+    --create-config-only    Only create config file, not running the workflow (boolean)
+    --threads               Number of available threads for individual tasks (Default = 1)
+    --threads-total         Number of available threads for the entire workflow (Default = 1)
+    -h, --help              Show this help message and exit
 
-    (base) username@DESKTOP:~/Desktop/pilot/DATA$ tree
-    .
-    ├── SEQ_176_L001_ds.5c9c29d7d8824301ae5a4ddee48ee059
-    │   ├── SEQ-176_S74_L001_R1_001.fastq.gz
-    │   └── SEQ-176_S74_L001_R2_001.fastq.gz
-    └── SEQ_180_L001_ds.b269a1119df645ad8c2876cd312620a3
-        ├── SEQ-180_S35_L001_R1_001.fastq.gz
-        └── SEQ-180_S35_L001_R2_001.fastq.gz
+The first option receives as argument the path for a samplesheet (csv file) that contains sample names and fastq file paths. This file can be created automatically with the script create_viralunity_samplesheet.py (see its --help option). 
 
-    2 directories, 4 files
+If the specified files paths are correct, the script will generate config file containing all information required to execute the snakemake consensus workflow, allowing optimal parallelization schemes. Beyond creating the config file, the script will execute the workflow, performing data quality control (trimmomatic), read mapping (minimap2), variant calling (bcftools), consensus sequence inferences (bcftoools/bedtools) and annotation. QC reports are generated with fastQC and multiQC. The results from all these analysis are stored in the specified output directory. 
 
-Importantly, in case this directory organization is not strictly available, the pipeline will fail. Any directory outside these specifications on the root directory will halt execution. Each sample directory is expected to only have two (R1 and R2) fastq files (with .fastq or .fastq.gz extensions). Sample names should not include the underline character (_). 
+#### Run
 
-If the structure is correct, the script iterates over these directories, performing QC (trimmomatic), read mapping (minimap2), variant calling (bcftools) and consensus sequence inferences (bcftoools/bedtools). QC reports are generated with fastQC and multiQC. The results from all these analysis are stored in the specified output directory. 
+To run the pipeline, go to the repository directory,activate the conda environment and create a samplesheet file:
 
-### Run
+    python scripts/create_viralunity_samplesheet.py --input /home/Desktop/test_data/ --output /home/Desktop/example.csv
 
-To run the pipeline, just activate the conda environment and launch the analysis:
+Check the contents of the samplesheet file. If the correct paths for fastq files are specified, launch the analysis:
 
-    $ conda activate viralunity
-    $ cd ViralUnity/SCRIPT/
-    $ ./viralunity.sh --input ~/LIBRARIES/RUN_1/ --output ~/ANALYSIS/RUN1/ --reference ~/REFERENCE_GENOMES/reference.fasta --adapters ~/trimmomatic/adapter.fa
+    conda activate viralunity
+    cd viralunity/
+    python scripts/viralunity_consensus.py --sample-sheet /home/Desktop/example.csv --config-file /home/Desktop/example.yml --run-name example_run --output /home/Desktop/example_output --reference /home/Desktop/references/viral_genome_reference.fasta --annotation /home/Desktop/references/viral_genome_reference.gff3  --adapters /home/Desktop/trimmomatic_adapters/adapters.fa --trim 30 --threads 2 --threads-total 4
 
-One may also specify other parameters:
+The output directory will contain subdirectories with QC data and reports, logs and all files related to the asssembly pipeline, including consensus sequences, annotation reports and intermediate files (mapping and variant calls files, coverage reports). 
 
-    $ ./viralunity.sh --input ~/LIBRARIES/RUN_1/ --output ~/ANALYSIS/RUN1/ --reference ~/REFERENCE_GENOMES/reference.fasta --adapters ~/trimmomatic/adapter.fa --minimum_depth 200 --minimum_length 40 --trim 20 --threads 6
+Tip: Users are strongly encouraged to always use absolute paths. This minimizes the chances for mistakes and enforces the usage of all correct files. 
 
-The output directory contains 2 report files, one with assembly statistics and other with a timestamp for each sample processing. In addition, three directories are also created, comprehending QC reports for raw and filtered data, mapping and variants associated files and consensus sequences. 
+### Taxonomic assignment
+
+The viralunity metagenomics pipeline is a more recent development, and is also designed to be as simple as possible. It allows users to go from raw sequencing reads to metagenomics classifications and visualizations, characterizing viral diversity captured through sequencing. It is by far not the most complex (or exhaustive) metagenomics workflow, but it is purpose is to provide a characterization of underlying viral diversity (including possible pathogens) as quickly as possible. 
+
+An additional complexity of running this pipeline revolves around downloading and correctly setting databases. 
+
+Kraken2 databases are available <a href="https://benlangmead.github.io/aws-indexes/k2">here</a>. For instance, to install the viral kraken2 database, one can execute:
+
+    mkdir -p /home/Desktop/kraken2_database/viral
+    cd /home/Desktop/kraken2_database/viral
+    # check updates whenever installing
+    wget https://genome-idx.s3.amazonaws.com/kraken/k2_viral_20240112.tar.gz
+    tar -xzvf k2_viral_20240112.tar.gz
+    cd
+
+For krona, a standard outdated taxonomic database is installed in the conda environment directory. To make updates easier, we encourage its exclusion, followed by the creation of a symbolically linked database elsewhere. To do so, execute:
+  
+    # tip: exact paths are displayed on terminal at the moment of installation with mamba
+    mamba activate viralunity
+    rm -rf /home/path/to/conda/envs/viralunity/opt/krona/taxonomy
+    mkdir -p /home/Desktop/krona/taxonomy
+    ln -s ~/home/Desktop/krona/taxonomy /home/path/to/conda/envs/viralunity/opt/krona/taxonomy
+    ktUpdateTaxonomy.sh /home/Desktop/krona/taxonomy
+
+The core script is called viralunity_meta.py and accepts several arguments:
+
+     --sample-sheet                Complete path for a csv file with samples data paths and metadata
+     --config-file                 Complete path for input (viralunity config) file to be created.
+     --output                      Complete path for output directory to be created by viralunity.
+     --run-name                    Name for the sequencing run (optional).
+     --kraken2-database            Complete path for the kraken2 database directory
+     --krona-database              Complete path for the krona taxonomic database
+     --adapters                    Complete path for Illumina adapters sequences in fasta format
+     --minimum-read-length         Minimum read length threshold (Default = 50)
+     --trim                        Number of bases to trim from the 5' end of reads (Default = 0)
+     --remove-human-reads          Remove human reads from krona plot (boolean)
+     --remove-unclassified-reads   Remove unclassified reads from krona plot (boolean)
+     --create-config-only          Only create config file, not running the workflow (boolean)
+     --threads                     Number of available threads for individual tasks (Default = 1)
+     --threads-total               Number of available threads for the entire workflow (Default = 1)
+     -h, --help                    Show this help message and exit
+
+If all paths are correctly set, the script will generate a config file and run the snakemake metagenomics workflow. Briefly, the pipeline will perform data quality control (trimmomatic), taxonomic assignment (kraken2) and generate visualizations (krona).
+
+#### Run
+
+As performed for the previous workflow, to run the metagenomics pipeline one needs to create a samplesheet file and activate the conda environment. To launch the analysis:
+
+    conda activate viralunity    
+    cd viralunity/
+    python scripts/viralunity_meta.py --sample-sheet /home/Desktop/example.csv --config-file /home/Desktop/example_meta.yml --run-name example_run_meta --kraken2-database /home/Desktop/kraken2_database/viral/ --krona-database /home/Desktop/krona/taxonomy/ --adapters /home/Desktop/trimmomatic_adapters/adapters.fa --threads 2 --threads-total 4 --output /home/Desktop/example_output_meta
+
+Three directories are created, respectivelly containing logs, quality control data and report, and metagenomics results (kraken2 reports and krona interactive plots).The later directory will also contain one summary file containing information of the viral diversity captured at the family level, as calculated by kraken2. 
+
+### Running both pipelines
+
+Users interested in performing both taxonomic assignment followed by consensus sequence inferences are encouraged to store results for both workflows in the same output directory. This allows snakemake to avoid repeating steps present in both pipelines, mainly data quality control.
+
+Currently, the easiest way to do this is by regularly running the metagenomics pipeline (as above) and manually editing the config file for the consensus pipeline. The later config file can be generated using the script viralunity_consensus.py with the --create-config-only, which will prevent the workflow from running automatically. This file should be manually edited, removing samples uninteresting for assembly purpuses and setting the output path to the same one used in the metagenomics workflow. 
+
+Once manual edition is finished, one can execute the workflow directly with snakemake:
+
+    snakemake --snakefile  scripts/consensus.smk --configfile /home/Desktop/config_consensus.edited.yml --cores all -p
 
 ## Notes
 
-### Note on segmented viruses
+### Legacy
 
-Even though the pipeline has been originally designed to handle non-segmented viruses, it can be naively used to assemble segmented genomes. One just needs to specify one genomic segment as reference at a time. This will automatically create output directory for each segment, which can be analyzed in downstream workflows.
+Previous versions of the pipeline were released as bash scripts. Despite the ease of use, these versions were remarkbly less flexible and slower than the current snakemake workflow implementation. Notwithstanding, the core legacy script should still work and is available in this repository (legacy/viralunity.sh). 
+ 
+### Segmented viruses
 
-### Note on primer sequences removal
+Even though the pipeline has been originally designed to handle non-segmented viruses, it can be naively used to assemble segmented genomes. One just needs to specify one genomic segment as reference at a time. This will automatically create output directory for each segment, which can be analyzed in downstream workflows. This solution is far from optimal, and better arrangements will be available on following versions.
 
-The removal of primer associated SNPs is a mandatory step in processing sequences generated from targetted sequencing approaches. While this pipeline does not use any tool that specifically query for primer sequences, its default mode trim out the initial 30 bp of all reads with trimmomatic. As primer sequences hardly extends for more than 30 bp, this step avoids the introduction of artefactual SNPs. Users analyzing data generated under alternative protocols (e.g., metagenomics) may want to change this behavior by setting the value of --HEADCROP to 0 (zero).
+### Primer sequences removal
 
+The removal of primer associated SNPs is a mandatory step in processing sequences generated from targeted sequencing approaches. While this pipeline does not use any tool that specifically query for primer sequences, it offers a general trimming functionality with trimmomatic. For analyzing data generate under an amplicon sequencing schemes, we suggest '--trim 30' as a sensible choice.
+
+### Adding scripts to path
+
+Users might want to use scripts without fully specifying their path. This can be acomplished by adding the scripts directory to the system path. This may vary among systems, but for linux (ubuntu-20.04), the following should work: 
+
+    export PATH="/path/to/viralunity/scripts/:$PATH"
+
+Notice that this will work only for a given terminal session. To make it permanent, this line must be included at the end of the .bashrc file. Also, any change in the scripts/ path will cause this to brake. 
 
 ## Citation
 
-If you use this pipeline, please cite this github repo and also: 
+A scientific publication fully describing this pipeline is being prepared. Meanwhile, feel free to cite this GitHub repo. Primary references for used dependecies should also be cited:
 
 <a href="http://www.usadellab.org/cms/?page=trimmomatic">Trimmomatic</a>: Anthony M. Bolger, Marc Lohse, Bjoern Usadel. Trimmomatic: a flexible trimmer for Illumina sequence data. Bioinformatics. 2014; 30(15):2114–212.
 
@@ -110,5 +170,9 @@ If you use this pipeline, please cite this github repo and also:
 <a href="https://samtools.github.io/bcftools/">BCFtools</a>: Li, H. A statistical framework for SNP calling, mutation discovery, association mapping and population genetical parameter estimation from sequencing data. Bioinformatics. 2011; 27(21):2987–2993. 
 
 <a href="https://github.com/arq5x/bedtools2">BEDtools</a>: Quinlan AR, Hall IM. BEDTools: A flexible suite of utilities for comparing genomic features. Bioinformatics. 2010; 26(6):841–2.
+
+<a href="https://doi.org/10.1186/s13059-019-1891-0">kraken2</a> - Wood, D.E., Lu, J. & Langmead, B. Improved metagenomic analysis with Kraken 2. Genome Biol 20, 257 (2019). 
+
+<a href="https://doi.org/10.1186/1471-2105-12-385">krona</a> - Ondov, B.D., Bergman, N.H. & Phillippy, A.M. Interactive metagenomic visualization in a Web browser. BMC Bioinformatics 12, 385 (2011). 
 
 For visualization of fasta and bam files, we recommend <a href="https://ormbunkar.se/aliview/">Aliview</a> and <a href="https://ics.hutton.ac.uk/tablet/">Tablet</a>, respectively.
