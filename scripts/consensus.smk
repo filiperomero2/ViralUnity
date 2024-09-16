@@ -1,6 +1,6 @@
 rule all:
     input:
-        config['output'] + "assembly/annotation/mutation_report.txt"
+        config['output'] + "assembly/consensus/final_consensus/aln.consensus.fasta"
 
 def get_map_input_fastqs(wildcards):
     reads = config["samples"][wildcards.sample].split()
@@ -74,93 +74,18 @@ rule index_bam_files:
     shell:
         "samtools index {input}"
 
-rule call_variants:
+rule infer_consensus_sequence:
     input:
-        reference = config["reference"],
         mapped_reads = config['output'] + "assembly/mapped_reads/{sample}.sorted.bam",
         bam_index = config['output'] + "assembly/mapped_reads/{sample}.sorted.bam.bai"
     output:
-        config['output'] + "assembly/variant_calls/{sample}.calls.vcf.gz"
-    threads: config["threads"]
-    log:
-        config['output'] + "logs/bcftools/raw_calls/{sample}.log"
-    benchmark:
-        config['output'] + "logs/bcftools/raw_calls/{sample}.benchmark.txt"
-    shell:
-        "bcftools mpileup --threads {threads} "
-        "--max-depth 200 -E -Ou "
-        "-f {input.reference} {input.mapped_reads}  | "
-        "bcftools call --ploidy 1 --threads {threads} "
-        " -mv -Oz -o {output} 2> {log}"
-
-rule normalize_variants:
-    input:
-        reference = config["reference"],
-        variants = config['output'] + "assembly/variant_calls/{sample}.calls.vcf.gz"
-    output:
-        config['output'] + "assembly/variant_calls/{sample}.calls.norm.vcf.gz"
-    threads: config["threads"]
-    log:
-        config['output'] + "logs/bcftools/normalized_calls/{sample}.log"
-    benchmark:
-        config['output'] + "logs/bcftools/normalized_calls/{sample}.benchmark.txt"
-    
-    shell:
-        "bcftools norm --threads {threads} -f {input.reference} "
-        "{input.variants} -Oz -o {output} 2> {log}"
-
-rule filter_normalized_variants:
-    input:
-        config['output'] + "assembly/variant_calls/{sample}.calls.norm.vcf.gz"
-    output:
-        config['output'] + "assembly/variant_calls/{sample}.calls.norm.flt-indels.vcf.gz"
-    threads: config["threads"]
-    log:
-        config['output'] + "logs/bcftools/filtered_calls/{sample}.log"
-    benchmark:
-        config['output'] + "logs/bcftools/filtered_calls/{sample}.benchmark.txt"
-    shell:
-        "bcftools filter --threads {threads} "
-        "--IndelGap 5 {input} "
-        "-Oz -o {output}"
-
-rule index_normalized_filtered_variants:
-    input:
-        config['output'] + "assembly/variant_calls/{sample}.calls.norm.flt-indels.vcf.gz"
-    output:
-        config['output'] + "assembly/variant_calls/{sample}.calls.norm.flt-indels.vcf.gz.csi"
-    threads: config["threads"]
-    log:
-        config['output'] + "logs/bcftools/indexed_calls/{sample}.log"
-    benchmark:
-        config['output'] + "logs/bcftools/indexed_calls/{sample}.benchmark.txt"
-    shell:
-        "bcftools index --threads {threads} {input} 2> {log}"
-
-rule infer_raw_consensus_sequence:
-    input:
-        reference = config["reference"],
-        variants = config['output'] + "assembly/variant_calls/{sample}.calls.norm.flt-indels.vcf.gz",
-        variants_index = config['output'] + "assembly/variant_calls/{sample}.calls.norm.flt-indels.vcf.gz.csi"
-    output:
-        temp(config['output'] + "assembly/consensus/raw_consensus/{sample}.temp.consensus.fasta")
-    log:
-        config['output'] + "logs/bcftools/consensus/{sample}.log"
-    benchmark:
-        config['output'] + "logs/bcftools/consensus/{sample}.benchmark.txt"
-    shell:
-        "bcftools consensus -f {input.reference} "
-        "{input.variants} > {output} 2> {log} "
-
-rule calculate_coverage:
-    input:
-        config['output'] + "assembly/mapped_reads/{sample}.sorted.bam"
-    output:
-        config['output'] + "assembly/coverage_stats/{sample}.table_cov.txt"
+        temp(config['output'] + "assembly/consensus/final_consensus/{sample}.consensus.fasta")
     params:
         minimum_depth = config["minimum_depth"]
+    benchmark:
+        config['output'] + "logs/samtools/consensus/{sample}.benchmark.txt"
     shell:
-        "bedtools genomecov -bga -ibam {input} > {output}"
+        "samtools consensus -a -d {params.minimum_depth} -m simple -q -c 0.75 --show-ins yes {input.mapped_reads} -o {output}"
 
 rule calculate_coverage_basewise:
     input:
@@ -169,25 +94,6 @@ rule calculate_coverage_basewise:
         config['output'] + "assembly/coverage_stats/{sample}.table_cov_basewise.txt"
     shell:
         "bedtools genomecov -d -ibam {input} > {output}"
-
-rule create_minimum_depth_table:
-    input:
-        config['output'] + "assembly/coverage_stats/{sample}.table_cov.txt"
-    output:
-        config['output'] + "assembly/coverage_stats/{sample}.table_cov_minimum_depth.txt"
-    params:
-        minimum_depth = config["minimum_depth"]
-    shell:
-        "awk  '$4 < '{params.minimum_depth}'' {input} > {output}"
-
-rule mask_raw_consensus_sequence:
-    input:
-        raw_consensus = config['output'] + "assembly/consensus/raw_consensus/{sample}.temp.consensus.fasta",
-        minimum_depth_table = config['output'] + "assembly/coverage_stats/{sample}.table_cov_minimum_depth.txt"
-    output:
-        temp(config['output'] + "assembly/consensus/final_consensus/{sample}.consensus.fasta")
-    script:
-        "mask_consensus.py"
 
 rule rename_sequences:
     input:
@@ -242,15 +148,3 @@ rule align_consensus_to_reference_genome:
         "cat {params.reference} {params.path_consensus}/*.fasta > {params.path_consensus}/consensus.fasta; "
         "minimap2 -a --sam-hit-only --secondary=no --score-N=0 {params.reference} {params.path_consensus}/consensus.fasta -o {params.path_consensus}/aln.consensus.sam; "
         "gofasta sam toMultiAlign --pad -s {params.path_consensus}/aln.consensus.sam -o {output}"
-
-rule create_mutations_report:
-    input:
-        consensus = config['output'] + "assembly/consensus/final_consensus/aln.consensus.fasta",
-        annotation = config['annotation']
-    output:
-        config['output'] + "assembly/annotation/mutation_report.txt"
-    params:
-        path = config['workflow_path']
-    shell:
-        "python {params.path}/mutation_mapper.py --input {input.consensus} --annotation-file {input.annotation} --output {output}"
-      

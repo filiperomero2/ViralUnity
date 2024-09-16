@@ -3,7 +3,7 @@
 """
 This scripts dynamically creates config files and run 
 the viralunity consensus snakemake pipeline.
-Filipe Moreira - 2024/02/14
+Filipe Moreira - 2024/09/16
 """
 
 import os
@@ -37,10 +37,6 @@ def get_args():
     
     parser.add_argument('--reference', 
     help='Complete path for the reference genome in fasta format',
-    required = True)
-
-    parser.add_argument('--annotation', 
-    help='Complete path for the gff3 annotation file (corresponding to the reference genome)',
     required = True)
 
     parser.add_argument('--adapters', 
@@ -97,12 +93,6 @@ def validate_args(args):
         print("Reference sequence file does not exist, please verify.")
         exit()
 
-    if(os.path.isfile(args['annotation'])):
-        print("Annotation sequence file exists.")
-    else:
-        print("Annotation file does not exist, please verify.")
-        exit()
-
     if(os.path.isfile(args['adapters'])):
         print("Adapter sequences file exists.")
     else:
@@ -146,9 +136,6 @@ def generate_config_file(samples,args):
 
         reference = "reference: " + args['reference'] + "\n"
         f.write(reference)
-
-        annotation = "annotation: " + args['annotation'] + "\n"
-        f.write(annotation)
 
         adapters = "adapters: " + args['adapters'] + "\n"
         f.write(adapters)

@@ -37,7 +37,6 @@ The viralunity consensus sequence pipeline was designed to be as simple as possi
     --output                Complete path for output directory to be created by viralunity.
     --run-name              Name for the sequencing run (optional).
     --reference             Complete path for the reference genome in fasta format
-    --annotation            Complete path for the gff3 reference annotation file
     --adapters              Complete path for Illumina adapters sequences in fasta format
     --minimum-read-length   Minimum read length threshold (Default = 50)
     --minimum-coverage      Minimum sequencing coverage for including base in consensus sequence (Default = 20)
@@ -49,7 +48,7 @@ The viralunity consensus sequence pipeline was designed to be as simple as possi
 
 The first option receives as argument the path for a samplesheet (csv file) that contains sample names and fastq file paths. This file can be created automatically with the script create_viralunity_samplesheet.py (see its --help option). 
 
-If the specified files paths are correct, the script will generate config file containing all information required to execute the snakemake consensus workflow, allowing optimal parallelization schemes. Beyond creating the config file, the script will execute the workflow, performing data quality control (trimmomatic), read mapping (minimap2), variant calling (bcftools), consensus sequence inferences (bcftoools/bedtools) and annotation. QC reports are generated with fastQC and multiQC. The results from all these analysis are stored in the specified output directory. 
+If the specified files paths are correct, the script will generate config file containing all information required to execute the snakemake consensus workflow, allowing optimal parallelization schemes. Beyond creating the config file, the script will execute the workflow, performing data quality control (trimmomatic), read mapping (minimap2), and consensus sequence inference (samtools). QC reports are generated with fastQC and multiQC. The results from all these analysis are stored in the specified output directory. 
 
 #### Run
 
@@ -61,9 +60,9 @@ Check the contents of the samplesheet file. If the correct paths for fastq files
 
     conda activate viralunity
     cd viralunity/
-    python scripts/viralunity_consensus.py --sample-sheet /home/Desktop/example.csv --config-file /home/Desktop/example.yml --run-name example_run --output /home/Desktop/example_output --reference /home/Desktop/references/viral_genome_reference.fasta --annotation /home/Desktop/references/viral_genome_reference.gff3  --adapters /home/Desktop/trimmomatic_adapters/adapters.fa --trim 30 --threads 2 --threads-total 4
+    python scripts/viralunity_consensus.py --sample-sheet /home/Desktop/example.csv --config-file /home/Desktop/example.yml --run-name example_run --output /home/Desktop/example_output --reference /home/Desktop/references/viral_genome_reference.fasta --adapters /home/Desktop/trimmomatic_adapters/adapters.fa --trim 30 --threads 2 --threads-total 4
 
-The output directory will contain subdirectories with QC data and reports, logs and all files related to the asssembly pipeline, including consensus sequences, annotation reports and intermediate files (mapping and variant calls files, coverage reports). 
+The output directory will contain subdirectories with QC data and reports, logs and all files related to the asssembly pipeline, including consensus sequences and intermediate files (mapping and variant calls files, coverage reports). 
 
 Tip: Users are strongly encouraged to always use absolute paths. This minimizes the chances for mistakes and enforces the usage of all correct files. 
 

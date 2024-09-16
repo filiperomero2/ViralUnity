@@ -16,10 +16,10 @@ output = snakemake.output[0]
 minimum_depth = snakemake.params[0]
 
 sample_name = bam.replace(".sorted.bam","")
-sample_name = sample_name.replace("results/mapped_reads/","")
+sample_name = sample_name.split("/")[-1]
+
 
 def get_number_of_reads(fastq):
-    # For later -> Insert conditional to test if input data is .gz
     if fastq.endswith('.gz'):
         command = "gunzip -c " + fastq + " | grep -cE \"^\+$\""
     else:
