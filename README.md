@@ -148,7 +148,7 @@ Even though the pipeline has been originally designed to handle non-segmented vi
 
 ### Primer sequences removal
 
-The removal of primer associated SNPs is a mandatory step in processing sequences generated from targeted sequencing approaches. While this pipeline does not use any tool that specifically query for primer sequences, it offers a general trimming functionality with trimmomatic (Illumina only). For analyzing data generate under an amplicon sequencing schemes, we suggest '--trim 30' as a sensible choice. Following versions will provide more sensitive approaches and comprehends all data types.
+The removal of primer associated SNPs is a mandatory step in processing sequences generated from targeted sequencing approaches. While this pipeline does not use any tool that specifically query for primer sequences, it offers a general trimming functionality with trimmomatic (Illumina only). For analyzing data generate under an amplicon sequencing schemes, we suggest '--trim 30' as a sensible choice. Following versions will provide more sensitive approaches and comprehend all data types.
 
 ### Adding scripts to path
 
