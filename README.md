@@ -1,6 +1,6 @@
 # ViralUnity
 
-ViralUnity is a simple tool to perform analysis of viral high-throughput sequencing data, especifically Illumina paired-end reads. It comprises a collection of python scripts and snakemake workflows, including several software dependecies, to perform data quality control, taxonomic assignments and reference genome assembly.
+ViralUnity is a simple tool to perform analysis of viral high-throughput sequencing data. It comprises a collection of python scripts and snakemake workflows, including several software dependecies, to perform data quality control, taxonomic assignments and reference genome assembly.
 
 ViralUnity runs on *nix systems and is able to process entire sequencing runs in minimal time on a regular computer.
 
@@ -26,29 +26,30 @@ It is a good practice to verify whether all required dependencies (available on 
 
 ## Usage
 
-ViralUnity comprehends two main pipelines, embodied in separate scripts and snakemake workflows, for respectivelly performing reference genome assembly (viralunity_consensus.py) and reads taxonomic assignment (viralunity_meta.py). 
+ViralUnity comprehends two main pipelines, embodied in separate scripts and snakemake workflows, for performing reference genome assembly (viralunity_consensus.py) and reads taxonomic assignment (viralunity_meta.py). 
 
 ### Reference viral genome assembly
 
 The viralunity consensus sequence pipeline was designed to be as simple as possible, with the objective of making users go from raw reads to processed consensus genome sequences with a single command line. The core script is called viralunity_consensus.py and accepts several arguments:
 
+    --data-type             Sequencing data type (illumina or nanopore)
     --sample-sheet          Complete path for a csv file with samples data paths and metadata
     --config-file           Complete path for input (viralunity config) file to be created.
     --output                Complete path for output directory to be created by viralunity.
     --run-name              Name for the sequencing run (optional).
     --reference             Complete path for the reference genome in fasta format
-    --adapters              Complete path for Illumina adapters sequences in fasta format
-    --minimum-read-length   Minimum read length threshold (Default = 50)
     --minimum-coverage      Minimum sequencing coverage for including base in consensus sequence (Default = 20)
-    --trim                  Number of bases to trim from the 5' end of reads (Default = 0)
+    --adapters              Complete path for adapters sequences in fasta format (Illumina QC)
+    --minimum-read-length   Minimum read length threshold (Default = 50) (Illumina QC)
+    --trim                  Number of bases to trim from the 5' end of reads (Default = 0) (Illumina QC)
     --create-config-only    Only create config file, not running the workflow (boolean)
     --threads               Number of available threads for individual tasks (Default = 1)
     --threads-total         Number of available threads for the entire workflow (Default = 1)
     -h, --help              Show this help message and exit
 
-The first option receives as argument the path for a samplesheet (csv file) that contains sample names and fastq file paths. This file can be created automatically with the script create_viralunity_samplesheet.py (see its --help option). 
+The samplesheet argument receives the path to a csv file that contains sample names and fastq file paths. This file can be created automatically with the script create_viralunity_samplesheet.py (see its --help option). 
 
-If the specified files paths are correct, the script will generate config file containing all information required to execute the snakemake consensus workflow, allowing optimal parallelization schemes. Beyond creating the config file, the script will execute the workflow, performing data quality control (trimmomatic), read mapping (minimap2), and consensus sequence inference (samtools). QC reports are generated with fastQC and multiQC. The results from all these analysis are stored in the specified output directory. 
+If the specified files paths are correct, the script will generate config file containing all information required to execute the snakemake consensus workflow, allowing optimal parallelization schemes. Beyond creating the config file, the script will execute the workflow, performing data quality control (trimmomatic) (Illumina only), read mapping (minimap2), and consensus sequence inference (samtools). QC reports are generated with fastQC and multiQC. The results from all these analysis are stored in the specified output directory. 
 
 #### Run
 
@@ -60,9 +61,9 @@ Check the contents of the samplesheet file. If the correct paths for fastq files
 
     conda activate viralunity
     cd viralunity/
-    python scripts/viralunity_consensus.py --sample-sheet /home/Desktop/example.csv --config-file /home/Desktop/example.yml --run-name example_run --output /home/Desktop/example_output --reference /home/Desktop/references/viral_genome_reference.fasta --adapters /home/Desktop/trimmomatic_adapters/adapters.fa --trim 30 --threads 2 --threads-total 4
+    python scripts/viralunity_consensus.py --data-type illumina --sample-sheet /home/Desktop/example.csv --config-file /home/Desktop/example.yml --run-name example_run --output /home/Desktop/example_output --reference /home/Desktop/references/viral_genome_reference.fasta --adapters /home/Desktop/trimmomatic_adapters/adapters.fa --trim 30 --threads 2 --threads-total 4
 
-The output directory will contain subdirectories with QC data and reports, logs and all files related to the asssembly pipeline, including consensus sequences and intermediate files (mapping and variant calls files, coverage reports). 
+The output directory will contain subdirectories with QC data and reports, logs and all files related to the asssembly pipeline, including consensus sequences and intermediate files (mapping files, coverage reports). 
 
 Tip: Users are strongly encouraged to always use absolute paths. This minimizes the chances for mistakes and enforces the usage of all correct files. 
 
@@ -92,15 +93,16 @@ For krona, a standard outdated taxonomic database is installed in the conda envi
 
 The core script is called viralunity_meta.py and accepts several arguments:
 
+     --data-type                   Sequencing data type (illumina or nanopore)
      --sample-sheet                Complete path for a csv file with samples data paths and metadata
      --config-file                 Complete path for input (viralunity config) file to be created.
      --output                      Complete path for output directory to be created by viralunity.
      --run-name                    Name for the sequencing run (optional).
      --kraken2-database            Complete path for the kraken2 database directory
      --krona-database              Complete path for the krona taxonomic database
-     --adapters                    Complete path for Illumina adapters sequences in fasta format
-     --minimum-read-length         Minimum read length threshold (Default = 50)
-     --trim                        Number of bases to trim from the 5' end of reads (Default = 0)
+     --adapters                    Complete path for adapter sequences in fasta format (Illumina QC)
+     --minimum-read-length         Minimum read length threshold (Default = 50) (Illumina QC)
+     --trim                        Number of bases to trim from the 5' end of reads (Default = 0) (Illumina QC)
      --remove-human-reads          Remove human reads from krona plot (boolean)
      --remove-unclassified-reads   Remove unclassified reads from krona plot (boolean)
      --create-config-only          Only create config file, not running the workflow (boolean)
@@ -108,7 +110,7 @@ The core script is called viralunity_meta.py and accepts several arguments:
      --threads-total               Number of available threads for the entire workflow (Default = 1)
      -h, --help                    Show this help message and exit
 
-If all paths are correctly set, the script will generate a config file and run the snakemake metagenomics workflow. Briefly, the pipeline will perform data quality control (trimmomatic), taxonomic assignment (kraken2) and generate visualizations (krona).
+If all paths are correctly set, the script will generate a config file and run the snakemake metagenomics workflow. Briefly, the pipeline will perform data quality control (trimmomatic) (Illumina only), taxonomic assignment (kraken2) and generate visualizations (krona).
 
 #### Run
 
@@ -116,9 +118,9 @@ As performed for the previous workflow, to run the metagenomics pipeline one nee
 
     conda activate viralunity    
     cd viralunity/
-    python scripts/viralunity_meta.py --sample-sheet /home/Desktop/example.csv --config-file /home/Desktop/example_meta.yml --run-name example_run_meta --kraken2-database /home/Desktop/kraken2_database/viral/ --krona-database /home/Desktop/krona/taxonomy/ --adapters /home/Desktop/trimmomatic_adapters/adapters.fa --threads 2 --threads-total 4 --output /home/Desktop/example_output_meta
+    python scripts/viralunity_meta.py --data-type illumina --sample-sheet /home/Desktop/example.csv --config-file /home/Desktop/example_meta.yml --run-name example_run_meta --kraken2-database /home/Desktop/kraken2_database/viral/ --krona-database /home/Desktop/krona/taxonomy/ --adapters /home/Desktop/trimmomatic_adapters/adapters.fa --threads 2 --threads-total 4 --output /home/Desktop/example_output_meta
 
-Three directories are created, respectivelly containing logs, quality control data and report, and metagenomics results (kraken2 reports and krona interactive plots).The later directory will also contain one summary file containing information of the viral diversity captured at the family level, as calculated by kraken2. 
+Three directories are created, respectivelly containing logs, quality control data and report, and metagenomics results (kraken2 reports and krona interactive plots).The later directory will also contain one summary file containing information of the viral diversity captured at the family level, as classified by kraken2. 
 
 ### Running both pipelines
 
@@ -128,9 +130,13 @@ Currently, the easiest way to do this is by regularly running the metagenomics p
 
 Once manual edition is finished, one can execute the workflow directly with snakemake:
 
-    snakemake --snakefile  scripts/consensus.smk --configfile /home/Desktop/config_consensus.edited.yml --cores all -p
+    snakemake --snakefile  scripts/consensus_<datatype>.smk --configfile /home/Desktop/config_consensus.edited.yml --cores all -p
 
 ## Notes
+
+### Nanopore data
+
+Experimental pipelines for nanopore sequencing data were recently added. It is still a work in progress, and there's a lot of room for improvements. Unlike the Illumina pipeline, it does not include data quality control steps. In case you want to use it anyway, just use the flag '--data-type nanopore'. 
 
 ### Legacy
 
@@ -142,7 +148,7 @@ Even though the pipeline has been originally designed to handle non-segmented vi
 
 ### Primer sequences removal
 
-The removal of primer associated SNPs is a mandatory step in processing sequences generated from targeted sequencing approaches. While this pipeline does not use any tool that specifically query for primer sequences, it offers a general trimming functionality with trimmomatic. For analyzing data generate under an amplicon sequencing schemes, we suggest '--trim 30' as a sensible choice.
+The removal of primer associated SNPs is a mandatory step in processing sequences generated from targeted sequencing approaches. While this pipeline does not use any tool that specifically query for primer sequences, it offers a general trimming functionality with trimmomatic (Illumina only). For analyzing data generate under an amplicon sequencing schemes, we suggest '--trim 30' as a sensible choice. Following versions will provide more sensitive approaches and comprehends all data types.
 
 ### Adding scripts to path
 
