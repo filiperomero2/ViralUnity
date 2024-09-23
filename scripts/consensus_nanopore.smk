@@ -13,7 +13,7 @@ rule map_reads:
         reference = config["reference"],
         fastq = get_map_input_fastqs
     output:
-        config['output'] + "assembly/mapped_reads/{sample}.sorted.bam"
+        config['output'] + "assembly/mapped_reads/raw/{sample}.sorted.bam"
     log:
         config['output'] + "logs/minimap2/{sample}.log"
     benchmark:
@@ -24,18 +24,39 @@ rule map_reads:
         "samtools view -bS -F 4 - | "
         "samtools sort -o {output} - 2> {log}"
 
+# experimental 
+rule trim_primer_sequences:
+    input:
+        config['output'] + "assembly/mapped_reads/raw/{sample}.sorted.bam"
+    output:
+        config['output'] + "assembly/mapped_reads/trimmed/{sample}.sorted.bam"
+    params:
+        bed = config["scheme"],
+        path = config['output'] + "assembly/mapped_reads/raw/"
+    shell:
+        """
+        if [ {params.bed} == NA ]; then
+           mv {input} {output};
+           echo "No primer scheme detected, assuming sequence data came from untargeted sequencing approach (fastq files moved to trimmed dir for convenience)." > {params.path}notes.txt
+        else
+           ivar trim -b {params.bed} -e -q 0 -m 50 -p {params.path}trim.{wildcards.sample} -i {input};
+           samtools sort {params.path}trim.{wildcards.sample}.bam -o {output};
+           rm {params.path}trim.{wildcards.sample}.bam
+        fi
+        """
+
 rule index_bam_files:
     input:
-        config['output'] + "assembly/mapped_reads/{sample}.sorted.bam"
+        config['output'] + "assembly/mapped_reads/trimmed/{sample}.sorted.bam"
     output:
-        config['output'] + "assembly/mapped_reads/{sample}.sorted.bam.bai"
+        config['output'] + "assembly/mapped_reads/trimmed/{sample}.sorted.bam.bai"
     shell:
         "samtools index {input}"
 
 rule infer_consensus_sequence:
     input:
-        mapped_reads = config['output'] + "assembly/mapped_reads/{sample}.sorted.bam",
-        bam_index = config['output'] + "assembly/mapped_reads/{sample}.sorted.bam.bai"
+        mapped_reads = config['output'] + "assembly/mapped_reads/trimmed/{sample}.sorted.bam",
+        bam_index = config['output'] + "assembly/mapped_reads/trimmed/{sample}.sorted.bam.bai"
     output:
         temp(config['output'] + "assembly/consensus/final_consensus/{sample}.consensus.fasta")
     params:
@@ -48,7 +69,7 @@ rule infer_consensus_sequence:
 
 rule calculate_coverage_basewise:
     input:
-        config['output'] + "assembly/mapped_reads/{sample}.sorted.bam"
+        config['output'] + "assembly/mapped_reads/trimmed/{sample}.sorted.bam"
     output:
         config['output'] + "assembly/coverage_stats/{sample}.table_cov_basewise.txt"
     shell:
@@ -67,7 +88,7 @@ rule calculate_assembly_statistics:
         get_map_input_fastqs,
         get_map_input_fastqs,
         get_map_input_fastqs,
-        config['output'] + "assembly/mapped_reads/{sample}.sorted.bam",
+        config['output'] + "assembly/mapped_reads/trimmed/{sample}.sorted.bam",
         config['output'] + "assembly/coverage_stats/{sample}.table_cov_basewise.txt",
         config['output'] + "assembly/consensus/final_consensus/{sample}.consensus.renamed.fasta"
     output:

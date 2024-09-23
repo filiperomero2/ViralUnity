@@ -44,6 +44,9 @@ def get_args():
     help='Complete path for the reference genome in fasta format',
     required = True)
 
+    parser.add_argument('--primer-scheme', 
+    help='Complete path for the primer scheme bed file (amplicon sequencing only).')
+
     parser.add_argument('--minimum-coverage',type = int,
     help='Minimum sequencing coverage for including base in consensus sequence (Default = 20)',
     nargs='?',const=1, default=20)
@@ -97,9 +100,24 @@ def validate_args(args):
         print("Reference sequence file does not exist, please verify.")
         exit()
 
+    if args['primer_scheme']:
+        print('A primer scheme was provided (Amplicon sequencing)...')
+        if(os.path.isfile(args['primer_scheme'])):
+            print("Bed file exists.")
+        else:
+            print("Bed file not found in provided path, please verify.")
+    else:
+        print("A primer scheme was not provided (untargeted sequencing).")
+        args['primer_scheme'] = 'NA'
+
     if args['data_type'] == 'illumina':
-        if(os.path.isfile(args['adapters'])):
-            print("Illumina adapter sequences file exists.")
+        if args['adapters']:
+            print('Illumina adapter sequences were provided...')
+            if(os.path.isfile(args['adapters'])):
+                print("Adapter sequences file exists.")
+            else:
+                print("Adapter sequences file not found, please verify.")
+                exit()
         else:
             print("Illumina adapter sequences file not found, please verify.")
             exit()
@@ -159,6 +177,9 @@ def generate_config_file(samples,args):
 
         reference = "reference: " + args['reference'] + "\n"
         f.write(reference)
+
+        scheme = "scheme: " + args['primer_scheme'] + "\n"
+        f.write(scheme)
 
         minimum_depth = "minimum_depth: " + str(args['minimum_coverage']) + "\n"
         f.write(minimum_depth)
