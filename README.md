@@ -38,6 +38,7 @@ The viralunity consensus sequence pipeline was designed to be as simple as possi
     --output                Complete path for output directory to be created by viralunity.
     --run-name              Name for the sequencing run (optional).
     --reference             Complete path for the reference genome in fasta format
+    --primer-scheme         Complete path for the primer scheme bed file (amplicon sequencing only).
     --minimum-coverage      Minimum sequencing coverage for including base in consensus sequence (Default = 20)
     --adapters              Complete path for adapters sequences in fasta format (Illumina QC)
     --minimum-read-length   Minimum read length threshold (Default = 50) (Illumina QC)
@@ -49,7 +50,7 @@ The viralunity consensus sequence pipeline was designed to be as simple as possi
 
 The samplesheet argument receives the path to a csv file that contains sample names and fastq file paths. This file can be created automatically with the script create_viralunity_samplesheet.py (see its --help option). 
 
-If the specified files paths are correct, the script will generate config file containing all information required to execute the snakemake consensus workflow, allowing optimal parallelization schemes. Beyond creating the config file, the script will execute the workflow, performing data quality control (trimmomatic) (Illumina only), read mapping (minimap2), and consensus sequence inference (samtools). QC reports are generated with fastQC and multiQC. The results from all these analysis are stored in the specified output directory. 
+If the specified files paths are correct, the script will generate config file containing all information required to execute the snakemake consensus workflow, allowing optimal parallelization schemes. Beyond creating the config file, the script will execute the workflow, performing data quality control (trimmomatic) (Illumina only), read mapping (minimap2), and consensus sequence inference (samtools). QC reports are generated with fastQC and multiQC. For data generated under amplicon sequencing approaches, the option --primer-schemes takes as argument primer-scheme bed files, which are used for trimming these technical sequences (ivar). The results from all these analysis are stored in the specified output directory. 
 
 #### Run
 
@@ -61,7 +62,7 @@ Check the contents of the samplesheet file. If the correct paths for fastq files
 
     conda activate viralunity
     cd viralunity/
-    python scripts/viralunity_consensus.py --data-type illumina --sample-sheet /home/Desktop/example.csv --config-file /home/Desktop/example.yml --run-name example_run --output /home/Desktop/example_output --reference /home/Desktop/references/viral_genome_reference.fasta --adapters /home/Desktop/trimmomatic_adapters/adapters.fa --trim 30 --threads 2 --threads-total 4
+    python scripts/viralunity_consensus.py --data-type illumina --sample-sheet /home/Desktop/example.csv --config-file /home/Desktop/example.yml --run-name example_run --output /home/Desktop/example_output --reference /home/Desktop/references/viral_genome_reference.fasta --primer-scheme /home/Desktop/my_primers.bed --adapters /home/Desktop/trimmomatic_adapters/adapters.fa --threads 2 --threads-total 4
 
 The output directory will contain subdirectories with QC data and reports, logs and all files related to the asssembly pipeline, including consensus sequences and intermediate files (mapping files, coverage reports). 
 
@@ -145,10 +146,6 @@ Previous versions of the pipeline were released as bash scripts. Despite the eas
 ### Segmented viruses
 
 Even though the pipeline has been originally designed to handle non-segmented viruses, it can be naively used to assemble segmented genomes. One just needs to specify one genomic segment as reference at a time. This will automatically create output directory for each segment, which can be analyzed in downstream workflows. This solution is far from optimal, and better arrangements will be available on following versions.
-
-### Primer sequences removal
-
-The removal of primer associated SNPs is a mandatory step in processing sequences generated from targeted sequencing approaches. While this pipeline does not use any tool that specifically query for primer sequences, it offers a general trimming functionality with trimmomatic (Illumina only). For analyzing data generate under an amplicon sequencing schemes, we suggest '--trim 30' as a sensible choice. Following versions will provide more sensitive approaches and comprehend all data types.
 
 ### Adding scripts to path
 
