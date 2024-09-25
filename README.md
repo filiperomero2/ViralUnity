@@ -12,7 +12,8 @@ To enable ViralUnity, clone the repo and create the environment:
 
     git clone https://github.com/filiperomero2/ViralUnity.git
     cd viralunity/
-    mamba env create -n viralunity
+    mamba create -n viralunity
+    mamba activate viralunity
     mamba env update -n viralunity --file envs/vu_dependencies.yml
 
 Tip: On macOS (with chips m1 or later), one may need to further configure the environment before installing dependencies:
@@ -159,22 +160,22 @@ Notice that this will work only for a given terminal session. To make it permane
 
 A scientific publication fully describing this pipeline is being prepared. Meanwhile, feel free to cite this GitHub repo. Primary references for used dependecies should also be cited:
 
-<a href="http://www.usadellab.org/cms/?page=trimmomatic">Trimmomatic</a>: Anthony M. Bolger, Marc Lohse, Bjoern Usadel. Trimmomatic: a flexible trimmer for Illumina sequence data. Bioinformatics. 2014; 30(15):2114–212.
+<a href="http://www.usadellab.org/cms/?page=trimmomatic">Trimmomatic</a>: Bolger AM, Lohse M, Usadel B. Trimmomatic: a flexible trimmer for Illumina sequence data. Bioinformatics. 2014; 30(15):2114–212.
 
 <a href="https://www.bioinformatics.babraham.ac.uk/projects/fastqc/">Fastqc</a>
 
-<a href="https://github.com/ewels/MultiQC">Multiqc</a>: Ewels P, Magnusson M, Lundin S, Käller M. MultiQC: Summarize analysis results for multiple tools and samples in a single report. Bioinformatics. 2016; 32(19):3047–8.
+<a href="https://github.com/ewels/MultiQC">Multiqc</a>: Ewels P, Magnusson M, Lundin S, et al. MultiQC: Summarize analysis results for multiple tools and samples in a single report. Bioinformatics. 2016; 32(19):3047–8.
 
 <a href="https://github.com/lh3/minimap2">Minimap2</a>: Li, H. Minimap2: pairwise alignment for nucleotide sequences. Bioinformatics. 2018; 34:3094-3100.
 
-<a href="https://github.com/samtools/samtools">Samtools</a>: Li H, Handsaker B, Wysoker A, Fennell T, Ruan J, Homer N, et al. The Sequence Alignment/Map format and SAMtools. Bioinformatics. 2009; 25(16):2078–9.
+<a href="https://github.com/samtools/samtools">Samtools</a>: Li H, Handsaker B, Wysoker A, et al. The Sequence Alignment/Map format and SAMtools. Bioinformatics. 2009; 25(16):2078–9.
 
-<a href="https://samtools.github.io/bcftools/">BCFtools</a>: Li, H. A statistical framework for SNP calling, mutation discovery, association mapping and population genetical parameter estimation from sequencing data. Bioinformatics. 2011; 27(21):2987–2993. 
+<a href="https://github.com/andersen-lab/ivar">iVar</a>: Grubaugh ND, Gangavarapu K, Quick J, et al. An amplicon-based sequencing framework for accurately measuring intrahost virus diversity using PrimalSeq and iVar. Genome Biol 20, 8 (2019)
 
 <a href="https://github.com/arq5x/bedtools2">BEDtools</a>: Quinlan AR, Hall IM. BEDTools: A flexible suite of utilities for comparing genomic features. Bioinformatics. 2010; 26(6):841–2.
 
-<a href="https://doi.org/10.1186/s13059-019-1891-0">kraken2</a> - Wood, D.E., Lu, J. & Langmead, B. Improved metagenomic analysis with Kraken 2. Genome Biol 20, 257 (2019). 
+<a href="https://doi.org/10.1186/s13059-019-1891-0">kraken2</a> - Wood DE, Lu J, Langmead B. Improved metagenomic analysis with Kraken 2. Genome Biol 20, 257 (2019). 
 
-<a href="https://doi.org/10.1186/1471-2105-12-385">krona</a> - Ondov, B.D., Bergman, N.H. & Phillippy, A.M. Interactive metagenomic visualization in a Web browser. BMC Bioinformatics 12, 385 (2011). 
+<a href="https://doi.org/10.1186/1471-2105-12-385">krona</a> - Ondov BD, Bergman NH, Phillippy AM. Interactive metagenomic visualization in a Web browser. BMC Bioinformatics 12, 385 (2011). 
 
 For visualization of fasta and bam files, we recommend <a href="https://ormbunkar.se/aliview/">Aliview</a> and <a href="https://ics.hutton.ac.uk/tablet/">Tablet</a>, respectively.
