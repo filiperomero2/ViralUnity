@@ -12,6 +12,7 @@ dependencies:
   - samtools=1.17
   - bcftools=1.17
   - bedtools=2.31
+  - ivar=1.4.3
   - pandas=2.0.3
   - gofasta=1.2.1
   - biopython=1.81
