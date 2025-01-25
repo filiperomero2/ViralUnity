@@ -9,12 +9,10 @@ Filipe Moreira - 2024/09/21
 import os
 import sys
 import argparse
-import pandas as pd
-import datetime
 from snakemake import snakemake
-from viralunity_consensus import validate_sample_sheet, define_job_id
+from viralunity.viralunity_consensus import validate_sample_sheet, define_job_id
 
-def get_args():
+def get_args(args):
     
     parser = argparse.ArgumentParser(
     description='A script to generate config files and run the viralunity metagenomics pipeline',
@@ -80,7 +78,7 @@ def get_args():
     help='Number of available threads for the entire workflow (Default = 1)',
     nargs='?',const=1, default=1)
 
-    args = vars(parser.parse_args())
+    args = vars(parser.parse_args(args))
     return args
 
 def validate_args(args):
@@ -178,7 +176,7 @@ def generate_config_file(samples,args):
     return
 
 def main():
-    args = get_args()
+    args = get_args(sys.argv[1:])
     samples = validate_args(args)
     generate_config_file(samples,args)
 

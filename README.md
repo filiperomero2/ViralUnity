@@ -57,7 +57,7 @@ If the specified files paths are correct, the script will generate config file c
 
 To run the pipeline, go to the repository directory,activate the conda environment and create a samplesheet file:
 
-    python scripts/create_viralunity_samplesheet.py --input /home/Desktop/test_data/ --output /home/Desktop/example.csv
+    python viralunity/create_viralunity_samplesheet.py --input /home/Desktop/test_data/ --output /home/Desktop/example.csv
 
 Check the contents of the samplesheet file. If the correct paths for fastq files are specified, launch the analysis:
 

@@ -1,1 +1,3 @@
 ./DATA
+**/__pycache__
+**/*.smk
