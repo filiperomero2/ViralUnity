@@ -127,8 +127,7 @@ def get_args(args):
         default=1,
     )
 
-    args = vars(parser.parse_args(args))
-    return args
+    return vars(parser.parse_args(args))
 
 
 def validate_args(args):
@@ -238,7 +237,7 @@ def main():
     cores = args["threads_total"]
     target_rule = "all"
 
-    workflow_path = sys.path[0] + f"/metagenomics_{args['data_type']}.smk"
+    workflow_path = f"{sys.path[0]}/metagenomics_{args['data_type']}.smk"
 
     if args["create_config_only"]:
         print("Finished.")
