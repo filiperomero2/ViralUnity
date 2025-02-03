@@ -6,8 +6,9 @@
 import os
 import argparse
 import glob
+import sys
 
-def get_args():
+def get_args(args):
     parser = argparse.ArgumentParser(
     description='A script to generate a sample-sheet csv file from sequencing run directory structure',
     usage='''create_viralunity_samplesheet.py [args]''')
@@ -25,7 +26,7 @@ def get_args():
     help='Output file name.',
     required = True)
 
-    args = vars(parser.parse_args())
+    args = vars(parser.parse_args(args))
     return args
 
 def validate_args(args):
@@ -47,6 +48,7 @@ def validate_args(args):
     
     return
 
+# TODO: Entender melhor o que essa parte quer fazer. Parece redundante.
 def generate_sample_sheet(args):
     samples = {}
     if args['level'] == 1:
@@ -75,11 +77,11 @@ def generate_sample_sheet(args):
 
     with open(args['output'], 'w') as f:
         for key in samples.keys():
-            my_line = f"{key},{samples[key][0]},{samples[key][1]}\n"
-            f.write(my_line)
+            sample_line = f"{key},{samples[key][0]},{samples[key][1]}\n"
+            f.write(sample_line)
 
 def main():
-    args = get_args()
+    args = get_args(sys.argv[1:])
     validate_args(args)
     generate_sample_sheet(args)
     print("The sample sheet file was generated. -> ", args['output'])

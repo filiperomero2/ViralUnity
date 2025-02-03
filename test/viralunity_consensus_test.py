@@ -15,11 +15,11 @@ import os
 print(os.environ.get("PATH"))
 
 
-class Test_RequiredArgs(unittest.TestCase):
+class Test_GetArgs(unittest.TestCase):
 
     def test_get_args_required(self):
         args = [
-            "--rub-name",
+            "--run-name",
             "test_run",
             "--primer-scheme",
             "scheme",

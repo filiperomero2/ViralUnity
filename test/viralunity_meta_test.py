@@ -11,7 +11,7 @@ import os
 print(os.environ.get("PATH"))
 
 
-class Test_RequiredArgs(unittest.TestCase):
+class Test_GetArgs(unittest.TestCase):
     def test_required_args_fail_when_only_optional_set(self):
         args = [
             "--run-name",
