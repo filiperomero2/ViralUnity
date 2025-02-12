@@ -156,6 +156,13 @@ Users might want to use scripts without fully specifying their path. This can be
 
 Notice that this will work only for a given terminal session. To make it permanent, this line must be included at the end of the .bashrc file. Also, any change in the scripts/ path will cause this to brake. 
 
+## Tests
+
+To execute unit tests run
+```sh
+make test
+```
+
 ## Citation
 
 A scientific publication fully describing this pipeline is being prepared. Meanwhile, feel free to cite this GitHub repo. Primary references for used dependecies should also be cited:
