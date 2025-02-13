@@ -15,5 +15,5 @@ class TestRenameSequences(unittest.TestCase):
         handle = mock_open()
         handle.write.assert_called_once_with(">1234\nATCG\nCGTA\nCCGC\nAACG\n")
 
-if __name__ == "__main__": # Check if this brake snakemake
+if __name__ == "__main__": # TODO: Check if this brake snakemake
     unittest.main()
