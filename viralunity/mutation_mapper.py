@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 
 import os
+import sys
 import argparse
 import re
 import pandas as pd
 from Bio import SeqIO
 from Bio.Seq import Seq
 
-def get_args():
+def get_args(args):
     
     parser = argparse.ArgumentParser(
     description='A script to generate report with all mutations found in genome sequences.',
@@ -30,7 +31,7 @@ def get_args():
     choices = ['CDS','gene'],
     nargs='?',const=1, default='gene')
 
-    args = vars(parser.parse_args())
+    args = vars(parser.parse_args(args))
     return args
 
 def validate_args(args):
@@ -149,10 +150,10 @@ def compare_sequences(ref_seq,my_seq):
             count += 1
             mutation = ref_site + str(i) + my_site
             mutations.append(mutation)
-    return(mutations)
+    return mutations
 
 def main():
-    args = get_args()
+    args = get_args(sys.argv[1:])
     validate_args(args)
     annotation_info = get_annotation_info(args)
     read_and_annotate_sequences(args,annotation_info)
