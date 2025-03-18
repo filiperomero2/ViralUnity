@@ -11,7 +11,7 @@ import sys
 def get_args(args):
     parser = argparse.ArgumentParser(
     description='A script to generate a sample-sheet csv file from sequencing run directory structure',
-    usage='''create_viralunity_samplesheet.py [args]''')
+    usage='''viralunity_create_samplesheet.py [args]''')
  
     parser.add_argument('--input', 
     help='Complete path for the directory containing sequencing data (0) or subdirectories with sequencing data (1)',

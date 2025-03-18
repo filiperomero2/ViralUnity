@@ -112,9 +112,9 @@ class Test_GenerateSamplesheet(unittest.TestCase):
         handle.write.assert_any_call("R1,input/dir/1/R1_sample1.fastq,input/dir/1/R1_sample2.fastq\n")
 
 @patch("sys.argv", retuen_value=["script_name", "--input", "input/dir", "--output", "output.file"])
-@patch("viralunity.create_viralunity_samplesheet.get_args", return_value={"input": "input/dir", "output": "output.file"})
-@patch("viralunity.create_viralunity_samplesheet.validate_args")
-@patch("viralunity.create_viralunity_samplesheet.generate_sample_sheet")
+@patch("viralunity.viralunity_create_samplesheet.get_args", return_value={"input": "input/dir", "output": "output.file"})
+@patch("viralunity.viralunity_create_samplesheet.validate_args")
+@patch("viralunity.viralunity_create_samplesheet.generate_sample_sheet")
 class Test_MainFunction(unittest.TestCase):
     
     def test_main_function(self, mock_generate, mock_validate, mock_get_args, mock_sys):
