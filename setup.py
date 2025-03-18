@@ -22,7 +22,7 @@ setup(
     ],
     description=_description,
     url='https://github.com/filiperomero2/ViralUnity',
-    author='Filipe Moreira & Felippe Nacif',
+    author='Filipe Moreira, Felippe Nacif',
     author_email='filiperomero2@gmail.com',
     entry_points={
         'console_scripts': [
