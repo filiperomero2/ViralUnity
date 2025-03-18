@@ -1,3 +1,7 @@
 ./DATA
 **/__pycache__
 .coverage
+
+input/
+build/
+.snakemake/

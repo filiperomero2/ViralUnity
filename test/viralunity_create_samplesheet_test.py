@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch
-from viralunity.create_viralunity_samplesheet import (
+from viralunity.viralunity_create_samplesheet import (
     get_args,
     validate_args,
     generate_sample_sheet,
