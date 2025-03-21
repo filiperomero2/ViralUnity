@@ -1,5 +1,5 @@
 from setuptools import setup, find_packages
-from viralunity import __version__, _program, _description
+from viralunity import __version__, __program__, _description
 
 setup(
     name='viralunity',
@@ -26,9 +26,9 @@ setup(
     author_email='filiperomero2@gmail.com',
     entry_points={
         'console_scripts': [
-            f'{_program}_meta=viralunity.viralunity_meta:main',
-            f'{_program}_consensus=viralunity.viralunity_consensus:main',
-            f'{_program}_create_samplesheet=viralunity.viralunity_create_samplesheet:main',
+            f'{__program__}_meta=viralunity.viralunity_meta:main',
+            f'{__program__}_consensus=viralunity.viralunity_consensus:main',
+            f'{__program__}_create_samplesheet=viralunity.viralunity_create_samplesheet:main',
         ],
     },
     keywords=[], # TODO: Add keywords @Filipe
