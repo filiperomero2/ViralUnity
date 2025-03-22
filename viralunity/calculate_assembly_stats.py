@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-import re
-import sys
 import pandas as pd
 import subprocess
 

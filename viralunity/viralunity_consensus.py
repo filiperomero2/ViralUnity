@@ -8,117 +8,9 @@ Filipe Moreira - 2024/09/21
 
 import os
 import sys
-import argparse
 import pandas as pd
 import datetime
 from snakemake import snakemake
-
-
-def fill_arg_parser_consensus(parser):
-    parser.add_argument(
-        "--data-type",
-        type=str,
-        help="Sequencing data type (illumina or nanopore).",
-        choices=["illumina", "nanopore"],
-        nargs="?",
-        required=True,
-    )
-
-    parser.add_argument(
-        "--sample-sheet",
-        help="Complete path for a csv file with samples data paths and metadata",
-        required=True,
-    )
-
-    parser.add_argument(
-        "--config-file",
-        help="Complete path for input (viralunity config) file to be created.",
-        required=True,
-    )
-
-    parser.add_argument(
-        "--output",
-        help="Complete path for output directory to be created by viralunity.",
-        required=True,
-    )
-
-    parser.add_argument(
-        "--run-name",
-        type=str,
-        help="Name for the sequencing run (optional).",
-        nargs="?",
-        const=1,
-        default="undefined",
-    )
-
-    parser.add_argument(
-        "--reference",
-        help="Complete path for the reference genome in fasta format",
-        required=True,
-    )
-
-    parser.add_argument(
-        "--primer-scheme",
-        help="Complete path for the primer scheme bed file (amplicon sequencing only).",
-    )
-
-    parser.add_argument(
-        "--minimum-coverage",
-        type=int,
-        help="Minimum sequencing coverage for including base in consensus sequence (Default = 20)",
-        nargs="?",
-        const=1,
-        default=20,
-    )
-
-    parser.add_argument(
-        "--adapters",
-        help="Complete path for adapters sequences in fasta format [Illumina QC]",
-    )
-
-    parser.add_argument(
-        "--minimum-read-length",
-        type=int,
-        help="Minimum read length threshold (Default = 50) [Illumina QC]",
-        nargs="?",
-        const=1,
-        default=50,
-    )
-
-    parser.add_argument(
-        "--trim",
-        type=int,
-        help="Number of bases to trim from the 5' end of reads (Default = 0) [Illumina QC]",
-        nargs="?",
-        const=1,
-        default=0,
-    )
-
-    parser.add_argument(
-        "--create-config-only",
-        help="Only create config file, not running the workflow (boolean)",
-        action="store_true",
-    )
-
-    parser.add_argument(
-        "--threads",
-        type=int,
-        help="Number of available threads for individual tasks (Default = 1)",
-        nargs="?",
-        const=1,
-        default=1,
-    )
-
-    parser.add_argument(
-        "--threads-total",
-        type=int,
-        help="Number of available threads for the entire workflow (Default = 1)",
-        nargs="?",
-        const=1,
-        default=1,
-    )
-
-
 
 def validate_args(args):
 
@@ -258,8 +150,7 @@ def generate_config_file(samples, args):
     return
 
 
-def main(cli_args):
-    args = get_args(cli_args)
+def main(args):
     samples = validate_args(args)
     generate_config_file(samples, args)
 
@@ -267,7 +158,8 @@ def main(cli_args):
     cores = args["threads_total"]
     target_rule = "all"
 
-    workflow_path = f"{sys.path[0]}consensus_{args['data_type']}.smk"
+    thisdir = os.path.abspath(os.path.dirname(__file__))
+    workflow_path = os.path.join(thisdir, 'scripts',f"consensus_{args['data_type']}.smk")
 
     if args["create_config_only"]:
         print("Finished.")
