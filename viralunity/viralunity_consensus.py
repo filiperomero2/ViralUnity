@@ -14,13 +14,7 @@ import datetime
 from snakemake import snakemake
 
 
-def get_args(args):
-
-    parser = argparse.ArgumentParser(
-        description="A script to generate config files and run the viralunity consensus pipeline",
-        usage="""viralunity_consensus.py [args]""",
-    )
-
+def fill_arg_parser_consensus(parser):
     parser.add_argument(
         "--data-type",
         type=str,
@@ -124,7 +118,6 @@ def get_args(args):
         default=1,
     )
 
-    return vars(parser.parse_args(args))
 
 
 def validate_args(args):
@@ -265,8 +258,8 @@ def generate_config_file(samples, args):
     return
 
 
-def main():
-    args = get_args()
+def main(cli_args):
+    args = get_args(cli_args)
     samples = validate_args(args)
     generate_config_file(samples, args)
 
@@ -285,7 +278,3 @@ def main():
     )
 
     return 0 if successful else 1
-
-
-if __name__ == "__main__":
-    sys.exit(main())

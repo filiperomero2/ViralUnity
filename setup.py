@@ -24,7 +24,7 @@ setup(
     author_email='filiperomero2@gmail.com',
     entry_points={
         'console_scripts': [
-            f'{__program__}=viralunity.viralunity_main:main'
+            f'{__program__}=viralunity.viralunity_cli:main'
         ],
     },
     keywords=['metagenomics', 'viral', 'high-throughput sequencing', 'bioinformatics', 'viral genome assembly'],
