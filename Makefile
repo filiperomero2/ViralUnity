@@ -1,4 +1,4 @@
-.PHONY: test run install build-docker run-docker
+.PHONY: test run-meta run-consensus install build-docker run-docker
 
 test:
 	python3 -m unittest discover ./test -p *test.py
@@ -6,8 +6,21 @@ test:
 install:
 	pip install -e .
 
-run:
-	viralunity_meta \
+run-meta:
+	viralunity meta \
+		--data-type illumina \
+		--sample-sheet input/viralunity_samplesheet.csv \
+		--config-file output/config_meta.yml \
+		--run-name test-meta \
+		--kraken2-database input/database/kraken2 \
+		--krona-database input/database/krona/taxonomy/ \
+		--adapters input/references/SARS-CoV-2_RefSeq.fasta \
+		--threads 6 \
+		--threads-total 6 \
+		--output output/test-meta-exmaple
+
+run-consensus:
+	viralunity consensus \
 		--data-type illumina \
 		--sample-sheet input/viralunity_samplesheet.csv \
 		--config-file output/config_meta.yml \
@@ -20,7 +33,7 @@ run:
 		--output output/test-meta-exmaple
 
 build-docker:
-	docker build -t viralunity_meta:latest .
+	docker build -t viralunity/viralunity:latest .
 
 run-docker:
-	docker run -i -t viralunity:latest
+	docker run --rm -i -t viralunity/viralunity:latest
