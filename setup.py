@@ -10,8 +10,6 @@ setup(
         'viralunity/scripts/consensus_nanopore.smk',
         'viralunity/scripts/metagenomics_illumina.smk',
         'viralunity/scripts/metagenomics_nanopore.smk',
-        'viralunity/scripts/metagenomics.smk',
-        'viralunity/scripts/qc.smk',
     ],
     include_package_data=True,
     install_requires=[
@@ -26,11 +24,9 @@ setup(
     author_email='filiperomero2@gmail.com',
     entry_points={
         'console_scripts': [
-            f'{__program__}_meta=viralunity.viralunity_meta:main',
-            f'{__program__}_consensus=viralunity.viralunity_consensus:main',
-            f'{__program__}_create_samplesheet=viralunity.viralunity_create_samplesheet:main',
+            f'{__program__}=viralunity.viralunity_main:main'
         ],
     },
-    keywords=[], # TODO: Add keywords @Filipe
+    keywords=['metagenomics', 'viral', 'high-throughput sequencing', 'bioinformatics', 'viral genome assembly'],
     zip_safe=False,
 )
