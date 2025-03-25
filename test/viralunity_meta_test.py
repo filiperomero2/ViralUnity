@@ -1,7 +1,6 @@
 import unittest
 from unittest.mock import patch
 from viralunity.viralunity_meta import (
-    get_args,
     validate_args,
     generate_config_file,
     main,
@@ -9,93 +8,6 @@ from viralunity.viralunity_meta import (
 import os
 
 print(os.environ.get("PATH"))
-
-
-class Test_GetArgs(unittest.TestCase):
-    def test_required_args_fail_when_only_optional_set(self):
-        args = [
-            "--run-name",
-            "run_name",
-            "--remove-human-reads",
-            "--remove-unclassified-reads",
-            "--adapters",
-            "adapters.fasta",
-            "--minimum-read-length",
-            "50",
-            "--trim",
-            "0",
-            "--create-config-only",
-            "--threads",
-            "1",
-        ]
-        with self.assertRaises(SystemExit):
-            get_args(args)
-
-    def test_required_args_success_when_only_required_set(self):
-        args = [
-            "--data-type",
-            "illumina",
-            "--sample-sheet",
-            "sample_sheet.csv",
-            "--config-file",
-            "config_file.yaml",
-            "--output",
-            "output_dir",
-            "--kraken2-database",
-            "kraken2_db",
-            "--krona-database",
-            "krona_db",
-        ]
-        readArgs = get_args(args)
-        self.assertDictContainsSubset(
-            {
-                "data_type": "illumina",
-                "sample_sheet": "sample_sheet.csv",
-                "config_file": "config_file.yaml",
-                "output": "output_dir",
-                "kraken2_database": "kraken2_db",
-                "krona_database": "krona_db",
-            },
-            readArgs,
-        )
-
-    def test_default_values_optional_args(self):
-        args = [
-            "--data-type",
-            "illumina",
-            "--sample-sheet",
-            "sample_sheet.csv",
-            "--config-file",
-            "config_file.yaml",
-            "--output",
-            "output_dir",
-            "--kraken2-database",
-            "kraken2_db",
-            "--krona-database",
-            "krona_db",
-        ]
-        readArgs = get_args(args)
-        self.assertDictEqual(
-            readArgs,
-            {
-                "adapters": None,
-                "config_file": "config_file.yaml",
-                "create_config_only": False,
-                "data_type": "illumina",
-                "kraken2_database": "kraken2_db",
-                "krona_database": "krona_db",
-                "minimum_read_length": 50,
-                "output": "output_dir",
-                "remove_human_reads": False,
-                "remove_unclassified_reads": False,
-                "run_name": "undefined",
-                "sample_sheet": "sample_sheet.csv",
-                "threads": 1,
-                "threads_total": 1,
-                "trim": 0,
-            },
-        )
-
 
 class Test_ValidateArgs(unittest.TestCase):
     def setUp(self):
@@ -251,15 +163,6 @@ class Test_GenerateConfigFile(unittest.TestCase):
 
 
 class Test_MainFunction(unittest.TestCase):
-    @patch(
-        "viralunity.viralunity_meta.get_args",
-        return_value={
-            "config_file": "config_file.yaml",
-            "threads_total": 1,
-            "data_type": "illumina",
-            "create_config_only": False,
-        },
-    )
     @patch("viralunity.viralunity_meta.validate_args", return_value={})
     @patch("viralunity.viralunity_meta.generate_config_file")
     @patch("viralunity.viralunity_meta.snakemake", return_value=True)
@@ -268,21 +171,16 @@ class Test_MainFunction(unittest.TestCase):
         mock_snakemake,
         mock_generate_config_file,
         mock_validate_args,
-        mock_get_args,
     ):
-        result = main()
-        self.assertEqual(result, 0)
-        mock_snakemake.assert_called_once()
-
-    @patch(
-        "viralunity.viralunity_meta.get_args",
-        return_value={
+        result = main({
             "config_file": "config_file.yaml",
             "threads_total": 1,
             "data_type": "illumina",
-            "create_config_only": True,
-        },
-    )
+            "create_config_only": False,
+        })
+        self.assertEqual(result, 0)
+        mock_snakemake.assert_called_once()
+
     @patch("viralunity.viralunity_meta.validate_args", return_value={})
     @patch("viralunity.viralunity_meta.generate_config_file")
     @patch("viralunity.viralunity_meta.snakemake", return_value=True)
@@ -291,21 +189,16 @@ class Test_MainFunction(unittest.TestCase):
         mock_snakemake,
         mock_generate_config_file,
         mock_validate_args,
-        mock_get_args,
     ):
-        result = main()
-        self.assertEqual(result, 0)
-        mock_snakemake.assert_not_called()
-
-    @patch(
-        "viralunity.viralunity_meta.get_args",
-        return_value={
+        result = main({
             "config_file": "config_file.yaml",
             "threads_total": 1,
             "data_type": "illumina",
-            "create_config_only": False,
-        },
-    )
+            "create_config_only": True,
+        })
+        self.assertEqual(result, 0)
+        mock_snakemake.assert_not_called()
+
     @patch("viralunity.viralunity_meta.validate_args", return_value={})
     @patch("viralunity.viralunity_meta.generate_config_file")
     @patch("viralunity.viralunity_meta.snakemake", return_value=False)
@@ -314,9 +207,13 @@ class Test_MainFunction(unittest.TestCase):
         mock_snakemake,
         mock_generate_config_file,
         mock_validate_args,
-        mock_get_args,
     ):
-        result = main()
+        result = main({
+            "config_file": "config_file.yaml",
+            "threads_total": 1,
+            "data_type": "illumina",
+            "create_config_only": False,
+        })
         self.assertEqual(result, 1)
         mock_snakemake.assert_called_once()
 

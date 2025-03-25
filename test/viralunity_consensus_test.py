@@ -3,7 +3,6 @@ from unittest.mock import patch
 import sys
 import pandas as pd
 from viralunity.viralunity_consensus import (
-    get_args,
     validate_args,
     validate_sample_sheet,
     define_job_id,
@@ -13,90 +12,6 @@ from viralunity.viralunity_consensus import (
 import os
 
 print(os.environ.get("PATH"))
-
-
-class Test_GetArgs(unittest.TestCase):
-
-    def test_get_args_required(self):
-        args = [
-            "--run-name",
-            "test_run",
-            "--primer-scheme",
-            "scheme",
-            "--minimum-coverage",
-            "20",
-            "--adapters",
-            "--minimum-read-length",
-            "50",
-            "--trim",
-            "0",
-            "--create-config-only",
-            "--threads",
-            "1",
-            "--threads-total",
-            "1",
-        ]
-        with self.assertRaises(SystemExit):
-            get_args(args)
-
-    def test_required_args_success_when_only_required_set(self):
-        args = [
-            "--data-type",
-            "illumina",
-            "--sample-sheet",
-            "sample_sheet.csv",
-            "--config-file",
-            "config_file.yaml",
-            "--output",
-            "output_dir",
-            "--reference",
-            "reference.fasta",
-        ]
-        readArgs = get_args(args)
-        self.assertDictContainsSubset(
-            {
-                "data_type": "illumina",
-                "sample_sheet": "sample_sheet.csv",
-                "config_file": "config_file.yaml",
-                "output": "output_dir",
-                "reference": "reference.fasta",
-            },
-            readArgs,
-        )
-
-    def test_default_values_optional_args(self):
-        args = [
-            "--data-type",
-            "illumina",
-            "--sample-sheet",
-            "sample_sheet.csv",
-            "--config-file",
-            "config_file.yaml",
-            "--output",
-            "output_dir",
-            "--reference",
-            "reference.fasta",
-        ]
-        readArgs = get_args(args)
-        self.assertDictEqual(
-            readArgs,
-            {
-                "adapters": None,
-                "config_file": "config_file.yaml",
-                "create_config_only": False,
-                "data_type": "illumina",
-                "minimum_coverage": 20,
-                "minimum_read_length": 50,
-                "output": "output_dir",
-                "primer_scheme": None,
-                "reference": "reference.fasta",
-                "run_name": "undefined",
-                "sample_sheet": "sample_sheet.csv",
-                "threads": 1,
-                "threads_total": 1,
-                "trim": 0,
-            },
-        )
 
 
 class Test_ValidateArgs(unittest.TestCase):
@@ -320,34 +235,30 @@ class Test_GenerateConfigFIle(unittest.TestCase):
         handle.write.assert_any_call("output: output_dir/job_id/\n")  
         
 class Test_MainFunction(unittest.TestCase):
-    @patch("viralunity.viralunity_consensus.get_args",
-        return_value={
+    @patch("viralunity.viralunity_consensus.validate_args", return_value={})
+    @patch("viralunity.viralunity_consensus.generate_config_file")
+    @patch("viralunity.viralunity_consensus.snakemake", return_value=True)
+    def test_main_success(self, mock_snakemake, mock_generate_config_file, mock_validate_args):
+        result = main({
             "config_file": "config_file.yaml",
             "threads_total": 1,
             "data_type": "illumina",
             "create_config_only": False,
-        },)
-    @patch("viralunity.viralunity_consensus.validate_args", return_value={})
-    @patch("viralunity.viralunity_consensus.generate_config_file")
-    @patch("viralunity.viralunity_consensus.snakemake", return_value=True)
-    def test_main_success(self, mock_snakemake, mock_generate_config_file, mock_validate_args, mock_get_args):
-        result = main()
+        })
         self.assertEqual(result, 0)
         mock_snakemake.assert_called_once()
         
         
-    @patch("viralunity.viralunity_consensus.get_args",
-        return_value={
+    @patch("viralunity.viralunity_consensus.validate_args", return_value={})
+    @patch("viralunity.viralunity_consensus.generate_config_file")
+    @patch("viralunity.viralunity_consensus.snakemake", return_value=False)
+    def test_main_create_config_only(self, mock_snakemake, mock_generate_config_file, mock_validate_args):
+        result = main({
             "config_file": "config_file.yaml",
             "threads_total": 1,
             "data_type": "illumina",
             "create_config_only": True,
-        },)
-    @patch("viralunity.viralunity_consensus.validate_args", return_value={})
-    @patch("viralunity.viralunity_consensus.generate_config_file")
-    @patch("viralunity.viralunity_consensus.snakemake", return_value=False)
-    def test_main_create_config_only(self, mock_snakemake, mock_generate_config_file, mock_validate_args, mock_get_args):
-        result = main()
+        })
         self.assertEqual(result, 0)
         mock_snakemake.assert_not_called()
 
