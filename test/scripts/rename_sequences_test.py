@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import mock_open, patch
-from viralunity.rename_sequences import rename_sequences
+from viralunity.scripts.rename_sequences import rename_sequences
 
 class TestRenameSequences(unittest.TestCase):
     @patch("builtins.open", new_callable=mock_open, read_data=">header\nATCG\nCGTA\nCCGC\nAACG\n")
@@ -15,5 +15,5 @@ class TestRenameSequences(unittest.TestCase):
         handle = mock_open()
         handle.write.assert_called_once_with(">1234\nATCG\nCGTA\nCCGC\nAACG\n")
 
-if __name__ == "__main__": # TODO: Check if this brake snakemake
+if __name__ == "__main__":
     unittest.main()

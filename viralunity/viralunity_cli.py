@@ -29,7 +29,6 @@ def cli(args):
 
 def main():
     sys.exit(cli(sys.argv[1:]))
-    
 
 if __name__ == "__main__":
     main()

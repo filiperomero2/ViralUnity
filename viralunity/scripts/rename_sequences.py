@@ -6,12 +6,9 @@ import re
 # and include in sequence names from here.
 
 
-#print(input)
 def rename_sequences(input, output):
     sample_name = re.sub(".+/","",input)
     sample_name = re.sub(".consensus.fasta","",sample_name)
-    #print(sample_name)
-
     with open(input) as f:
         lines = f.readlines()
 
@@ -28,7 +25,9 @@ def rename_sequences(input, output):
         f.write(renamed_sequence)
 
 if __name__ == "__main__":
+    print("Running rename_sequences.py")
     input = snakemake.input[0]
     output = snakemake.output[0]
     rename_sequences(input, output)
+    print("Finished rename_sequences.py")
     exit()

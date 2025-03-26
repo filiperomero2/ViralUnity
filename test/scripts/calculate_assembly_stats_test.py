@@ -2,7 +2,7 @@ import unittest
 import subprocess
 import pandas as pd
 from unittest.mock import patch
-from viralunity.calculate_assembly_stats import (
+from viralunity.scripts.calculate_assembly_stats import (
     get_number_of_reads,
     get_number_of_mapped_reads,
     get_coverage_info,

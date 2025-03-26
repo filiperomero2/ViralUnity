@@ -3,7 +3,6 @@
 import pandas as pd
 import subprocess
 
-
 def get_number_of_reads(fastq):
     if fastq.endswith(".gz"):
         command = "gunzip -c " + fastq + ' | grep -cE "^\+$"'
@@ -82,7 +81,7 @@ def main(input, output, minimum_depth):
     df_out.to_csv(output, header=False, index=False)
 
 
-if __name__ == "__main__":  # TODO: Check if this brake snakemake
+if __name__ == "__main__":
     input = snakemake.input
     output = snakemake.output[0]
     minimum_depth = snakemake.params[0]
