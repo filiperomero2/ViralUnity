@@ -6,11 +6,12 @@
 import os
 import argparse
 import glob
+import sys
 
-def get_args():
+def get_args(args):
     parser = argparse.ArgumentParser(
     description='A script to generate a sample-sheet csv file from sequencing run directory structure',
-    usage='''create_viralunity_samplesheet.py [args]''')
+    usage='''viralunity_create_samplesheet.py [args]''')
  
     parser.add_argument('--input', 
     help='Complete path for the directory containing sequencing data (0) or subdirectories with sequencing data (1)',
@@ -38,7 +39,8 @@ def get_args():
     # Add separator and data type options
     # outdated script
     
-    args = vars(parser.parse_args())
+    args = vars(parser.parse_args(args))
+    
     return args
 
 def validate_args(args):
@@ -78,7 +80,6 @@ def generate_sample_sheet(args):
                     print(f"Number of files found for sample {sample_name} is not one or two. Please verify.")
                     exit()
     else:
-        #files = sorted(glob.glob(os.path.join(args['input'], '*R1*')))
         files = sorted(glob.glob(os.path.join(args['input'], f"*{args['pattern']}*")))
         for file in files:
             sample_name = file.split('/')[-1].split(args['separator'])[0]
@@ -96,14 +97,14 @@ def generate_sample_sheet(args):
     with open(args['output'], 'w') as f:
         for key in samples.keys():
             if len(samples[key]) == 2:
-                my_line = f"{key},{samples[key][0]},{samples[key][1]}\n"
-                f.write(my_line)
+                sample_line = f"{key},{samples[key][0]},{samples[key][1]}\n"
+                f.write(sample_line)
             else:
-                my_line = f"{key},{samples[key][0]}\n"
-                f.write(my_line)
+                sample_line = f"{key},{samples[key][0]}\n"
+                f.write(sample_line)
 
 def main():
-    args = get_args()
+    args = get_args(sys.argv[1:])
     validate_args(args)
     generate_sample_sheet(args)
     print("The sample sheet file was generated. -> ", args['output'])

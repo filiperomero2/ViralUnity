@@ -49,7 +49,7 @@ The viralunity consensus sequence pipeline was designed to be as simple as possi
     --threads-total         Number of available threads for the entire workflow (Default = 1)
     -h, --help              Show this help message and exit
 
-The samplesheet argument receives the path to a csv file that contains sample names and fastq file paths. This file can be created automatically with the script create_viralunity_samplesheet.py (see its --help option). 
+The samplesheet argument receives the path to a csv file that contains sample names and fastq file paths. This file can be created automatically with the script viralunity_create_samplesheet.py (see its --help option). 
 
 If the specified files paths are correct, the script will generate config file containing all information required to execute the snakemake consensus workflow, allowing optimal parallelization schemes. Beyond creating the config file, the script will execute the workflow, performing data quality control (trimmomatic) (Illumina only), read mapping (minimap2), and consensus sequence inference (samtools). QC reports are generated with fastQC and multiQC. For data generated under amplicon sequencing approaches, the option --primer-schemes takes as argument primer-scheme bed files, which are used for trimming these technical sequences (ivar). The results from all these analysis are stored in the specified output directory. 
 
@@ -57,7 +57,7 @@ If the specified files paths are correct, the script will generate config file c
 
 To run the pipeline, go to the repository directory,activate the conda environment and create a samplesheet file:
 
-    python scripts/create_viralunity_samplesheet.py --input /home/Desktop/test_data/ --output /home/Desktop/example.csv
+    python viralunity/viralunity_create_samplesheet.py --input /home/Desktop/test_data/ --output /home/Desktop/example.csv
 
 Check the contents of the samplesheet file. If the correct paths for fastq files are specified, launch the analysis:
 
@@ -155,6 +155,13 @@ Users might want to use scripts without fully specifying their path. This can be
     export PATH="/path/to/viralunity/scripts/:$PATH"
 
 Notice that this will work only for a given terminal session. To make it permanent, this line must be included at the end of the .bashrc file. Also, any change in the scripts/ path will cause this to brake. 
+
+## Tests
+
+To execute unit tests run
+```sh
+make test
+```
 
 ## Citation
 
