@@ -6,7 +6,7 @@ ViralUnity runs on *nix systems and is able to process entire sequencing runs in
 
 ## Installation
 
-ViralUnity is a collection of python scripts and snakemake workflows. All dependencies have been conveniently documented on a conda environment file (vu_dependencies.yml). From this file, one can easily install required softwares to run the pipeline. We recommend using <a href="https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html">mamba</a> for this purpose. 
+ViralUnity is python package that launches snakemake workflows. All dependencies have been conveniently documented on a conda environment file (vu_dependencies.yml). From this file, one can easily install required softwares to run the pipeline. We recommend using <a href="https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html">mamba</a> for this purpose. 
 
 To enable ViralUnity, clone the repo and create the environment:
 
@@ -15,6 +15,7 @@ To enable ViralUnity, clone the repo and create the environment:
     mamba create -n viralunity
     mamba activate viralunity
     mamba env update -n viralunity --file envs/vu_dependencies.yml
+    pip install .
 
 Tip: On macOS (with chips m1 or later), one may need to further configure the environment before installing dependencies:
 
@@ -22,6 +23,7 @@ Tip: On macOS (with chips m1 or later), one may need to further configure the en
     mamba activate viralunity
     conda config --env --set subdir osx-64
     mamba env update -n viralunity --file envs/vu_dependencies.yml
+    pip install .
 
 It is a good practice to verify whether all required dependencies (available on envs/vu_dependecies.yml) are available before running the pipeline. In case any installation fail, try re-installing separetely on the command line with mamba. On certain systems, it might be necessary to manually set conda channels priority.
 
@@ -62,8 +64,7 @@ To run the pipeline, go to the repository directory,activate the conda environme
 Check the contents of the samplesheet file. If the correct paths for fastq files are specified, launch the analysis:
 
     conda activate viralunity
-    cd viralunity/
-    python scripts/viralunity_consensus.py --data-type illumina --sample-sheet /home/Desktop/example.csv --config-file /home/Desktop/example.yml --run-name example_run --output /home/Desktop/example_output --reference /home/Desktop/references/viral_genome_reference.fasta --primer-scheme /home/Desktop/my_primers.bed --adapters /home/Desktop/trimmomatic_adapters/adapters.fa --threads 2 --threads-total 4
+    viralunity consensus --data-type illumina --sample-sheet /home/Desktop/example.csv --config-file /home/Desktop/example.yml --run-name example_run --output /home/Desktop/example_output --reference /home/Desktop/references/viral_genome_reference.fasta --primer-scheme /home/Desktop/my_primers.bed --adapters /home/Desktop/trimmomatic_adapters/adapters.fa --threads 2 --threads-total 4
 
 The output directory will contain subdirectories with QC data and reports, logs and all files related to the asssembly pipeline, including consensus sequences and intermediate files (mapping files, coverage reports). 
 
@@ -119,8 +120,7 @@ If all paths are correctly set, the script will generate a config file and run t
 As performed for the previous workflow, to run the metagenomics pipeline one needs to create a samplesheet file and activate the conda environment. To launch the analysis:
 
     conda activate viralunity    
-    cd viralunity/
-    python scripts/viralunity_meta.py --data-type illumina --sample-sheet /home/Desktop/example.csv --config-file /home/Desktop/example_meta.yml --run-name example_run_meta --kraken2-database /home/Desktop/kraken2_database/viral/ --krona-database /home/Desktop/krona/taxonomy/ --adapters /home/Desktop/trimmomatic_adapters/adapters.fa --threads 2 --threads-total 4 --output /home/Desktop/example_output_meta
+    viralunity meta --data-type illumina --sample-sheet /home/Desktop/example.csv --config-file /home/Desktop/example_meta.yml --run-name example_run_meta --kraken2-database /home/Desktop/kraken2_database/viral/ --krona-database /home/Desktop/krona/taxonomy/ --adapters /home/Desktop/trimmomatic_adapters/adapters.fa --threads 2 --threads-total 4 --output /home/Desktop/example_output_meta
 
 Three directories are created, respectivelly containing logs, quality control data and report, and metagenomics results (kraken2 reports and krona interactive plots).The later directory will also contain one summary file containing information of the viral diversity captured at the family level, as classified by kraken2. 
 
@@ -132,29 +132,18 @@ Currently, the easiest way to do this is by regularly running the metagenomics p
 
 Once manual edition is finished, one can execute the workflow directly with snakemake:
 
-    snakemake --snakefile  scripts/consensus_<datatype>.smk --configfile /home/Desktop/config_consensus.edited.yml --cores all -p
+    snakemake --snakefile  viralunity/scripts/consensus_<datatype>.smk --configfile /home/Desktop/config_consensus.edited.yml --cores all -p
 
 ## Notes
 
 ### Nanopore data
 
-Experimental pipelines for nanopore sequencing data were recently added. It is still a work in progress, and there's a lot of room for improvements. Unlike the Illumina pipeline, it does not include data quality control steps. In case you want to use it anyway, just use the flag '--data-type nanopore'. 
+Experimental pipelines for nanopore sequencing data were recently added. It is still a work in progress, and there's a lot of room for improvements. Unlike the Illumina pipeline, it does not include data quality control steps. In case you want to use it, just use the flag '--data-type nanopore'. 
 
-### Legacy
-
-Previous versions of the pipeline were released as bash scripts. Despite the ease of use, these versions were remarkbly less flexible and slower than the current snakemake workflow implementation. Notwithstanding, the core legacy script should still work and is available in this repository (legacy/viralunity.sh). 
  
 ### Segmented viruses
 
 Even though the pipeline has been originally designed to handle non-segmented viruses, it can be naively used to assemble segmented genomes. One just needs to specify one genomic segment as reference at a time. This will automatically create output directory for each segment, which can be analyzed in downstream workflows. This solution is far from optimal, and better arrangements will be available on following versions.
-
-### Adding scripts to path
-
-Users might want to use scripts without fully specifying their path. This can be acomplished by adding the scripts directory to the system path. This may vary among systems, but for linux (ubuntu-20.04), the following should work: 
-
-    export PATH="/path/to/viralunity/scripts/:$PATH"
-
-Notice that this will work only for a given terminal session. To make it permanent, this line must be included at the end of the .bashrc file. Also, any change in the scripts/ path will cause this to brake. 
 
 ## Tests
 
