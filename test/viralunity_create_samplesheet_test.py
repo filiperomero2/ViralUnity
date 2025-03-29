@@ -37,6 +37,8 @@ class Test_GetArgs(unittest.TestCase):
                 "input": "input/dir",
                 "output": "output.file",
                 "level": 1,
+                "pattern": "R1",
+                "separator": "-"
             },
             readArgs,
         )
@@ -72,7 +74,9 @@ class Test_GenerateSamplesheet(unittest.TestCase):
     def setUp(self):
         self.args = {
             "input": "input/dir",
-            "output": "output.file"
+            "output": "output.file",
+            "separator": "_",
+            "pattern": "R1",
         }
 
     @patch(

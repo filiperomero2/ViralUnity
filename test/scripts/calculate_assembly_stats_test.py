@@ -81,9 +81,9 @@ class TestGetCoverageInfo(unittest.TestCase):
 
 class TestWriteOutput(unittest.TestCase):
 
-    @patch("viralunity.calculate_assembly_stats.get_number_of_reads")
-    @patch("viralunity.calculate_assembly_stats.get_number_of_mapped_reads")
-    @patch("viralunity.calculate_assembly_stats.get_coverage_info")
+    @patch("viralunity.scripts.calculate_assembly_stats.get_number_of_reads")
+    @patch("viralunity.scripts.calculate_assembly_stats.get_number_of_mapped_reads")
+    @patch("viralunity.scripts.calculate_assembly_stats.get_coverage_info")
     @patch("pandas.DataFrame.to_csv")
     def test_write_output(
         self,
@@ -130,7 +130,7 @@ class TestWriteOutput(unittest.TestCase):
 
 class TestMainFunction(unittest.TestCase):
 
-    @patch("viralunity.calculate_assembly_stats.generate_output")
+    @patch("viralunity.scripts.calculate_assembly_stats.generate_output")
     @patch("pandas.DataFrame.to_csv")
     def test_main(self, mock_to_csv, mock_generate_output):
         inputs = ["sample.fastq", "", "sample_trim.fastq", "my/dir/sample.sorted.bam", "coverage.txt"]
