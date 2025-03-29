@@ -48,7 +48,6 @@ def validate_args(args):
     
     return
 
-# TODO: Entender melhor o que essa parte quer fazer. Parece redundante.
 def generate_sample_sheet(args):
     samples = {}
     if args['level'] == 1:

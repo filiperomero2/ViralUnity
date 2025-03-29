@@ -57,7 +57,6 @@ def generate_config_file(samples, args):
 
         samples_string = "samples:\n"
         f.write(samples_string)
-        # TODO: refactor for clarity
         for sample in samples.keys():
             if data_type == "illumina":
                 my_sample = (
@@ -82,7 +81,6 @@ def generate_config_file(samples, args):
         output_line = f"output: {args['output']}/{define_job_id(args)}/\n"
         f.write(output_line)
 
-        # TODO: Analyze if it is possible to make an adapter pattern with illumina/nanopore
         if data_type == "illumina":
             adapters_line = f"adapters: {args['adapters']}\n"
             f.write(adapters_line)
