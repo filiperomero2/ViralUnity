@@ -22,14 +22,10 @@ jobs:
 
       - name: Install dependencies
         run: |
-          conda env update --file environment.yml
-
-      - name: Activate conda environment
-        run: |
-          conda activate viralunity
+          conda env update --file environment.yml --name viralunity
 
       - name: Run unit tests
-        run: make test
+        run: python -m unittest discover ./test -p *test.py
 
       - name: Viralunity install
         run: pip install -e .
