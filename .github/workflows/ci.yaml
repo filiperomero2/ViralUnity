@@ -24,6 +24,10 @@ jobs:
         run: |
           conda env update --file environment.yml
 
+      - name: Activate conda environment
+        run: |
+          conda activate viralunity
+
       - name: Run unit tests
         run: make test
 
