@@ -15,18 +15,21 @@ setup(
     install_requires=[
         'pandas>=2.0.3',
         'biopython>=1.81',
-        'snakemake',
-        # Add other dependencies here
+        'snakemake==7.29.0',
     ],
     description=_description,
     url='https://github.com/filiperomero2/ViralUnity',
     author='Filipe Moreira, Felippe Nacif',
     author_email='filiperomero2@gmail.com',
     entry_points={
-        'console_scripts': [
-            f'{__program__}=viralunity.viralunity_cli:main'
-        ],
+        'console_scripts': [f'{__program__}=viralunity.viralunity_cli:main'],
     },
-    keywords=['metagenomics', 'viral', 'high-throughput sequencing', 'bioinformatics', 'viral genome assembly'],
+    keywords=[
+        'metagenomics',
+        'viral',
+        'high-throughput sequencing',
+        'bioinformatics',
+        'viral genome assembly',
+    ],
     zip_safe=False,
 )

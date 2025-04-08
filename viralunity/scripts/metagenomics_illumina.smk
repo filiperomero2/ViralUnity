@@ -18,7 +18,7 @@ def get_classification_filter():
     print(my_filter)
     return(my_filter)
 
-my_filter = get_classification_filter()     
+my_filter = get_classification_filter()
 
 rule perform_qc:
     input:

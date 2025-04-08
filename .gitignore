@@ -66,4 +66,5 @@ coverage.xml
 ./DATA
 input/
 output/
+output-*/
 .snakemake/

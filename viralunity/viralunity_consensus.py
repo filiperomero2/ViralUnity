@@ -153,6 +153,10 @@ def generate_config_file(samples, args):
 def main(args):
     samples = validate_args(args)
     generate_config_file(samples, args)
+    
+    if args["create_config_only"]:
+        print("Finished.")
+        return 0
 
     config = args["config_file"]
     cores = args["threads_total"]
@@ -160,10 +164,6 @@ def main(args):
 
     thisdir = os.path.abspath(os.path.dirname(__file__))
     workflow_path = os.path.join(thisdir, 'scripts',f"consensus_{args['data_type']}.smk")
-
-    if args["create_config_only"]:
-        print("Finished.")
-        return 0
 
     successful = snakemake(
         workflow_path, configfiles=[config], cores=cores, targets=[target_rule]
