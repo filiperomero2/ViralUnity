@@ -12,7 +12,7 @@ jobs:
       
       - uses: conda-incubator/setup-miniconda@v3
         with:
-          environment-file: envs/vu_environment.yml
+          environment-file: environment.yml
           activate-environment: viralunity
           channels: conda-forge,bioconda,defaults
       
