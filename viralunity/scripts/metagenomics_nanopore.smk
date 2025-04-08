@@ -1,5 +1,3 @@
-# Experimental
-
 rule all:
     input:
         config['output'] + "metagenomics/metagenomics_summary.txt"

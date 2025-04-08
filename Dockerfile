@@ -4,9 +4,9 @@ LABEL version="0.0.1" \
 
 WORKDIR /app
 
-COPY envs/vu_dependencies.yml /app/envs/vu_dependencies.yml
+COPY environment.yml /app/environment.yml
 # Install the environment
-RUN conda env create --quiet -f envs/vu_dependencies.yml && conda clean -a -y
+RUN conda env create --quiet -f environment.yml && conda clean -a -y
 
 ENV PATH=/opt/conda/envs/viralunity/bin:$PATH
 
