@@ -1,0 +1,38 @@
+name: 'CI'
+
+on:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.11'
+
+      - name: Add conda to system path
+        run: |
+          # $CONDA is an environment variable pointing to the root of the miniconda directory
+          echo $CONDA/bin >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          conda env update --file environment.yml --name viralunity
+
+      - name: Activate conda env
+        run: |
+          echo $CONDA/envs/viralunity/bin >> $GITHUB_PATH
+
+      - name: Run unit tests
+        run: python -m unittest discover ./test -p *test.py
+
+      - name: Viralunity install
+        run: pip install -e .
+      
+      - name: Verify 'viralunity' installation working
+        run: viralunity -v
