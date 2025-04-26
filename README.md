@@ -14,7 +14,7 @@ To enable ViralUnity, clone the repo and create the environment:
     cd viralunity/
     mamba create -n viralunity
     mamba activate viralunity
-    mamba env update -n viralunity --file environemnt.yml
+    mamba env update -n viralunity --file environment.yml
     pip install .
 
 Tip: On macOS (with chips m1 or later), one may need to further configure the environment before installing dependencies:
@@ -22,7 +22,7 @@ Tip: On macOS (with chips m1 or later), one may need to further configure the en
     mamba create -n viralunity
     mamba activate viralunity
     conda config --env --set subdir osx-64
-    mamba env update -n viralunity --file environemnt.yml
+    mamba env update -n viralunity --file environment.yml
     pip install .
 
 It is a good practice to verify whether all required dependencies (available on envs/vu_dependecies.yml) are available before running the pipeline. In case any installation fail, try re-installing separetely on the command line with mamba. On certain systems, it might be necessary to manually set conda channels priority.
