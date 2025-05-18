@@ -18,29 +18,21 @@ def validate_args(args):
         sample_sheet = args["sample_sheet"]
         samples = validate_sample_sheet(sample_sheet, args)
     else:
-        print("Sample sheet file does not exist, please verify.")
-        exit()
+        raise Exception(f"Sample sheet file does not exist: {args['sample_sheet']}")
 
     if os.path.isfile(args["config_file"]):
-        print("Config file already exists. Please specify a new one.")
-        exit()
+        raise Exception("Config file already exists.")
 
     if os.path.isdir(args["output"]):
-        print("Output directory already exists. Please specify a new one.")
-        exit()
+        raise Exception(f"Output directory '{args['output']}' already exists.")
 
-    if os.path.isfile(args["reference"]):
-        print("Reference sequence file exists.")
-    else:
-        print("Reference sequence file does not exist, please verify.")
-        exit()
+    if not os.path.isfile(args["reference"]):
+        raise Exception("Reference sequence file does not exist.")
 
     if args["primer_scheme"]:
         print("A primer scheme was provided (Amplicon sequencing)...")
-        if os.path.isfile(args["primer_scheme"]):
-            print("Bed file exists.")
-        else:
-            print("Bed file not found in provided path, please verify.")
+        if not os.path.isfile(args["primer_scheme"]):
+            raise Exception("Primer scheme file not found.")
     else:
         print("A primer scheme was not provided (untargeted sequencing).")
         args["primer_scheme"] = "NA"
@@ -48,14 +40,11 @@ def validate_args(args):
     if args["data_type"] == "illumina":
         if args["adapters"]:
             print("Illumina adapter sequences were provided...")
-            if os.path.isfile(args["adapters"]):
-                print("Adapter sequences file exists.")
-            else:
+            if not os.path.isfile(args["adapters"]):
                 print("Adapter sequences file not found, please verify.")
-                exit()
+                raise Exception("Illumina adapter sequences file not found.")
         else:
-            print("Illumina adapter sequences file not found, please verify.")
-            exit()
+            raise Exception("Illumina adapter sequences file not found.")
 
     print("All arguments were succesfully verified.")
 
@@ -77,7 +66,7 @@ def validate_sample_sheet(sample_sheet, args):
             else:
                 print("Problem in reads files for sample", sample_name)
                 print("Please specify correct file paths.")
-                exit()
+                raise Exception(f"Problem in reads files for sample {sample_name}")
         else:
             sample_name = df[0][ind]
             sample_unique = df[1][ind]
@@ -87,7 +76,7 @@ def validate_sample_sheet(sample_sheet, args):
             else:
                 print("Problem in reads file for sample", sample_name)
                 print("Please specify correct file paths.")
-                exit()
+                raise Exception(f"Problem in reads file for sample {sample_name}")
     return samples
 
 

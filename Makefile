@@ -37,3 +37,6 @@ build-docker:
 
 run-docker:
 	docker run --rm -i -t viralunity/viralunity:latest
+
+conda-build:
+	conda build viralunity/meta.yaml

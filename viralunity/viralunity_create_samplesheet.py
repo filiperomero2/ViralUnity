@@ -47,7 +47,7 @@ def validate_args(args):
 
     if os.path.isdir(args['input']) is False:
         print("Input directory does not exist, please verify.")
-        exit()
+        raise Exception("Input directory does not exist.")
     else:
         print(f"Input data directory -> {args['input']}")
 
@@ -58,7 +58,7 @@ def validate_args(args):
     
     if os.path.isfile(args['output']):
         print("Output file already exists, please verify.")
-        exit()
+        raise Exception("Output file already exists.")
     
     return
 
@@ -78,7 +78,7 @@ def generate_sample_sheet(args):
                     print(f"One file for sample {sample_name} was identified. Proceeding...")
                 else:
                     print(f"Number of files found for sample {sample_name} is not one or two. Please verify.")
-                    exit()
+                    raise Exception(f"Number of files found for sample {sample_name} is not one or two. Please verify.")
     else:
         files = sorted(glob.glob(os.path.join(args['input'], f"*{args['pattern']}*")))
         for file in files:
@@ -92,7 +92,7 @@ def generate_sample_sheet(args):
                     print(f"One file for sample {sample_name} was identified. Proceeding...")
             else:
                 print(f"Number of files found for sample {sample_name} is not one or two. Please verify.")
-                exit()
+                raise Exception(f"Number of files found for sample {sample_name} is not one or two. Please verify.")
 
     with open(args['output'], 'w') as f:
         for key in samples.keys():

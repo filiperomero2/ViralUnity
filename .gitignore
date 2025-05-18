@@ -68,3 +68,4 @@ input/
 output/
 output-*/
 .snakemake/
+viralunity/meta.yaml

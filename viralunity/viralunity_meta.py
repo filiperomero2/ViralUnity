@@ -16,35 +16,24 @@ def validate_args(args):
         sample_sheet = args["sample_sheet"]
         samples = validate_sample_sheet(sample_sheet, args)
     else:
-        print("Sample sheet file does not exist, please verify.")
-        exit()
+        raise Exception(f"Sample sheet file does not exist: {args['sample_sheet']}")
 
     if os.path.isfile(args["config_file"]):
-        print("Config file already exists. Please specify a new one.")
-        exit()
+        raise Exception("Config file already exists.")
 
     if os.path.isdir(args["output"]):
-        print("Output directory already exists. Please specify a new one.")
-        exit()
+        raise Exception(f"Output directory '{args['output']}' already exists.")
 
-    if os.path.isdir(args["kraken2_database"]):
-        print("kraken2 database directory exists.")
-    else:
-        print("kraken2 database directory does not exist, please verify.")
-        exit()
+    if not os.path.isdir(args["kraken2_database"]):
+        raise Exception("kraken2 database directory does not exist.")
 
-    if os.path.isdir(args["krona_database"]):
-        print("krona taxonomic database directory exists.")
-    else:
-        print("krona taxonomic database does not exist, please verify.")
-        exit()
+    if not os.path.isdir(args["krona_database"]):
+        raise Exception("Krona database directory does not exist.")
 
     if args["data_type"] == "illumina":
-        if os.path.isfile(args["adapters"]):
-            print("Illumina adapter sequences file exists.")
-        else:
+        if not os.path.isfile(args["adapters"]):
             print("Illumina adapter sequences file not found, please verify.")
-            exit()
+            raise Exception("Illumina adapter sequences file not found.")
 
     print("All arguments were succesfully verified.")
 
