@@ -4,7 +4,7 @@ channels:
   - bioconda
   - defaults
 dependencies:
-  - snakemake>=7.29.0
+  - snakemake>=7.32.0
   - fastqc>=0.11.9
   - trimmomatic>=0.39
   - multiqc>=1.15

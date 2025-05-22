@@ -23,6 +23,8 @@ def validate_args(args):
 
     if os.path.isdir(args["output"]):
         raise Exception(f"Output directory '{args['output']}' already exists.")
+    else:
+        os.makedirs(args["output"], exist_ok= True)
 
     if not os.path.isdir(args["kraken2_database"]):
         raise Exception("kraken2 database directory does not exist.")
