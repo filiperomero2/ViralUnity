@@ -15,7 +15,7 @@ setup(
     install_requires=[
         'pandas>=2.0.3',
         'biopython>=1.81',
-        'snakemake=7.32.0',
+        'snakemake==7.32.0',
     ],
     description=_description,
     url='https://github.com/filiperomero2/ViralUnity',
