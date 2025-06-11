@@ -8,7 +8,7 @@ Filipe Moreira - 2024/09/21
 
 import os
 from snakemake import snakemake
-from viralunity.viralunity_consensus import validate_sample_sheet, define_job_id
+from viralunity.viralunity.viralunity_consensus import validate_sample_sheet, define_job_id
 
 def validate_args(args):
 
