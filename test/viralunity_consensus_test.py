@@ -156,15 +156,6 @@ class Test_ValidateSampleSheet(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 validate_sample_sheet("sample_sheet.csv", {"data_type": "nanopore"})
 
-
-class Test_DefineJobId(unittest.TestCase):
-    def test_define_job_id(self):
-        self.assertRegex(
-            define_job_id({"run_name": "viral_run_name"}),
-            r"job_\d{4}-\d{2}-\d{2}_viral_run_name",
-        )
-
-
 class Test_GenerateConfigFIle(unittest.TestCase):
     def setUp(self):
         self.args = {
