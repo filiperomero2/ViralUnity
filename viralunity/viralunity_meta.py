@@ -8,7 +8,7 @@ Filipe Moreira - 2024/09/21
 
 import os
 from snakemake import snakemake
-from viralunity.viralunity.viralunity_consensus import validate_sample_sheet
+from viralunity.viralunity_consensus import validate_sample_sheet
 
 def validate_args(args):
 
