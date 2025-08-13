@@ -14,17 +14,15 @@ from snakemake import snakemake
 
 def validate_args(args):
 
+    samples = None
     if os.path.isfile(args["sample_sheet"]):
         sample_sheet = args["sample_sheet"]
         samples = validate_sample_sheet(sample_sheet, args)
     else:
-        raise Exception(f"Sample sheet file does not exist: {args['sample_sheet']}")
-
-    if os.path.isfile(args["config_file"]):
-        raise Exception("Config file already exists.")
-
-    if os.path.isdir(args["output"]):
-        raise Exception(f"Output directory '{args['output']}' already exists.")
+        if args["samples"] is None:
+            raise Exception("No samples were provided.")
+        else:
+            samples = args["samples"]
 
     if not os.path.isfile(args["reference"]):
         raise Exception("Reference sequence file does not exist.")

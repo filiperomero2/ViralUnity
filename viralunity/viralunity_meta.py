@@ -12,19 +12,15 @@ from viralunity.viralunity.viralunity_consensus import validate_sample_sheet, de
 
 def validate_args(args):
 
+    samples = None
     if os.path.isfile(args["sample_sheet"]):
         sample_sheet = args["sample_sheet"]
         samples = validate_sample_sheet(sample_sheet, args)
     else:
-        raise Exception(f"Sample sheet file does not exist: {args['sample_sheet']}")
-
-    if os.path.isfile(args["config_file"]):
-        raise Exception("Config file already exists.")
-
-    if os.path.isdir(args["output"]):
-        raise Exception(f"Output directory '{args['output']}' already exists.")
-    else:
-        os.makedirs(args["output"], exist_ok= True)
+        if args["samples"] is None:
+            raise Exception(f"Sample sheet file does not exist: {args['sample_sheet']}")
+        else:
+            samples = args["samples"]
 
     if not os.path.isdir(args["kraken2_database"]):
         raise Exception("kraken2 database directory does not exist.")
@@ -44,6 +40,8 @@ def validate_args(args):
 
 def generate_config_file(samples, args):
     data_type = args["data_type"]
+    os.makedirs(os.path.dirname(args["config_file"]), exist_ok=True)
+
     with open(args["config_file"], "w") as f:
 
         samples_string = "samples:\n"
