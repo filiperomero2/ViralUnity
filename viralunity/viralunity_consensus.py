@@ -77,16 +77,9 @@ def validate_sample_sheet(sample_sheet, args):
                 raise Exception(f"Problem in reads file for sample {sample_name}")
     return samples
 
-
-def define_job_id(args):
-    current_time = str(datetime.datetime.now()).split(" ")[0]
-    id = args["run_name"]
-    job_id = "job_" + str(current_time) + "_" + str(id)
-    return job_id
-
-
 def generate_config_file(samples, args):
     data_type = args["data_type"]
+    run_name = args["run_name"]
     with open(args["config_file"], "w") as f:
 
         samples_string = "samples:\n"
@@ -116,8 +109,7 @@ def generate_config_file(samples, args):
         workflow_path_line = f"workflow_path: {sys.path[0]}\n"
         f.write(workflow_path_line)
 
-        job_id = define_job_id(args)
-        output_line = f"output: {args['output']}/{job_id}/\n"
+        output_line = f"output: {args['output']}/{run_name}/\n"
         f.write(output_line)
 
         if args["data_type"] == "illumina":

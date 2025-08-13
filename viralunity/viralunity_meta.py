@@ -8,7 +8,7 @@ Filipe Moreira - 2024/09/21
 
 import os
 from snakemake import snakemake
-from viralunity.viralunity.viralunity_consensus import validate_sample_sheet, define_job_id
+from viralunity.viralunity.viralunity_consensus import validate_sample_sheet
 
 def validate_args(args):
 
@@ -40,6 +40,8 @@ def validate_args(args):
 
 def generate_config_file(samples, args):
     data_type = args["data_type"]
+    run_name = args["run_name"]
+    
     os.makedirs(os.path.dirname(args["config_file"]), exist_ok=True)
 
     with open(args["config_file"], "w") as f:
@@ -67,7 +69,7 @@ def generate_config_file(samples, args):
         threads_line = f"threads: {str(args['threads'])}\n"
         f.write(threads_line)
 
-        output_line = f"output: {args['output']}/{define_job_id(args)}/\n"
+        output_line = f"output: {args['output']}/{run_name}/\n"
         f.write(output_line)
 
         if data_type == "illumina":
