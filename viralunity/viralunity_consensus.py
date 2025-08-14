@@ -15,7 +15,7 @@ from snakemake import snakemake
 def validate_args(args):
 
     samples = None
-    if os.path.isfile(args["sample_sheet"]):
+    if args["sample_sheet"] is not None and os.path.isfile(args["sample_sheet"]):
         sample_sheet = args["sample_sheet"]
         samples = validate_sample_sheet(sample_sheet, args)
     else:

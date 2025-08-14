@@ -21,14 +21,13 @@ def get_classification_filter():
 my_filter = get_classification_filter()     
 
 rule run_kraken2:
-    input:
-        get_map_input_fastqs
     output:
         report = config['output'] + "metagenomics/taxonomic_assignments/results/{sample}.report.txt",
         outfile = config['output'] + "metagenomics/taxonomic_assignments/results/{sample}.output.txt",
     threads: 2
     params:
-        database = config['kraken2_database']
+        database = config['kraken2_database'],
+        fatq_files = get_map_input_fastqs
     log:
         config['output'] + "logs/kraken2/{sample}.log"
     benchmark:
@@ -36,7 +35,7 @@ rule run_kraken2:
     shell:
         "kraken2 --db {params.database} --threads {threads} --report-minimizer-data "
         "--minimum-hit-group 3 --report {output.report} "
-        "--output {output.outfile} {input} 2> {log}"
+        "--output {output.outfile} {params.fatq_files} 2> {log}"
 
 rule clean_kraken2_output:
     input:
