@@ -115,7 +115,7 @@ def main(args):
     workflow_path = os.path.join(thisdir, 'scripts',f"metagenomics_{args['data_type']}.smk")
 
     successful = snakemake(
-        workflow_path, configfiles=[config], cores=cores, targets=[target_rule]
+        workflow_path, configfiles=[config], cores=cores, targets=[target_rule], forceall=True
     )
 
     return 0 if successful else 1
