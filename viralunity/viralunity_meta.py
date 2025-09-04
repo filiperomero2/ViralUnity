@@ -99,6 +99,9 @@ def generate_config_file(samples, args):
 
 def main(args):
     samples = validate_args(args)
+    if(samples is None or len(samples) == 0):
+        print("No samples were provided.")
+        return 0
     generate_config_file(samples, args)
     
     
@@ -113,9 +116,14 @@ def main(args):
     thisdir = os.path.abspath(os.path.dirname(__file__))
     
     workflow_path = os.path.join(thisdir, 'scripts',f"metagenomics_{args['data_type']}.smk")
-
     successful = snakemake(
-        workflow_path, configfiles=[config], cores=cores, targets=[target_rule], forceall=True
+        workflow_path, 
+        configfiles=[config], 
+        cores=cores, 
+        targets=[target_rule], 
+        forceall=True, 
+        lock=False, 
+        workdir=os.path.dirname(args["config_file"]),
     )
 
     return 0 if successful else 1
