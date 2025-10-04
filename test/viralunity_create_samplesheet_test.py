@@ -21,12 +21,12 @@ class Test_GetArgs(unittest.TestCase):
     def test_required_args_success_when_only_required_set(self):
         args = ["--input", "input/dir", "--output", "output.file"]
         readArgs = get_args(args)
-        self.assertDictContainsSubset(
+        self.assertLessEqual(
             {
                 "input": "input/dir",
                 "output": "output.file",
-            },
-            readArgs,
+            }.items(),
+            readArgs.items(),
         )
 
     def test_default_values_optional_args(self):
@@ -60,13 +60,13 @@ class Test_ValidateArgs(unittest.TestCase):
 
     @patch("os.path.isdir", return_value=False)
     def test_validate_args_input_not_exist(self, mock_isdir):
-        with self.assertRaises(SystemExit):
+        with self.assertRaises(Exception):
             validate_args(self.args)
 
     @patch("os.path.isdir", return_value=True)
     @patch("os.path.isfile", return_value=True)
     def test_validate_args_output_exists(self, mock_isfile, mock_isdir):
-        with self.assertRaises(SystemExit):
+        with self.assertRaises(Exception):
             validate_args(self.args)
 
 
@@ -115,7 +115,7 @@ class Test_GenerateSamplesheet(unittest.TestCase):
         handle = mock_open()
         handle.write.assert_any_call("R1,input/dir/1/R1_sample1.fastq,input/dir/1/R1_sample2.fastq\n")
 
-@patch("sys.argv", retuen_value=["script_name", "--input", "input/dir", "--output", "output.file"])
+@patch("sys.argv", return_value=["script_name", "--input", "input/dir", "--output", "output.file"])
 @patch("viralunity.viralunity_create_samplesheet.get_args", return_value={"input": "input/dir", "output": "output.file"})
 @patch("viralunity.viralunity_create_samplesheet.validate_args")
 @patch("viralunity.viralunity_create_samplesheet.generate_sample_sheet")

@@ -12,7 +12,7 @@ To enable ViralUnity, clone the repo and create the environment:
 
     git clone https://github.com/filiperomero2/ViralUnity.git
     cd viralunity/
-    conda create -n viralunity
+    conda create -n viralunity python=3.11
     conda activate viralunity
     conda env update -n viralunity --file environment.yml
     pip install .

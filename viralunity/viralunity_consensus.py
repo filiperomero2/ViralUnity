@@ -9,7 +9,6 @@ Filipe Moreira - 2024/09/21
 import os
 import sys
 import pandas as pd
-import datetime
 from snakemake import snakemake
 
 def validate_args(args):
@@ -80,6 +79,9 @@ def validate_sample_sheet(sample_sheet, args):
 def generate_config_file(samples, args):
     data_type = args["data_type"]
     run_name = args["run_name"]
+    
+    os.makedirs(os.path.dirname(args["config_file"]), exist_ok=True)
+    
     with open(args["config_file"], "w") as f:
 
         samples_string = "samples:\n"

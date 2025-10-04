@@ -5,7 +5,6 @@ import pandas as pd
 from viralunity.viralunity_consensus import (
     validate_args,
     validate_sample_sheet,
-    define_job_id,
     generate_config_file,
     main,
 )
@@ -175,8 +174,7 @@ class Test_GenerateConfigFIle(unittest.TestCase):
         }
     
     @patch("builtins.open", new_callable=unittest.mock.mock_open)
-    @patch("viralunity.viralunity_consensus.define_job_id", return_value="job_id")
-    def test_generate_config_file_illumina(self, mock_define_job_id, mock_open):
+    def test_generate_config_file_illumina(self, mock_open):
         self.args['data_type'] = 'illumina'
         self.samples = {
             "sample1": ["R1_sample1.fastq", "R2_sample1.fastq"],
@@ -196,14 +194,13 @@ class Test_GenerateConfigFIle(unittest.TestCase):
         handle.write.assert_any_call("minimum_depth: 5\n")
         handle.write.assert_any_call("threads: 1\n")
         handle.write.assert_any_call(f"workflow_path: {sys.path[0]}\n")
-        handle.write.assert_any_call("output: output_dir/job_id/\n")
+        handle.write.assert_any_call("output: output_dir/run_name/\n")
         handle.write.assert_any_call("adapters: adapters.fasta\n")
         handle.write.assert_any_call("minimum_length: 50\n")
         handle.write.assert_any_call("trim: 0\n")
         
     @patch("builtins.open", new_callable=unittest.mock.mock_open)
-    @patch("viralunity.viralunity_consensus.define_job_id", return_value="job_id")    
-    def test_generate_config_file_nanopore(self, mock_define_job_id, mock_open):
+    def test_generate_config_file_nanopore(self, mock_open):
         self.args['data_type'] = 'nanopore'
         self.samples = {
             "sample1": ["R1_sample1.fastq"],
@@ -223,7 +220,7 @@ class Test_GenerateConfigFIle(unittest.TestCase):
         handle.write.assert_any_call("minimum_depth: 5\n")
         handle.write.assert_any_call("threads: 1\n")
         handle.write.assert_any_call(f"workflow_path: {sys.path[0]}\n")
-        handle.write.assert_any_call("output: output_dir/job_id/\n")  
+        handle.write.assert_any_call("output: output_dir/run_name/\n")  
         
 class Test_MainFunction(unittest.TestCase):
     @patch("viralunity.viralunity_consensus.validate_args", return_value={})
