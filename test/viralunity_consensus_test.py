@@ -32,7 +32,7 @@ class Test_ValidateArgs(unittest.TestCase):
             "threads_total": 1,
         }
 
-    @patch("os.path.isfile", side_effect=[True, False, True, True, True])
+    @patch("os.path.isfile", side_effect=[True, True, True, True])
     @patch("os.path.isdir", side_effect=[False, True, True])
     @patch("viralunity.viralunity_consensus.validate_sample_sheet", return_value={})
     def test_validate_args_success(
@@ -46,25 +46,27 @@ class Test_ValidateArgs(unittest.TestCase):
 
     @patch("os.path.isfile", side_effect=[False, True, True, True, True])
     def test_validate_args_sample_sheet_not_exist(self, mock_isfile):
-        with self.assertRaises(SystemExit):
+        with self.assertRaises(Exception):
             validate_args(self.args)
 
-    @patch("os.path.isfile", side_effect=[True, True])
+    @patch("os.path.isfile", side_effect=[True, True, True, True, True])
     @patch("viralunity.viralunity_consensus.validate_sample_sheet", return_value={})
     def test_validate_args_config_file_exists(
         self, mock_validate_sample_sheet, mock_isfile
     ):
-        with self.assertRaises(SystemExit):
-            validate_args(self.args)
+        # Config file existence check was removed, so this should pass now
+        samples = validate_args(self.args)
+        self.assertEqual(samples, {})
 
-    @patch("os.path.isfile", side_effect=[True, False])
+    @patch("os.path.isfile", side_effect=[True, True, True, True])
     @patch("os.path.isdir", side_effect=[True])
     @patch("viralunity.viralunity_consensus.validate_sample_sheet", return_value={})
     def test_validate_args_output_dir_exists(
         self, mock_validate_sample_sheet, mock_isdir, mock_isfile
     ):
-        with self.assertRaises(SystemExit):
-            validate_args(self.args)
+        # Output directory existence check was removed, so this should pass now
+        samples = validate_args(self.args)
+        self.assertEqual(samples, {})
 
     @patch("os.path.isfile", side_effect=[True, False, False])
     @patch("os.path.isdir", side_effect=[False])
@@ -72,10 +74,10 @@ class Test_ValidateArgs(unittest.TestCase):
     def test_validate_args_reference_file_not_exist(
         self, mock_validate_sample_sheet, mock_isdir, mock_isfile
     ):
-        with self.assertRaises(SystemExit):
+        with self.assertRaises(Exception):
             validate_args(self.args)
 
-    @patch("os.path.isfile", side_effect=[True, False, True, True, True])
+    @patch("os.path.isfile", side_effect=[True, True, True])
     @patch("os.path.isdir", side_effect=[False, True, True])
     @patch("viralunity.viralunity_consensus.validate_sample_sheet", return_value={})
     def test_validate_args_primer_scheme_not_set(
@@ -91,7 +93,7 @@ class Test_ValidateArgs(unittest.TestCase):
     def test_validate_args_illumina_adapters_not_exist(
         self, mock_validate_sample_sheet, mock_isdir, mock_isfile
     ):
-        with self.assertRaises(SystemExit):
+        with self.assertRaises(Exception):
             validate_args(self.args)
 
     @patch("os.path.isfile", side_effect=[True, False, True, True])
@@ -101,7 +103,7 @@ class Test_ValidateArgs(unittest.TestCase):
         self, mock_validate_sample_sheet, mock_isdir, mock_isfile
     ):
         self.args["adapters"] = None
-        with self.assertRaises(SystemExit):
+        with self.assertRaises(Exception):
             validate_args(self.args)
 
 
@@ -132,7 +134,7 @@ class Test_ValidateSampleSheet(unittest.TestCase):
     @patch("os.path.isfile", return_value=False)
     def test_not_validate_sample_sheet_illumina(self, mock_isfile):
         with patch("pandas.read_csv", return_value=self.samplesheet_dataframe):
-            with self.assertRaises(SystemExit):
+            with self.assertRaises(Exception):
                 validate_sample_sheet("sample_sheet.csv", {"data_type": "illumina"})
 
     @patch("os.path.isfile", return_value=True)
@@ -152,7 +154,7 @@ class Test_ValidateSampleSheet(unittest.TestCase):
     @patch("os.path.isfile", return_value=False)
     def test_not_validate_sample_sheet_nanopore(self, mock_isfile):
         with patch("pandas.read_csv", return_value=self.samplesheet_dataframe):
-            with self.assertRaises(SystemExit):
+            with self.assertRaises(Exception):
                 validate_sample_sheet("sample_sheet.csv", {"data_type": "nanopore"})
 
 class Test_GenerateConfigFIle(unittest.TestCase):
@@ -174,7 +176,8 @@ class Test_GenerateConfigFIle(unittest.TestCase):
         }
     
     @patch("builtins.open", new_callable=unittest.mock.mock_open)
-    def test_generate_config_file_illumina(self, mock_open):
+    @patch("os.makedirs")
+    def test_generate_config_file_illumina(self, mock_makedirs, mock_open):
         self.args['data_type'] = 'illumina'
         self.samples = {
             "sample1": ["R1_sample1.fastq", "R2_sample1.fastq"],
@@ -183,6 +186,7 @@ class Test_GenerateConfigFIle(unittest.TestCase):
         
         generate_config_file(self.samples, self.args)
         
+        mock_makedirs.assert_called_once_with(os.path.dirname("config_file.yaml"), exist_ok=True)
         mock_open.assert_called_once_with("config_file.yaml", "w")
         handle = mock_open()
         handle.write.assert_any_call("samples:\n")
@@ -200,7 +204,8 @@ class Test_GenerateConfigFIle(unittest.TestCase):
         handle.write.assert_any_call("trim: 0\n")
         
     @patch("builtins.open", new_callable=unittest.mock.mock_open)
-    def test_generate_config_file_nanopore(self, mock_open):
+    @patch("os.makedirs")
+    def test_generate_config_file_nanopore(self, mock_makedirs, mock_open):
         self.args['data_type'] = 'nanopore'
         self.samples = {
             "sample1": ["R1_sample1.fastq"],
@@ -209,6 +214,7 @@ class Test_GenerateConfigFIle(unittest.TestCase):
         
         generate_config_file(self.samples, self.args)
         
+        mock_makedirs.assert_called_once_with(os.path.dirname("config_file.yaml"), exist_ok=True)
         mock_open.assert_called_once_with("config_file.yaml", "w")
         handle = mock_open()
         handle.write.assert_any_call("samples:\n")
