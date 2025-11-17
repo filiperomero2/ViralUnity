@@ -64,7 +64,7 @@ rule infer_consensus_sequence:
     benchmark:
         config['output'] + "logs/samtools/consensus/{sample}.benchmark.txt"
     shell:
-        "samtools consensus -a -d {params.minimum_depth} -m simple -q -c 0.75  -X r10.4_sup --show-ins yes {input.mapped_reads} -o {output}"
+        "samtools consensus -a -d {params.minimum_depth} -m simple -q -c 0.75 --show-ins yes {input.mapped_reads} -o {output}"
 
 
 rule calculate_coverage_basewise:
