@@ -4,7 +4,7 @@ import os
 from typing import Dict, Any, List
 import pandas as pd
 
-from viralunity.exceptions import (
+from viralunity.viralunity.exceptions import (
     Kraken2DatabaseNotFoundError,
     KronaDatabaseNotFoundError,
     ValidationError,
@@ -15,7 +15,7 @@ from viralunity.exceptions import (
     ReferenceNotFoundError,
     PrimerSchemeNotFoundError
 )
-from viralunity.constants import DataType
+from viralunity.viralunity.constants import DataType
 
 
 def validate_file_exists(file_path: str, description: str = "File") -> None:

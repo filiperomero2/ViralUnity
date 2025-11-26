@@ -11,14 +11,14 @@ import logging
 from typing import Dict, Any
 from snakemake import snakemake
 
-from viralunity.validators import (
+from viralunity.viralunity.validators import (
     get_samples_from_args,
     validate_illumina_requirements,
     validate_metagenomics_requirements
 )
-from viralunity.config_generator import ConfigGenerator
-from viralunity.exceptions import ValidationError
-from viralunity.constants import DataType
+from viralunity.viralunity.config_generator import ConfigGenerator
+from viralunity.viralunity.exceptions import ValidationError
+from viralunity.viralunity.constants import DataType
 
 # Set up logging
 logger = logging.getLogger(__name__)
