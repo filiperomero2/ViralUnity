@@ -4,8 +4,8 @@ import os
 from typing import Dict, List, Any
 import yaml
 
-from viralunity.viralunity.constants import ConfigKeys, DataType
-from viralunity.viralunity.exceptions import ConfigurationError
+from viralunity.constants import ConfigKeys, DataType
+from viralunity.exceptions import ConfigurationError
 
 
 class ConfigGenerator:
