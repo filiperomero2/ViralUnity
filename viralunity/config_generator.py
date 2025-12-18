@@ -133,7 +133,9 @@ class ConfigGenerator:
         Raises:
             ConfigurationError: If config directory cannot be created
         """
-        os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
+        config_dir = os.path.dirname(self.config_path)
+        if config_dir:  # Only create directory if path contains a directory component
+            os.makedirs(config_dir, exist_ok=True)
         
         try:
             with open(self.config_path, 'w') as f:

@@ -64,6 +64,7 @@ coverage.xml
 
 # Project specific
 ./DATA
+data/
 input/
 output/
 output-*/
