@@ -31,6 +31,8 @@ host_filtering_enabled = config.get("host_reference", "NA") != "NA"
 
 rule all:
     input:
+        kraken2_reads=config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_metagenomics_summary.txt"
+            if config.get('run_kraken2_reads', False) else [],
         kraken2_contigs=config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/kraken2_contigs_metagenomics_summary.txt"
             if config.get('run_kraken2', False) and config.get('run_denovo_assembly', False) else [],
         diamond_contigs=config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_metagenomics_summary.txt"
@@ -112,6 +114,90 @@ else:
             """
 
 ##############################################
+# Reads analyses
+##############################################
+
+##############################################
+# Kraken2 on reads
+##############################################
+
+rule run_kraken2_reads:
+    input:
+        fastq = get_final_input_fastq
+    output:
+        report = config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/results/{sample}.report.txt",
+        outfile = config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/results/{sample}.output.txt",
+    threads: config["threads"]
+    params:
+        database = config['kraken2_database']
+    log:
+        config['output'] + "logs/kraken2_reads/{sample}.log"
+    benchmark:
+        config['output'] + "logs/kraken2_reads/{sample}.benchmark.txt"
+    shell:
+        r"""
+        set -euo pipefail
+        mkdir -p $(dirname {output.report})
+        mkdir -p $(dirname {log})
+
+        if [ ! -s {input.fastq} ]; then
+            echo "WARNING: {input.fastq} missing or empty. Creating dummy Kraken2 READS outputs." > {log}
+            : > {output.report}
+            : > {output.outfile}
+        else
+            kraken2 --db {params.database} --threads {threads} --report-minimizer-data \
+                --minimum-hit-group 3 --report {output.report} \
+                --output {output.outfile} {input.fastq} 2> {log}
+        fi
+        """
+
+rule create_krona_input_from_kraken2_reads:
+    input:
+        config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/results/{sample}.output.txt"
+    output:
+        config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/results/{sample}.output.krona.txt"
+    params:
+        keep_columns = [1, 2],
+        taxid_column = 1,
+        exclude_taxids = EXCLUDE_TAXIDS
+    script:
+        "scripts/filter_taxids.py"
+
+rule create_krona_report_from_kraken2_reads:
+    input:
+        config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/results/{sample}.output.krona.txt"
+    output:
+        config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/reports/{sample}.output.krona.html"
+    params:
+        krona_database = config['krona_database']
+    log:
+        config['output'] + "logs/krona_kraken2_reads/{sample}.log"
+    benchmark:
+        config['output'] + "logs/krona_kraken2_reads/{sample}.benchmark.txt"
+    shell:
+        r"""
+        set -euo pipefail
+        if [ -s {input} ]; then
+            ktImportTaxonomy {input} -tax {params.krona_database} -o {output} 2> {log}
+        else
+            echo "Empty krona input file detected (kraken2 reads). No visualization will be created (only a dummy file)." > {log}
+            : > {output}
+        fi
+        """
+rule summarize_kraken2_reads:
+    input:
+        expand(config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/reports/{sample}.output.krona.html", sample=config["samples"])
+    output:
+        config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_metagenomics_summary.txt"
+    params:
+        path = config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/results/"
+    shell:
+        r"""
+        echo "file,percentage_of_reads,number_of_reads_rooted,number_of_reads_direct,number_of_k-mers,number_of_distinct_k-mers,rank_code,ncbi_taxid,taxon" > {output}
+        grep "viridae" {params.path}*report.txt | sed -E "s/[	| |:]+/,/g" | sed "s/.*results\///" | sed "s/.report.txt//" >> {output} || true
+        """
+
+##############################################
 # Create diamond database
 ##############################################
 
@@ -129,7 +215,7 @@ rule create_diamond_db:
 
 
 ##############################################
-# Assembly with MEGAHIT
+# De novo Assembly with MEGAHIT
 ##############################################
 
 rule run_megahit:
@@ -161,6 +247,10 @@ rule run_megahit:
         """
 
 ##############################################
+# Contigs analyses
+##############################################
+
+##############################################
 # Kraken2 on contigs
 ##############################################
 
@@ -190,22 +280,17 @@ rule run_kraken2_contigs:
         fi
         """
 
-##############################################
-# Krona report from Kraken2 contigs analysis
-##############################################
-
 rule create_krona_input_from_kraken2_contigs:
     input:
         config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/results/{sample}.output.txt"
     output:
         config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/results/{sample}.output.krona.txt"
     params:
-        keep_columns = [1, 2],   # equivalent to cut -f 2,3
-        taxid_column = 1,        # after slicing, taxid becomes column 0
+        keep_columns = [1, 2],
+        taxid_column = 1,
         exclude_taxids = EXCLUDE_TAXIDS
     script:
         "scripts/filter_taxids.py"
-
 
 rule create_krona_report_from_kraken2_contigs:
     input:
@@ -227,6 +312,17 @@ rule create_krona_report_from_kraken2_contigs:
             touch {output};
         fi
         """
+rule summarize_kraken2_contigs:
+    input:
+        expand(config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/reports/{sample}.output.krona.html", sample=config["samples"])
+    output:
+        config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/kraken2_contigs_metagenomics_summary.txt"
+    params:
+        path = config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/results/"
+    shell:
+        "echo \"file,percentage_of_reads,number_of_reads_rooted,number_of_reads_direct,number_of_k-mers,number_of_distinct_k-mers,rank_code,ncbi_taxid,taxon\" > {output}; "
+        "grep \"viridae\" {params.path}*report.txt | sed -E \"s/[	| |:]+/,/g\" |  sed  \"s/.*results\\///\" | sed \"s/.report.txt//\" >> {output}; "
+
 
 ##############################################
 # Diamond on contigs
@@ -259,9 +355,6 @@ rule run_diamond_contigs:
         fi
         """
 
-################################################
-# Trim viral regions from contigs (DIAMOND hits)
-################################################
 rule trim_diamond_contig_regions:
     input:
         fasta   = rules.run_megahit.output.contigs,
@@ -277,10 +370,6 @@ rule trim_diamond_contig_regions:
     script:
         "scripts/parse_diamond_trim_fasta.py"
 
-
-############################################################
-# Run Medaka on trimmed viral contig regions
-############################################################
 rule medaka_consensus_trimmed:
     input:
         # host-filtered Nanopore reads
@@ -316,10 +405,6 @@ rule medaka_consensus_trimmed:
         fi
         """
 
-
-############################################################
-# samtools: sort, index, and idxstats on Medaka BAM
-############################################################
 rule bam_sort_index_idxstats:
     input:
         fasta = config["output"] + "medaka/{sample}/viral_consensus.fasta",
@@ -363,10 +448,6 @@ rule bam_sort_index_idxstats:
         
         """
 
-
-############################################################
-# Filter DIAMOND table by read support (idxstats)
-############################################################
 rule diamond_filter_by_idxstats:
     input:
         diamond  = config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/results/{sample}.diamond.tsv",
@@ -381,11 +462,6 @@ rule diamond_filter_by_idxstats:
         config["output"] + "logs/diamond_filter/{sample}.benchmark.txt"
     script:
         "scripts/filter_diamond_by_idxstats.py"
-
-
-##############################################
-# Krona report from Diamond contigs analysis
-##############################################
 
 rule create_krona_input_from_diamond_contigs:
     input:
@@ -445,22 +521,6 @@ rule annotate_diamond_taxonomy:
         taxdump = config['taxdump']
     script:
         "scripts/annotate_diamond_taxonomy.py"
-
-
-##############################################
-# Summary for contigs analyses
-##############################################
-
-rule summarize_kraken2_contigs:
-    input:
-        expand(config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/reports/{sample}.output.krona.html", sample=config["samples"])
-    output:
-        config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/kraken2_contigs_metagenomics_summary.txt"
-    params:
-        path = config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/results/"
-    shell:
-        "echo \"file,percentage_of_reads,number_of_reads_rooted,number_of_reads_direct,number_of_k-mers,number_of_distinct_k-mers,rank_code,ncbi_taxid,taxon\" > {output}; "
-        "grep \"viridae\" {params.path}*report.txt | sed -E \"s/[	| |:]+/,/g\" |  sed  \"s/.*results\\///\" | sed \"s/.report.txt//\" >> {output}; "
 
 rule summarize_diamond_contigs:
     input:

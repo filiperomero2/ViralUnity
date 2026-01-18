@@ -166,10 +166,13 @@ def validate_metagenomics_requirements(args: Dict[str, Any]) -> None:
         ValidationError: If metagenomics requirements are not met
     """
     pipeline = args.get("pipeline", "v1")
-    run_kraken2 = bool(args.get("run_kraken2", False))
+    
+    run_kraken2_contigs = bool(args.get("run_kraken2", False))
+    run_kraken2_reads = bool(args.get("run_kraken2_reads", False))
+    run_kraken2_any = run_kraken2_contigs or run_kraken2_reads
 
     # Kraken2 DB is required for v1, and only required for v2 if Kraken2 is enabled
-    if pipeline == "v1" or (pipeline == "v2" and run_kraken2):
+    if pipeline == "v1" or (pipeline == "v2" and run_kraken2_any):
         kraken2_db = args.get("kraken2_database")
         if not kraken2_db:
             raise Kraken2DatabaseNotFoundError("Kraken2 database directory is required")
@@ -178,7 +181,33 @@ def validate_metagenomics_requirements(args: Dict[str, Any]) -> None:
         except FileNotFoundError as e:
             raise Kraken2DatabaseNotFoundError(f"Kraken2 database directory does not exist: {e}")
 
-    
+    if pipeline == "v2" and run_kraken2_contigs and not bool(args.get("run_denovo_assembly", False)):
+        raise ValidationError(
+            "--run-kraken2 runs on contigs and requires --run-denovo-assembly. "
+            "If you want Kraken2 on reads, use --run-kraken2-reads."
+        )
+
+    # v2: if DIAMOND contigs analysis is enabled, require its resources
+    if pipeline == "v2" and bool(args.get("run_diamond", False)):
+        required = {
+            "diamond_database": "DIAMOND database FASTA (--diamond-database)",
+            "taxdump": "NCBI taxdump directory (--taxdump)",
+            "assembly_summary": "RefSeq assembly summary (--assembly-summary)",
+            "taxid_to_family": "taxid-to-family mapping (--taxid-to-family)",
+        }
+
+        missing = []
+        for key, label in required.items():
+            val = args.get(key)
+            if not val or str(val).strip().upper() == "NA":
+                missing.append(label)
+
+        if missing:
+            raise ValidationError(
+                "DIAMOND contigs analysis was requested, but required inputs are missing:\n- "
+                + "\n- ".join(missing)
+            )
+
     krona_db = args.get("krona_database")
     if not krona_db:
         raise KronaDatabaseNotFoundError("Krona database directory is required")

@@ -7,21 +7,23 @@ threads: 2
 run_denovo_assembly: true
 run_kraken2: false
 run_diamond: true
+run_kraken2_reads: false
+run_diamond_reads: false
 
 # host filtering
 host_reference: "NA"   # or path to .fasta
 
 # tools/dbs
-kraken2_database: ""
-krona_database: ""
-diamond_database: ""
+kraken2_database: "NA"
+krona_database: "NA"
+diamond_database: "NA"
 diamond_sensitivity: "sensitive"
 evalue: 1e-5
 
 # taxonomy resources for your scripts
-taxdump: ""
-assembly_summary: ""
-taxid_to_family: ""
+taxdump: "NA"
+assembly_summary: "NA"
+taxid_to_family: "NA"
 
 # filtering
 remove_human_reads: false
