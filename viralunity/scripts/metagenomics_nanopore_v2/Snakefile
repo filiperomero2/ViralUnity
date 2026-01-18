@@ -2,19 +2,23 @@
 # Set helper functions and variables
 ##############################################
 
-def get_classification_filter():
-    if config['remove_human_reads'] and config['remove_unclassified_reads']:
-        my_filter = "\t9606|\t0"
-    if not config['remove_human_reads'] and config['remove_unclassified_reads']:
-        my_filter = "\t0"
-    if config['remove_human_reads'] and not config['remove_unclassified_reads']:
-        my_filter = "\t9606"
-    if not config['remove_human_reads'] and not config['remove_unclassified_reads']:
-        my_filter = " "
-    print(my_filter)
-    return(my_filter)
+def get_exclude_taxids():
+    """
+    TaxIDs to exclude from classification outputs / krona inputs.
+    - 9606: Homo sapiens
+    - 0: unclassified
+    """
+    exclude = []
+    if config.get("remove_human_reads", False):
+        exclude.append("9606")
+    if config.get("remove_unclassified_reads", False):
+        exclude.append("0")
+    return exclude
 
-my_filter = get_classification_filter()     
+EXCLUDE_TAXIDS = get_exclude_taxids()
+
+print(f"[metagenomics_nanopore_v2] Excluding taxids: {EXCLUDE_TAXIDS}")
+
 
 def get_final_input_fastq(wildcards):
     return config["output"] + f"host_filtered/{wildcards.sample}.filtered.fastq"
@@ -177,9 +181,12 @@ rule create_krona_input_from_kraken2_contigs:
     output:
         config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/results/{sample}.output.krona.txt"
     params:
-        to_rm = my_filter
-    shell:
-        "cat {input} | cut -f 2,3 | egrep -v \"{params.to_rm}\" > {output} || true"
+        keep_columns = [1, 2],   # equivalent to cut -f 2,3
+        taxid_column = 1,        # after slicing, taxid becomes column 0
+        exclude_taxids = EXCLUDE_TAXIDS
+    script:
+        "scripts/filter_taxids.py"
+
 
 rule create_krona_report_from_kraken2_contigs:
     input:
@@ -379,9 +386,10 @@ rule filter_krona_input_from_diamond_contigs:
     output:
         config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/results/{sample}.diamond.supported.krona_input.tsv"
     params:
-        to_rm = my_filter
-    shell:
-        "cat {input} | egrep -v \"{params.to_rm}\" > {output}  || true"
+        taxid_column = 1,
+        exclude_taxids = EXCLUDE_TAXIDS
+    script:
+        "scripts/filter_taxids.py"
 
 rule create_krona_report_diamond_contigs:
     input:
