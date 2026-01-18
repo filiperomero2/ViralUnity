@@ -58,7 +58,8 @@ if host_filtering_enabled:
         benchmark:
             config['output'] + "logs/remove_host/host_genome_indexing.benchmark.txt"
         shell:
-            """
+            r"""
+            set -euo pipefail
             minimap2 -d {output.index} {input.fasta} > {log} 2>&1
             """
 
@@ -73,15 +74,22 @@ if host_filtering_enabled:
             config["output"] + "logs/remove_host/{sample}.log"
         benchmark:
             config["output"] + "logs/remove_host/{sample}.benchmark.txt"
-        params:
-            temp_file = temp(config["output"] + "host_filtered/tmp")
         shell:
-            """
-            # Do not forget to fix this here - cases where no read remains.
-            #minimap2 --split-prefix {params.temp_file} -t {threads} -ax map-ont {input.index} {input.reads} |
-            minimap2 -t {threads} -ax map-ont {input.index} {input.reads} |
-            samtools view -@ {threads} -f 4 -b - |
-            samtools fastq -@ {threads} - > {output.filtered} 2> {log}
+            r"""
+            set -euo pipefail
+            mkdir -p $(dirname {output.filtered})
+
+            # Keep only UNMAPPED reads after alignment to host reference.
+            minimap2 -t {threads} -ax map-ont {input.index} {input.reads} 2>> {log} \
+              | samtools view -@ {threads} -u -f 4 - 2>> {log} \
+              | samtools fastq -@ {threads} - 2>> {log} \
+              > {output.filtered}
+
+            # Robustness: if all reads were host, output will be empty.
+            if [ ! -s {output.filtered} ]; then
+                echo "WARNING: No reads remained after host filtering for sample {wildcards.sample}." >> {log}
+                # Leave empty FASTQ in place; downstream rules will handle it.
+            fi
             """
 
 else:
@@ -90,13 +98,15 @@ else:
         input:
             reads = lambda wildcards: config["samples"][wildcards.sample],
         output:
-            filtered = temp(config["output"] + "host_filtered/{sample}.filtered.fastq")
+            filtered = config["output"] + "host_filtered/{sample}.filtered.fastq"
         log:
             config["output"] + "logs/remove_host/{sample}.log"
         benchmark:
             config["output"] + "logs/remove_host/{sample}.benchmark.txt"
         shell:
-            """
+            r"""
+            set -euo pipefail
+            mkdir -p $(dirname {output.filtered})
             cp {input.reads} {output.filtered}
             echo "No host genome provided — skipping host read removal." > {log}
             """
@@ -136,9 +146,18 @@ rule run_megahit:
         prefix_temp = config['output'] + "denovo_assembly/megahit/temp_{sample}",
         prefix_final = config['output'] + "denovo_assembly/megahit/{sample}"
     shell:
-        """
-        megahit -r {input.fastq} -o {params.prefix_temp} --num-cpu-threads {threads} > {log} 2>&1;
-        mv -T {params.prefix_temp} {params.prefix_final}  
+        r"""
+        set -euo pipefail
+
+        # If host filtering removed everything (or input was empty), skip assembly gracefully.
+        if [ ! -s {input.fastq} ]; then
+            echo "WARNING: Input FASTQ is empty for sample {wildcards.sample}. Skipping MEGAHIT." > {log}
+            mkdir -p {params.prefix_final}
+            : > {output.contigs}
+        else
+            megahit -r {input.fastq} -o {params.prefix_temp} --num-cpu-threads {threads} > {log} 2>&1
+            mv -T {params.prefix_temp} {params.prefix_final}
+        fi
         """
 
 ##############################################
