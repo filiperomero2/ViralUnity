@@ -96,22 +96,22 @@ For krona, a standard outdated taxonomic database is installed in the conda envi
 
 The core script is called viralunity_meta.py and accepts several arguments:
 
-     --data-type                   Sequencing data type (illumina or nanopore)
-     --sample-sheet                Complete path for a csv file with samples data paths and metadata
-     --config-file                 Complete path for input (viralunity config) file to be created.
-     --output                      Complete path for output directory to be created by viralunity.
-     --run-name                    Name for the sequencing run (optional).
-     --kraken2-database            Complete path for the kraken2 database directory
-     --krona-database              Complete path for the krona taxonomic database
-     --adapters                    Complete path for adapter sequences in fasta format (Illumina QC)
-     --minimum-read-length         Minimum read length threshold (Default = 50) (Illumina QC)
-     --trim                        Number of bases to trim from the 5' end of reads (Default = 0) (Illumina QC)
-     --remove-human-reads          Remove human reads from krona plot (boolean)
-     --remove-unclassified-reads   Remove unclassified reads from krona plot (boolean)
-     --create-config-only          Only create config file, not running the workflow (boolean)
-     --threads                     Number of available threads for individual tasks (Default = 1)
-     --threads-total               Number of available threads for the entire workflow (Default = 1)
-     -h, --help                    Show this help message and exit
+     --data-type                       Sequencing data type (illumina or nanopore)
+     --sample-sheet                    Complete path for a csv file with samples data paths and metadata
+     --config-file                     Complete path for input (viralunity config) file to be created.
+     --output                          Complete path for output directory to be created by viralunity.
+     --run-name                        Name for the sequencing run (optional).
+     --kraken2-database                Complete path for the kraken2 database directory
+     --krona-database                  Complete path for the krona taxonomic database
+     --adapters                        Complete path for adapter sequences in fasta format (Illumina QC)
+     --minimum-read-length             Minimum read length threshold (Default = 50) (Illumina QC)
+     --trim                            Number of bases to trim from the 5' end of reads (Default = 0) (Illumina QC)
+     --remove-human-sequences          Remove human seqs from krona plot (boolean)
+     --remove-unclassified-sequences   Remove unclassified seqs from krona plot (boolean)
+     --create-config-only              Only create config file, not running the workflow (boolean)
+     --threads                         Number of available threads for individual tasks (Default = 1)
+     --threads-total                   Number of available threads for the entire workflow (Default = 1)
+     -h, --help                        Show this help message and exit
 
 If all paths are correctly set, the script will generate a config file and run the snakemake metagenomics workflow. Briefly, the pipeline will perform data quality control (trimmomatic) (Illumina only), taxonomic assignment (kraken2) and generate visualizations (krona).
 

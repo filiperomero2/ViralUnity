@@ -118,16 +118,30 @@ def fill_arg_parser_meta(subparsers: argparse._SubParsersAction):
     # Medaka
     #meta_parser.add_argument("--medaka-model", default="r941_min_high_g360", help="(v2) Medaka model name.")
 
+    # Preferred (new) names
+    meta_parser.add_argument(
+        "--remove-human-sequences",
+        action="store_true",
+        help="Remove human-associated sequences (contigs or reads) from results",
+    )
+
+    meta_parser.add_argument(
+        "--remove-unclassified-sequences",
+        action="store_true",
+        help="Remove unclassified sequences (taxid 0) from results",
+    )
+
+    # Backward-compatible aliases (hidden from help)
     meta_parser.add_argument(
         "--remove-human-reads",
-        help="Remove human reads from krona plot (boolean)",
         action="store_true",
+        help=argparse.SUPPRESS,
     )
 
     meta_parser.add_argument(
         "--remove-unclassified-reads",
-        help="Remove unclassified reads from krona plot (boolean)",
         action="store_true",
+        help=argparse.SUPPRESS,
     )
 
     meta_parser.add_argument(

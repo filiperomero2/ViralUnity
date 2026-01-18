@@ -76,13 +76,23 @@ def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None
     # Add common settings
     generator.add_output(args["output"], run_name)
     generator.add_threads(args["threads"])
+
+    remove_human = (
+        args.get("remove_human_sequences", False)
+        or args.get("remove_human_reads", False)
+    )
+
+    remove_unclassified = (
+        args.get("remove_unclassified_sequences", False)
+        or args.get("remove_unclassified_reads", False)
+    )
     
     # Add metagenomics-specific settings
     generator.add_metagenomics_settings(
         kraken2_database=args.get("kraken2_database", ""),
         krona_database=args["krona_database"],
-        remove_human_reads=args.get("remove_human_reads", False),
-        remove_unclassified_reads=args.get("remove_unclassified_reads", False)
+        remove_human_reads=remove_human,
+        remove_unclassified_reads=remove_unclassified,
     )
 
     # v2: add extra configuration keys expected by the nanopore v2 workflow
