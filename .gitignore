@@ -70,3 +70,6 @@ output/
 output-*/
 .snakemake/
 viralunity/meta.yaml
+viralunity/scripts/metagenomics_nanopore_v2/config.test.yml
+viralunity/scripts/metagenomics_nanopore_v2/output/
+viralunity/scripts/metagenomics_nanopore_v2/.snakemake/

@@ -165,14 +165,19 @@ def validate_metagenomics_requirements(args: Dict[str, Any]) -> None:
     Raises:
         ValidationError: If metagenomics requirements are not met
     """
-    kraken2_db = args.get("kraken2_database")
-    if not kraken2_db:
-        raise Kraken2DatabaseNotFoundError("Kraken2 database directory is required")
-    
-    try:
-        validate_directory_exists(kraken2_db, "Kraken2 database directory")
-    except FileNotFoundError as e:
-        raise Kraken2DatabaseNotFoundError(f"Kraken2 database directory does not exist: {e}")
+    pipeline = args.get("pipeline", "v1")
+    run_kraken2 = bool(args.get("run_kraken2", False))
+
+    # Kraken2 DB is required for v1, and only required for v2 if Kraken2 is enabled
+    if pipeline == "v1" or (pipeline == "v2" and run_kraken2):
+        kraken2_db = args.get("kraken2_database")
+        if not kraken2_db:
+            raise Kraken2DatabaseNotFoundError("Kraken2 database directory is required")
+        try:
+            validate_directory_exists(kraken2_db, "Kraken2 database directory")
+        except FileNotFoundError as e:
+            raise Kraken2DatabaseNotFoundError(f"Kraken2 database directory does not exist: {e}")
+
     
     krona_db = args.get("krona_database")
     if not krona_db:

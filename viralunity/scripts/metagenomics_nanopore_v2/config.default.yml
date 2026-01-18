@@ -1,0 +1,31 @@
+samples: {}
+data: nanopore
+output: output/
+threads: 2
+
+# toggles
+run_denovo_assembly: true
+run_kraken2: false
+run_diamond: true
+
+# host filtering
+host_reference: "NA"   # or path to .fasta
+
+# tools/dbs
+kraken2_database: ""
+krona_database: ""
+diamond_database: ""
+diamond_sensitivity: "sensitive"
+evalue: 1e-5
+
+# taxonomy resources for your scripts
+taxdump: ""
+assembly_summary: ""
+taxid_to_family: ""
+
+# filtering
+remove_human_reads: false
+remove_unclassified_reads: false
+
+# medaka
+medaka_model: "r941_min_high_g360"

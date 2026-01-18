@@ -79,12 +79,39 @@ def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None
     
     # Add metagenomics-specific settings
     generator.add_metagenomics_settings(
-        kraken2_database=args["kraken2_database"],
+        kraken2_database=args.get("kraken2_database", ""),
         krona_database=args["krona_database"],
         remove_human_reads=args.get("remove_human_reads", False),
         remove_unclassified_reads=args.get("remove_unclassified_reads", False)
     )
-    
+
+    # v2: add extra configuration keys expected by the nanopore v2 workflow
+    if args.get("pipeline", "v1") == "v2":
+        # toggles
+        generator.config["run_denovo_assembly"] = bool(args.get("run_denovo_assembly", False))
+        generator.config["run_kraken2"] = bool(args.get("run_kraken2", False))
+        generator.config["run_diamond"] = bool(args.get("run_diamond", False))
+
+        # host filtering
+        generator.config["host_reference"] = args.get("host_reference", "NA")
+
+        # DIAMOND
+        if args.get("diamond_database"):
+            generator.config["diamond_database"] = args["diamond_database"]
+            generator.config["diamond_sensitivity"] = args.get("diamond_sensitivity", "sensitive")
+            generator.config["evalue"] = args.get("evalue", 1e-10)
+
+        # taxonomy resources
+        if args.get("taxdump"):
+            generator.config["taxdump"] = args["taxdump"]
+        if args.get("assembly_summary"):
+            generator.config["assembly_summary"] = args["assembly_summary"]
+        if args.get("taxid_to_family"):
+            generator.config["taxid_to_family"] = args["taxid_to_family"]
+
+        # medaka
+        #generator.config["medaka_model"] = args.get("medaka_model", "r941_min_high_g360")
+        
     # Add Illumina-specific settings if needed
     if data_type == DataType.ILLUMINA:
         generator.add_illumina_settings(
@@ -111,12 +138,16 @@ def run_snakemake_workflow(args: Dict[str, Any]) -> bool:
     logger.info("Starting Snakemake workflow")
     
     thisdir = os.path.abspath(os.path.dirname(__file__))
-    workflow_path = os.path.join(
-        thisdir,
-        'scripts',
-        f"metagenomics_{args['data_type']}.smk"
-    )
-    
+    pipeline = args.get("pipeline", "v1")
+    data_type = args["data_type"]
+
+    if pipeline == "v2":
+        if data_type != DataType.NANOPORE:
+            raise ValidationError("pipeline v2 is currently only supported for --data-type nanopore")
+        workflow_path = os.path.join(thisdir, "scripts", "metagenomics_nanopore_v2", "Snakefile")
+    else:
+        workflow_path = os.path.join(thisdir, "scripts", f"metagenomics_{data_type}.smk")
+
     if not os.path.isfile(workflow_path):
         raise ValidationError(f"Workflow file not found: {workflow_path}")
     

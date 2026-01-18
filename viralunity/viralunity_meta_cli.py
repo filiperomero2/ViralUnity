@@ -16,6 +16,14 @@ def fill_arg_parser_meta(subparsers: argparse._SubParsersAction):
     )
 
     meta_parser.add_argument(
+        "--pipeline",
+        type=str,
+        help="Metagenomics pipeline version (default: v1). Use v2 for the extended nanopore workflow.",
+        choices=["v1", "v2"],
+        default="v1",
+    )
+
+    meta_parser.add_argument(
         "--sample-sheet",
         help="Complete path for a csv file with samples data paths and metadata",
         required=True,
@@ -78,8 +86,9 @@ def fill_arg_parser_meta(subparsers: argparse._SubParsersAction):
     ## Add meta specific arguments
     meta_parser.add_argument(
         "--kraken2-database",
-        help="Complete path for the kraken2 database directory",
-        required=True,
+        help="Complete path for the kraken2 database directory (required for v1; optional for v2 if run_kraken2 is false)",
+        required=False,
+        default=None,
     )
 
     meta_parser.add_argument(
@@ -87,6 +96,27 @@ def fill_arg_parser_meta(subparsers: argparse._SubParsersAction):
         help="Complete path for the krona taxonomic database",
         required=True,
     )
+
+    # v2 toggles (used by metagenomics_nanopore_v2 workflow)
+    meta_parser.add_argument("--run-denovo-assembly", action="store_true", help="(v2) Run de novo assembly (MEGAHIT).")
+    meta_parser.add_argument("--run-kraken2", action="store_true", help="(v2) Run Kraken2 on contigs.")
+    meta_parser.add_argument("--run-diamond", action="store_true", help="(v2) Run DIAMOND blastx on contigs.")
+
+    # DIAMOND parameters (v2)
+    meta_parser.add_argument("--diamond-database", help="(v2) Path to DIAMOND protein FASTA database used to build .dmnd.")
+    meta_parser.add_argument("--diamond-sensitivity", default="sensitive", help="(v2) DIAMOND sensitivity preset (e.g. sensitive, very-sensitive).")
+    meta_parser.add_argument("--evalue", type=float, default=1e-10, help="(v2) DIAMOND e-value threshold.")
+
+    # Host removal (v2)
+    meta_parser.add_argument("--host-reference", default="NA", help="(v2) Host reference FASTA for dehosting; use NA to disable.")
+
+    # Taxonomy resources used by v2 scripts
+    meta_parser.add_argument("--taxdump", help="(v2) Path to NCBI taxdump directory.")
+    meta_parser.add_argument("--assembly-summary", help="(v2) Path to viral_refseq assembly summary TSV.")
+    meta_parser.add_argument("--taxid-to-family", help="(v2) Path to taxid_to_family CSV.")
+
+    # Medaka
+    #meta_parser.add_argument("--medaka-model", default="r941_min_high_g360", help="(v2) Medaka model name.")
 
     meta_parser.add_argument(
         "--remove-human-reads",

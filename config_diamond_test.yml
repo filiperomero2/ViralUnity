@@ -1,0 +1,20 @@
+samples:
+  sample-barcode05: /mnt/c/Users/filip/OneDrive/Desktop/pipelines/development_assets/ViralIUnity_test_data/nanopore_data/nanopore/barcode05.fastq
+  sample-barcode09: /mnt/c/Users/filip/OneDrive/Desktop/pipelines/development_assets/ViralIUnity_test_data/nanopore_data/nanopore/barcode09.fastq
+data: nanopore
+output: output/meta_nanopore_v2/
+threads: 2
+kraken2_database: /mnt/c/Users/filip/OneDrive/Desktop/pipelines/development_assets/kraken2_databases/viral/
+krona_database: /home/fmoreira/miniforge3/envs/viralunity/opt/krona/taxonomy/
+remove_human_reads: false
+remove_unclassified_reads: false
+run_denovo_assembly: true
+run_kraken2: true
+run_diamond: true
+host_reference: NA
+diamond_database: /mnt/c/Users/filip/OneDrive/Desktop/pipelines/development_assets/diamond-pipelines_assets/viral_refseq/NCBI_RefSeq_virus_protein_sequences.fasta
+diamond_sensitivity: sensitive
+evalue: 1.0e-10
+taxdump: /mnt/c/Users/filip/OneDrive/Desktop/pipelines/development_assets/diamond-pipelines_assets/taxdump/
+assembly_summary: /mnt/c/Users/filip/OneDrive/Desktop/pipelines/development_assets/diamond-pipelines_assets/viral_refseq/viral_refseq_assembly_summary.edited.tsv
+taxid_to_family: /mnt/c/Users/filip/OneDrive/Desktop/pipelines/development_assets/diamond-pipelines_assets/taxonomy_assets/taxid_to_family.csv

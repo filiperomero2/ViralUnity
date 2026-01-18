@@ -1,0 +1,447 @@
+##############################################
+# Set helper functions and variables
+##############################################
+
+def get_classification_filter():
+    if config['remove_human_reads'] and config['remove_unclassified_reads']:
+        my_filter = "\t9606|\t0"
+    if not config['remove_human_reads'] and config['remove_unclassified_reads']:
+        my_filter = "\t0"
+    if config['remove_human_reads'] and not config['remove_unclassified_reads']:
+        my_filter = "\t9606"
+    if not config['remove_human_reads'] and not config['remove_unclassified_reads']:
+        my_filter = " "
+    print(my_filter)
+    return(my_filter)
+
+my_filter = get_classification_filter()     
+
+def get_final_input_fastq(wildcards):
+    return config["output"] + f"host_filtered/{wildcards.sample}.filtered.fastq"
+
+host_filtering_enabled = config.get("host_reference", "NA") != "NA"
+
+##############################################
+# Establish all targets
+##############################################
+
+rule all:
+    input:
+        kraken2_contigs=config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/kraken2_contigs_metagenomics_summary.txt"
+            if config.get('run_kraken2', False) and config.get('run_denovo_assembly', False) else [],
+        diamond_contigs=config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_metagenomics_summary.txt"
+            if config.get('run_diamond', False) and config.get('run_denovo_assembly', False) else [],
+        diamond_tax = expand(
+            config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/results/{sample}.diamond.supported.tax.tsv",
+            sample=config["samples"]
+        ) if config.get('run_diamond', False) and config.get('run_denovo_assembly', False) else []
+
+
+##############################################
+# Dehosting
+##############################################
+
+if host_filtering_enabled:
+
+    rule index_host_genome:
+        input:
+            fasta = config["host_reference"]
+        output:
+            index = config["host_reference"] + ".mmi"
+        threads: config["threads"]
+        log:
+            config['output'] + "logs/remove_host/host_genome_indexing.log"
+        benchmark:
+            config['output'] + "logs/remove_host/host_genome_indexing.benchmark.txt"
+        shell:
+            """
+            minimap2 -d {output.index} {input.fasta} > {log} 2>&1
+            """
+
+    rule remove_host_reads:
+        input:
+            reads = lambda wildcards: config["samples"][wildcards.sample],
+            index = config["host_reference"] + ".mmi"
+        output:
+            filtered = config["output"] + "host_filtered/{sample}.filtered.fastq"
+        threads: config["threads"]
+        log:
+            config["output"] + "logs/remove_host/{sample}.log"
+        benchmark:
+            config["output"] + "logs/remove_host/{sample}.benchmark.txt"
+        params:
+            temp_file = temp(config["output"] + "host_filtered/tmp")
+        shell:
+            """
+            # Do not forget to fix this here - cases where no read remains.
+            #minimap2 --split-prefix {params.temp_file} -t {threads} -ax map-ont {input.index} {input.reads} |
+            minimap2 -t {threads} -ax map-ont {input.index} {input.reads} |
+            samtools view -@ {threads} -f 4 -b - |
+            samtools fastq -@ {threads} - > {output.filtered} 2> {log}
+            """
+
+else:
+
+    rule remove_host_reads:
+        input:
+            reads = lambda wildcards: config["samples"][wildcards.sample],
+        output:
+            filtered = temp(config["output"] + "host_filtered/{sample}.filtered.fastq")
+        log:
+            config["output"] + "logs/remove_host/{sample}.log"
+        benchmark:
+            config["output"] + "logs/remove_host/{sample}.benchmark.txt"
+        shell:
+            """
+            cp {input.reads} {output.filtered}
+            echo "No host genome provided — skipping host read removal." > {log}
+            """
+
+##############################################
+# Create diamond database
+##############################################
+
+rule create_diamond_db:
+    input:
+        config['diamond_database']
+    output:
+        config['diamond_database'] + '.dmnd'
+    log:
+        config['output'] + 'logs/diamond/diamond_makedb.log'
+    benchmark:
+        config['output'] + 'logs/diamond/diamond_makedb.benchmark.log'
+    shell:
+        "diamond makedb --in {input} --db {output} 2> {log}"
+
+
+##############################################
+# Assembly with MEGAHIT
+##############################################
+
+rule run_megahit:
+    input:
+        fastq = get_final_input_fastq
+    output:
+        contigs = config['output'] + "denovo_assembly/megahit/{sample}/final.contigs.fa"
+    threads: config["threads"]
+    log:
+        config['output'] + "logs/megahit/{sample}.log"
+    benchmark:
+        config['output'] + "logs/megahit/{sample}.benchmark.txt"
+    params:
+        prefix_temp = config['output'] + "denovo_assembly/megahit/temp_{sample}",
+        prefix_final = config['output'] + "denovo_assembly/megahit/{sample}"
+    shell:
+        """
+        megahit -r {input.fastq} -o {params.prefix_temp} --num-cpu-threads {threads} > {log} 2>&1;
+        mv -T {params.prefix_temp} {params.prefix_final}  
+        """
+
+##############################################
+# Kraken2 on contigs
+##############################################
+
+rule run_kraken2_contigs:
+    input:
+        fasta = rules.run_megahit.output.contigs
+    output:
+        report = config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/results/{sample}.report.txt",
+        outfile = config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/results/{sample}.output.txt",
+    threads: config["threads"]
+    params:
+        database = config['kraken2_database']
+    log:
+        config['output'] + "logs/kraken2_contigs/{sample}.log"
+    benchmark:
+        config['output'] + "logs/kraken2_contigs/{sample}.benchmark.txt"
+    shell:
+        """
+        if [ ! -s {input.fasta} ]; then
+            echo "WARNING: {input.fasta} missing or empty. Creating dummy Kraken2 outputs." > {log}
+            touch {output.report}
+            touch {output.outfile}
+        else
+            kraken2 --db {params.database} --threads {threads} --report-minimizer-data \
+                --minimum-hit-group 3 --report {output.report} \
+                --output {output.outfile} {input.fasta} 2> {log}
+        fi
+        """
+
+##############################################
+# Krona report from Kraken2 contigs analysis
+##############################################
+
+rule create_krona_input_from_kraken2_contigs:
+    input:
+        config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/results/{sample}.output.txt"
+    output:
+        config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/results/{sample}.output.krona.txt"
+    params:
+        to_rm = my_filter
+    shell:
+        "cat {input} | cut -f 2,3 | egrep -v \"{params.to_rm}\" > {output} || true"
+
+rule create_krona_report_from_kraken2_contigs:
+    input:
+        config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/results/{sample}.output.krona.txt"
+    output:
+        config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/reports/{sample}.output.krona.html"
+    params:
+        krona_database = config['krona_database']
+    log:
+        config['output'] + "logs/krona_kraken2_contigs/{sample}.log"
+    benchmark:
+        config['output'] + "logs/krona_kraken2_contigs/{sample}.benchmark.txt"
+    shell:
+        """
+        if [ -s {input} ]; then
+            ktImportTaxonomy {input} -tax {params.krona_database} -o {output} 2> {log};
+        else
+            echo "Empty krona input file detected (kraken2 contigs). No visualization will be created (only a dummy file)." > {log};
+            touch {output};
+        fi
+        """
+
+##############################################
+# Diamond on contigs
+##############################################
+
+rule run_diamond_contigs:
+    input:
+        fasta = rules.run_megahit.output.contigs,
+        db = config['diamond_database'] + '.dmnd'
+    output:
+        tsv = config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/results/{sample}.diamond.tsv"
+    threads: config["threads"]
+    log:
+        config['output'] + "logs/diamond_contigs/{sample}.log"
+    benchmark:
+        config['output'] + "logs/diamond_contigs/{sample}.benchmark.txt"
+    params:
+        sensitivity = config['diamond_sensitivity'],
+        evalue = config['evalue']
+    shell:
+        """
+        if [ ! -s {input.fasta} ]; then
+            echo "WARNING: {input.fasta} missing or empty. Creating dummy DIAMOND output." > {log};
+            touch {output.tsv};
+        else
+            diamond blastx --db {input.db} --query {input.fasta} \
+                --out {output.tsv} --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qlen slen qseq qseq_translated full_qseq sseq full_sseq \
+                --max-target-seqs 1 --evalue {params.evalue} \
+                --{params.sensitivity} --threads {threads} 2> {log}
+        fi
+        """
+
+################################################
+# Trim viral regions from contigs (DIAMOND hits)
+################################################
+rule trim_diamond_contig_regions:
+    input:
+        fasta   = rules.run_megahit.output.contigs,
+        tsv     = rules.run_diamond_contigs.output.tsv
+    output:
+        trimmed = config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/results/{sample}.diamond.trimmed.fa"
+    params:
+        min_len = 1
+    log:
+        config['output'] + "logs/trim_diamond_contigs/{sample}.log"
+    benchmark:
+        config['output'] + "logs/trim_diamond_contigs/{sample}.benchmark.txt"
+    script:
+        "scripts/parse_diamond_trim_fasta.py"
+
+
+############################################################
+# Run Medaka on trimmed viral contig regions
+############################################################
+rule medaka_consensus_trimmed:
+    input:
+        # host-filtered Nanopore reads
+        reads   = config["output"] + "host_filtered/{sample}.filtered.fastq",
+        # FASTA produced by our trimming rule
+        contigs = config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/results/{sample}.diamond.trimmed.fa"
+    output:
+        polished_contigs = config["output"] + "medaka/{sample}/viral_consensus.fasta"
+    params:
+        outdir = config["output"] + "medaka/{sample}/",
+    #    model  = config["medaka_model"]
+    threads: config["threads"]
+    log:
+        config["output"] + "logs/medaka_consensus_trimmed/{sample}.log"
+    benchmark:
+        config["output"] + "logs/medaka_consensus_trimmed/{sample}.benchmark.txt"
+    shell:
+        r"""
+        # If the trimmed FASTA is empty, create an empty polished file and exit gracefully
+        if [ ! -s {input.contigs} ]; then
+            echo "No viral regions to polish for sample {wildcards.sample}" > {log}
+            mkdir -p {params.outdir}
+            touch {output.polished_contigs}
+        else
+            medaka_consensus \
+                -i {input.reads} \
+                -d {input.contigs} \
+                -o {params.outdir} \
+                -g -r 'N' \
+                -t {threads} &> {log}
+            # Medaka writes consensus to {params.outdir}/consensus.fasta
+            mv {params.outdir}/consensus.fasta {output.polished_contigs}
+        fi
+        """
+
+
+############################################################
+# samtools: sort, index, and idxstats on Medaka BAM
+############################################################
+rule bam_sort_index_idxstats:
+    input:
+        fasta = config["output"] + "medaka/{sample}/viral_consensus.fasta",
+    output:
+        sorted_bam = config["output"] + "medaka/{sample}/calls_to_draft.sorted.bam",
+        bai        = config["output"] + "medaka/{sample}/calls_to_draft.sorted.bam.bai",
+        idxstats   = config["output"] + "medaka/{sample}/calls_to_draft.idxstats.tsv",
+        idxstats_filtered = config["output"] + "medaka/{sample}/calls_to_draft.idxstats.filtered.tsv"        
+    threads: config["threads"]
+    log:
+        config["output"] + "logs/bam_idxstats/{sample}.log"
+    benchmark:
+        config["output"] + "logs/bam_idxstats/{sample}.benchmark.txt"
+    params:
+        bam = config["output"] + "medaka/{sample}/calls_to_draft.bam"
+    shell:
+        r"""
+        set -euo pipefail
+
+        if [ ! -s {params.bam} ]; then
+            echo "No viral contigs were polished - {wildcards.sample}" > {log}
+            echo "Creating empty bam, bai, idxstats files" > {log}
+            touch {output.sorted_bam}
+            touch {output.bai}         
+            touch {output.idxstats}
+            touch {output.idxstats_filtered}             
+        else
+            # 1. sort
+            samtools sort -@ {threads} -o {output.sorted_bam} {params.bam} 2>>{log}
+
+            # 2. index
+            samtools index -@ {threads} {output.sorted_bam} 2>>{log}
+
+            # 3. per-reference read counts
+            samtools idxstats {output.sorted_bam} > {output.idxstats} 2>>{log}
+
+            # 4. Get version of idxstats with only contigs presenting mapped reads
+            awk '$3 > 0 && $1 != "*"' {output.idxstats} > {output.idxstats_filtered} 2>>{log}
+        fi
+
+        
+        """
+
+
+############################################################
+# Filter DIAMOND table by read support (idxstats)
+############################################################
+rule diamond_filter_by_idxstats:
+    input:
+        diamond  = config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/results/{sample}.diamond.tsv",
+        idxstats = config["output"] + "medaka/{sample}/calls_to_draft.idxstats.tsv"
+    output:
+        filtered = config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/results/{sample}.diamond.supported.tsv"
+    params:
+        min_mapped = 1
+    log:
+        config["output"] + "logs/diamond_filter/{sample}.log"
+    benchmark:
+        config["output"] + "logs/diamond_filter/{sample}.benchmark.txt"
+    script:
+        "scripts/filter_diamond_by_idxstats.py"
+
+
+##############################################
+# Krona report from Diamond contigs analysis
+##############################################
+
+rule create_krona_input_from_diamond_contigs:
+    input:
+        diamond = config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/results/{sample}.diamond.supported.tsv",
+        fasta = rules.run_megahit.output.contigs,
+        assembly = config["assembly_summary"]
+    output:
+        krona_input = temp(config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/results/{sample}.diamond.supported.krona_input.temp.tsv")
+    params:
+        data_format = "fasta"
+    script:
+        "scripts/convert_diamond_output_to_krona_input.py"
+
+rule filter_krona_input_from_diamond_contigs:
+    input:
+        config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/results/{sample}.diamond.supported.krona_input.temp.tsv"
+    output:
+        config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/results/{sample}.diamond.supported.krona_input.tsv"
+    params:
+        to_rm = my_filter
+    shell:
+        "cat {input} | egrep -v \"{params.to_rm}\" > {output}  || true"
+
+rule create_krona_report_diamond_contigs:
+    input:
+        config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/results/{sample}.diamond.supported.krona_input.tsv"
+    output:
+        config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/reports/{sample}.diamond.supported.krona.html"
+    params:
+        krona_database = config['krona_database']
+    log:
+        config['output'] + "logs/krona_diamond_contigs/{sample}.log"
+    benchmark:
+        config['output'] + "logs/krona_diamond_contigs/{sample}.benchmark.txt"
+    shell:
+        """
+        if [ -s {input} ]; then
+            ktImportTaxonomy {input} -tax {params.krona_database} -o {output} 2> {log};
+        else
+            echo "Empty krona input file detected (diamond contigs). No visualization will be created (only a dummy file)." > {log};
+            touch {output};
+        fi
+        """
+
+rule annotate_diamond_taxonomy:
+    input:
+        diamond   = config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/results/{sample}.diamond.supported.tsv",
+        assembly  = config['assembly_summary'],
+    output:
+        annotated = config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/results/{sample}.diamond.supported.tax.tsv"
+    log:
+        config["output"] + "logs/annotate_tax/{sample}.log"
+    benchmark:
+        config["output"] + "logs/annotate_tax/{sample}.benchmark.txt"
+    params:
+        taxdump = config['taxdump']
+    script:
+        "scripts/annotate_diamond_taxonomy.py"
+
+
+##############################################
+# Summary for contigs analyses
+##############################################
+
+rule summarize_kraken2_contigs:
+    input:
+        expand(config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/reports/{sample}.output.krona.html", sample=config["samples"])
+    output:
+        config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/kraken2_contigs_metagenomics_summary.txt"
+    params:
+        path = config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/results/"
+    shell:
+        "echo \"file,percentage_of_reads,number_of_reads_rooted,number_of_reads_direct,number_of_k-mers,number_of_distinct_k-mers,rank_code,ncbi_taxid,taxon\" > {output}; "
+        "grep \"viridae\" {params.path}*report.txt | sed -E \"s/[	| |:]+/,/g\" |  sed  \"s/.*results\\///\" | sed \"s/.report.txt//\" >> {output}; "
+
+rule summarize_diamond_contigs:
+    input:
+        expand(config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/reports/{sample}.diamond.supported.krona.html", sample=config["samples"])
+    output:
+        config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_metagenomics_summary.txt"
+    params:
+        path = config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/results/",
+        taxid_to_family = config['taxid_to_family']
+    script:
+        "scripts/summarize_diamond_taxonomic_results.py"
