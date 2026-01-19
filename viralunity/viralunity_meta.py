@@ -102,19 +102,30 @@ def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None
         generator.config["run_kraken2"] = bool(args.get("run_kraken2", False))          # contigs
         generator.config["run_kraken2_reads"] = bool(args.get("run_kraken2_reads", False))
         generator.config["run_diamond"] = bool(args.get("run_diamond", False))          # contigs
+        generator.config["run_diamond_reads"] = bool(args.get("run_diamond_reads", False))
+
 
         # host filtering (consistent with your Snakefile logic)
         generator.config["host_reference"] = args.get("host_reference", "NA")
 
-        # DIAMOND (always present; "NA" when not provided)
-        generator.config["diamond_database"] = args.get("diamond_database", "NA") or "NA"
+        run_diamond_contigs = bool(args.get("run_diamond", False))
+        run_diamond_reads = bool(args.get("run_diamond_reads", False))
+        diamond_any = run_diamond_contigs or run_diamond_reads
+
+        # Always write these keys so Snakefile never sees null/missing unexpectedly
         generator.config["diamond_sensitivity"] = args.get("diamond_sensitivity", "sensitive")
         generator.config["evalue"] = args.get("evalue", 1e-10)
 
-        # taxonomy resources (always present; "NA" when not provided)
-        generator.config["taxdump"] = args.get("taxdump", "NA") or "NA"
-        generator.config["assembly_summary"] = args.get("assembly_summary", "NA") or "NA"
-        generator.config["taxid_to_family"] = args.get("taxid_to_family", "NA") or "NA"
+        if diamond_any:
+            generator.config["diamond_database"] = args.get("diamond_database", "NA") or "NA"
+            generator.config["taxdump"] = args.get("taxdump", "NA") or "NA"
+            generator.config["assembly_summary"] = args.get("assembly_summary", "NA") or "NA"
+            generator.config["taxid_to_family"] = args.get("taxid_to_family", "NA") or "NA"
+        else:
+            generator.config["diamond_database"] = "NA"
+            generator.config["taxdump"] = "NA"
+            generator.config["assembly_summary"] = "NA"
+            generator.config["taxid_to_family"] = "NA"
 
         # medaka
         #generator.config["medaka_model"] = args.get("medaka_model", "r941_min_high_g360")

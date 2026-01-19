@@ -171,6 +171,10 @@ def validate_metagenomics_requirements(args: Dict[str, Any]) -> None:
     run_kraken2_reads = bool(args.get("run_kraken2_reads", False))
     run_kraken2_any = run_kraken2_contigs or run_kraken2_reads
 
+    run_diamond_contigs = bool(args.get("run_diamond", False))
+    run_diamond_reads = bool(args.get("run_diamond_reads", False))
+    run_diamond_any = run_diamond_contigs or run_diamond_reads
+
     # Kraken2 DB is required for v1, and only required for v2 if Kraken2 is enabled
     if pipeline == "v1" or (pipeline == "v2" and run_kraken2_any):
         kraken2_db = args.get("kraken2_database")
@@ -187,26 +191,49 @@ def validate_metagenomics_requirements(args: Dict[str, Any]) -> None:
             "If you want Kraken2 on reads, use --run-kraken2-reads."
         )
 
-    # v2: if DIAMOND contigs analysis is enabled, require its resources
-    if pipeline == "v2" and bool(args.get("run_diamond", False)):
+    if pipeline == "v2" and run_diamond_contigs and not bool(args.get("run_denovo_assembly", False)):
+        raise ValidationError(
+            "--run-diamond runs on contigs and requires --run-denovo-assembly. "
+            "If you want DIAMOND on reads, use --run-diamond-reads."
+        )
+
+    # v2: if any DIAMOND analysis is enabled (reads or contigs), require its resources
+    if pipeline == "v2" and run_diamond_any:
         required = {
-            "diamond_database": "DIAMOND database FASTA (--diamond-database)",
-            "taxdump": "NCBI taxdump directory (--taxdump)",
-            "assembly_summary": "RefSeq assembly summary (--assembly-summary)",
-            "taxid_to_family": "taxid-to-family mapping (--taxid-to-family)",
+            "diamond_database": ("DIAMOND database FASTA (--diamond-database)", "file"),
+            "taxdump": ("NCBI taxdump directory (--taxdump)", "dir"),
+            "assembly_summary": ("RefSeq assembly summary (--assembly-summary)", "file"),
+            "taxid_to_family": ("taxid-to-family mapping (--taxid-to-family)", "file"),
         }
 
-        missing = []
-        for key, label in required.items():
-            val = args.get(key)
-            if not val or str(val).strip().upper() == "NA":
-                missing.append(label)
+    missing = []
+    for key, (label, _) in required.items():
+        val = args.get(key)
+        if val is None or str(val).strip().upper() in {"", "NA", "NONE", "NULL"}:
+            missing.append(label)
 
-        if missing:
-            raise ValidationError(
-                "DIAMOND contigs analysis was requested, but required inputs are missing:\n- "
-                + "\n- ".join(missing)
-            )
+    if missing:
+        which = []
+        if run_diamond_contigs:
+            which.append("contigs")
+        if run_diamond_reads:
+            which.append("reads")
+        which_str = " and ".join(which) if which else "DIAMOND"
+        raise ValidationError(
+            f"DIAMOND {which_str} analysis was requested, but required inputs are missing:\n- "
+            + "\n- ".join(missing)
+        )
+
+    # validate paths exist
+    for key, (label, kind) in required.items():
+        val = args.get(key)
+        try:
+            if kind == "dir":
+                validate_directory_exists(val, label)
+            else:
+                validate_file_exists(val, label)
+        except FileNotFoundError as e:
+            raise ValidationError(f"{label} does not exist: {e}")
 
     krona_db = args.get("krona_database")
     if not krona_db:

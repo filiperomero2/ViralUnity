@@ -102,7 +102,8 @@ def fill_arg_parser_meta(subparsers: argparse._SubParsersAction):
     meta_parser.add_argument("--run-kraken2", action="store_true", help="(v2) Run Kraken2 classification on assembled contigs (requires de novo assembly).")
     meta_parser.add_argument("--run-diamond", action="store_true", help="(v2) Run DIAMOND blastx on contigs.")
     meta_parser.add_argument("--run-kraken2-reads",action="store_true",help="Run Kraken2 classification directly on reads (host-filtered fastq).")
-
+    meta_parser.add_argument("--run-diamond-reads", action="store_true", help="(v2) Run DIAMOND classification directly on reads (host-filtered fastq).")
+    
     # DIAMOND parameters (v2)
     meta_parser.add_argument("--diamond-database", help="(v2) Path to DIAMOND protein FASTA database used to build .dmnd.")
     meta_parser.add_argument("--diamond-sensitivity", default="sensitive", help="(v2) DIAMOND sensitivity preset (e.g. sensitive, very-sensitive).")
