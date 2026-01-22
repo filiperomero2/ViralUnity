@@ -1,71 +1,33 @@
 # Metagenomics Nanopore v2 Workflow
 
 This workflow performs **viral metagenomic analysis of Nanopore sequencing data**
-using a contig-based strategy. It extends the original ViralUnity metagenomics
-pipeline by adding:
+within the ViralUnity framework.
 
-1. Optional **host read removal (dehosting)**
-2. **De novo assembly** of reads into contigs
-3. **Protein-level taxonomic classification** using DIAMOND
-4. Optional **polishing of viral contigs** using Medaka
-5. Cohort-level **taxonomic summaries and Krona visualizations**
+It is an extended and more flexible successor of the original metagenomics
+pipeline, supporting **read-based and contig-based taxonomic classification**,
+optional **host read removal**, and **protein-level annotation using DIAMOND**.
 
-The workflow is implemented in Snakemake and is designed to be executed
-either directly with Snakemake or via the ViralUnity CLI.
+The workflow is implemented in **Snakemake** and can be executed either:
+- directly with Snakemake, or
+- via the **ViralUnity CLI** (`viralunity meta --pipeline v2`)
 
 ---
 
-## High-level workflow overview
+## Supported analysis modes
 
-```
-Nanopore reads
-   |
-   |-- (optional) Host read removal (minimap2 + samtools)
-   |
-   |-- De novo assembly (MEGAHIT)
-   |
-   |-- Taxonomic classification (both diamond and kraken2)
-   |
-   |-- Trimming of viral contig regions (DIAMOND-supported)
-   |
-   |-- Polishing of viral contigs (Medaka)
-   |
-   |-- Read-support filtering (samtools idxstats)
-   |
-   |-- Krona visualizations
-   |
-   `-- Summary tables
-```
+### Read-based analyses
+- Kraken2 on reads
+- DIAMOND on reads
+
+### Contig-based analyses
+- De novo assembly (MEGAHIT)
+- Kraken2 on contigs
+- DIAMOND blastx on contigs
+- Medaka polishing
 
 ---
 
-## Inputs
-
-### Required inputs
-
-- Nanopore sequencing reads (FASTQ)
-- Sample sheet (provided via config)
-- DIAMOND protein database (FASTA; indexed automatically)
-- Krona taxonomy database
-
-### Optional inputs
-
-- **Host reference genome (FASTA)**  
-  If provided, host-associated reads are removed prior to assembly.
-
-- **Kraken2 database**  
-  Used only if `run_kraken2: true`.
-
-- **Taxonomy resources** (required for DIAMOND annotation):
-  - NCBI taxdump
-  - Assembly summary file
-  - TaxID-to-family mapping file
-
----
-
-## Configuration
-
-A minimal example configuration file:
+## Minimal configuration example
 
 ```yaml
 samples:
@@ -76,107 +38,53 @@ data: nanopore
 output: output/meta_nanopore_run/
 threads: 2
 
-# Pipeline toggles
 run_denovo_assembly: true
-run_kraken2: false
+run_kraken2_reads: true
 run_diamond: true
 
-# Host filtering
-host_reference: "NA"   # or path to host FASTA
+kraken2_database: /path/to/kraken2_db/
+krona_database: /path/to/krona/taxonomy/
+diamond_database: /path/to/diamond_db.fasta
 
-# Databases
-kraken2_database: "/path/to/kraken2_db/"
-krona_database: "/path/to/krona/taxonomy/"
-diamond_database: "/path/to/diamond_db.fasta"
-
-diamond_sensitivity: "sensitive"
-evalue: 1e-10
-
-# Taxonomy resources
-taxdump: "/path/to/taxdump/"
-assembly_summary: "/path/to/assembly_summary.tsv"
-taxid_to_family: "/path/to/taxid_to_family.csv"
-
-# Filtering options
-remove_human_reads: false
-remove_unclassified_reads: false
-
-# Medaka
-medaka_model: "r941_min_high_g360"
+taxdump: /path/to/taxdump/
+assembly_summary: /path/to/assembly_summary.tsv
+taxid_to_family: /path/to/taxid_to_family.csv
 ```
-
-A template configuration is provided in `config.default.yml`.
 
 ---
 
-## Running the workflow
-
-### Using Snakemake directly
-
-From the workflow directory:
+## Running with ViralUnity CLI
 
 ```bash
-snakemake   --snakefile Snakefile   --configfile config.test.yml   --cores 4   -p
+viralunity meta \
+  --data-type nanopore \
+  --pipeline v2 \
+  --sample-sheet samples.csv \
+  --output output \
+  --run-name meta_nanopore_v2 \
+  --run-kraken2-reads \
+  --run-diamond \
+  --run-denovo-assembly \
+  --kraken2-database /path/to/kraken2_db \
+  --diamond-database /path/to/diamond_db.fasta \
+  --taxdump /path/to/taxdump \
+  --assembly-summary /path/to/assembly_summary.tsv \
+  --taxid-to-family /path/to/taxid_to_family.csv \
+  --krona-database /path/to/krona/taxonomy
 ```
+
 ---
 
 ## Outputs
 
-All outputs are written under the configured `output/` directory.
-
-### De novo assembly
-```
-denovo_assembly/megahit/{sample}/final.contigs.fa
-```
-
-### DIAMOND contig classification
-```
-metagenomics/taxonomic_assignments/diamond_contigs/results/
-  |-- {sample}.diamond.tsv
-  |-- {sample}.diamond.supported.tsv
-  |-- {sample}.diamond.supported.tax.tsv
-  `-- {sample}.diamond.trimmed.fa
-```
-
-### Polished viral contigs (Medaka)
-```
-medaka/{sample}/viral_consensus.fasta
-```
-
-### Krona reports
-```
-metagenomics/taxonomic_assignments/diamond_contigs/reports/
-  `-- {sample}.diamond.supported.krona.html
-```
-
-### Cohort-level summaries
-```
-metagenomics/taxonomic_assignments/diamond_contigs/
-  `-- diamond_contigs_metagenomics_summary.txt
-```
-
-### Logs and benchmarks
-```
-logs/
-  |-- megahit/
-  |-- diamond_contigs/
-  |-- medaka_consensus_trimmed/
-  `-- ...
-```
-
----
-
-## Notes and design considerations
-
-- DIAMOND classification is performed on **assembled contigs**, not raw reads.
-- Polishing with Medaka is applied only to **DIAMOND-supported viral regions**.
-- Krona visualizations are generated only when valid input data is available.
+- Kraken2 reports and summaries (reads and/or contigs)
+- DIAMOND classification tables
+- Krona interactive HTML reports
+- Polished viral contigs
 
 ---
 
 ## Status
 
-This workflow represents an **extended metagenomics pipeline** for Nanopore
-data in ViralUnity. At this time, it is intended to coexist with the original metagenomics
-workflow and may evolve further as additional classifiers and post-processing
-steps are added.
+This workflow is the **recommended metagenomics pipeline for Nanopore data**
+in ViralUnity and is under active development.
