@@ -99,11 +99,10 @@ def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None
     if args.get("pipeline", "v1") == "v2":
         # toggles
         generator.config["run_denovo_assembly"] = bool(args.get("run_denovo_assembly", False))
-        generator.config["run_kraken2"] = bool(args.get("run_kraken2", False))          # contigs
+        generator.config["run_kraken2"] = bool(args.get("run_kraken2_contigs", False)) or bool(args.get("run_kraken2", False))        
         generator.config["run_kraken2_reads"] = bool(args.get("run_kraken2_reads", False))
-        generator.config["run_diamond"] = bool(args.get("run_diamond", False))          # contigs
+        generator.config["run_diamond"] = bool(args.get("run_diamond_contigs", False)) or bool(args.get("run_diamond", False))
         generator.config["run_diamond_reads"] = bool(args.get("run_diamond_reads", False))
-
 
         # host filtering (consistent with your Snakefile logic)
         generator.config["host_reference"] = args.get("host_reference", "NA")

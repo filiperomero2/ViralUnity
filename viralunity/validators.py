@@ -167,11 +167,11 @@ def validate_metagenomics_requirements(args: Dict[str, Any]) -> None:
     """
     pipeline = args.get("pipeline", "v1")
     
-    run_kraken2_contigs = bool(args.get("run_kraken2", False))
+    run_kraken2_contigs = bool(args.get("run_kraken2_contigs", False)) or bool(args.get("run_kraken2", False))
     run_kraken2_reads = bool(args.get("run_kraken2_reads", False))
     run_kraken2_any = run_kraken2_contigs or run_kraken2_reads
 
-    run_diamond_contigs = bool(args.get("run_diamond", False))
+    run_diamond_contigs = bool(args.get("run_diamond_contigs", False)) or bool(args.get("run_diamond", False))
     run_diamond_reads = bool(args.get("run_diamond_reads", False))
     run_diamond_any = run_diamond_contigs or run_diamond_reads
 
