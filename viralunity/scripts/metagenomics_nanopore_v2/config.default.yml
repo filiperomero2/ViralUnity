@@ -18,7 +18,7 @@ kraken2_database: "NA"
 krona_database: "NA"
 diamond_database: "NA"
 diamond_sensitivity: "sensitive"
-evalue: 1e-5
+evalue: 1e-10
 
 # taxonomy resources for your scripts
 taxdump: "NA"
@@ -29,5 +29,3 @@ taxid_to_family: "NA"
 remove_human_reads: false
 remove_unclassified_reads: false
 
-# medaka
-medaka_model: "r941_min_high_g360"
