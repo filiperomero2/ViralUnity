@@ -31,18 +31,26 @@ host_filtering_enabled = config.get("host_reference", "NA") != "NA"
 
 rule all:
     input:
-        kraken2_reads=config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_metagenomics_summary.txt"
-            if config.get('run_kraken2_reads', False) else [],
-        diamond_reads=config['output'] + "metagenomics/taxonomic_assignments/diamond_reads/diamond_reads_metagenomics_summary.txt"
-            if config.get('run_diamond_reads', False) else [],
-        kraken2_contigs=config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/kraken2_contigs_metagenomics_summary.txt"
-            if config.get('run_kraken2', False) and config.get('run_denovo_assembly', False) else [],
-        diamond_contigs=config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_metagenomics_summary.txt"
-            if config.get('run_diamond', False) and config.get('run_denovo_assembly', False) else [],
-        diamond_tax = expand(
-            config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/results/{sample}.diamond.supported.tax.tsv",
-            sample=config["samples"]
-        ) if config.get('run_diamond', False) and config.get('run_denovo_assembly', False) else []
+        kraken2_reads_summary = (
+            config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_taxa_summary.tsv"
+            if config.get("run_kraken2_reads", False) else []
+        ),
+
+        kraken2_contigs_summary = (
+            config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/kraken2_contigs_taxa_summary.tsv"
+            if config.get("run_kraken2", False) and config.get("run_denovo_assembly", False) else []
+        ),
+
+        diamond_reads_summary = (
+            config['output'] + "metagenomics/taxonomic_assignments/diamond_reads/diamond_reads_taxa_summary.tsv"
+            if config.get("run_diamond_reads", False) else []
+        ),
+
+        diamond_contigs_summary = (
+            config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary.tsv"
+            if config.get("run_diamond", False) and config.get("run_denovo_assembly", False) else []
+        )
+
 
 
 ##############################################
@@ -119,9 +127,7 @@ else:
 # Reads analyses
 ##############################################
 
-##############################################
 # Kraken2 on reads
-##############################################
 
 rule run_kraken2_reads:
     input:
@@ -186,26 +192,59 @@ rule create_krona_report_from_kraken2_reads:
             : > {output}
         fi
         """
-rule summarize_kraken2_reads:
+
+rule summarize_taxa_kraken2_reads:
     input:
-        expand(config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/reports/{sample}.output.krona.html", sample=config["samples"])
+        krona = config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/results/{sample}.output.krona.txt",
+        plot = config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/reports/{sample}.output.krona.html"
     output:
-        config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_metagenomics_summary.txt"
+        temp(config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/summary/{sample}.taxa.tsv")
     params:
-        path = config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/results/"
+        taxdump = config["taxdump"],
+        tool = "kraken2",
+        mode = "reads",
+        sample = "{sample}"
+    script:
+        "scripts/summarize_krona_taxa.py"
+
+rule summarize_taxa_kraken2_reads_all:
+    input:
+        expand(
+            config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/summary/{sample}.taxa.tsv",
+            sample=config["samples"]
+        )
+    output:
+        config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_taxa_summary.tsv"
     shell:
         r"""
-        echo "file,percentage_of_reads,number_of_reads_rooted,number_of_reads_direct,number_of_k-mers,number_of_distinct_k-mers,rank_code,ncbi_taxid,taxon" > {output}
-        grep "viridae" {params.path}*report.txt | sed -E "s/[	| |:]+/,/g" | sed "s/.*results\///" | sed "s/.report.txt//" >> {output} || true
+        set -euo pipefail
+        mkdir -p $(dirname {output})
+
+        # Find first non-empty input to extract header
+        header_file=""
+        for f in {input}; do
+            if [ -s "$f" ]; then
+                header_file="$f"
+                break
+            fi
+        done
+
+        # Write header
+        if [ -n "$header_file" ]; then
+            head -n 1 "$header_file" > {output}
+        else
+            echo -e "sample\ttool\tmode\trank\ttaxid\tname\tcount\tpercent\tsource" > {output}
+        fi
+
+        # Append rows
+        for f in {input}; do
+            if [ -s "$f" ]; then
+                tail -n +2 "$f" >> {output}
+            fi
+        done
         """
-##############################################
+
 # DIAMOND on reads
-##############################################
-
-
-##############################################
-# Create diamond database
-##############################################
 
 rule create_diamond_db:
     input:
@@ -306,17 +345,58 @@ rule create_krona_report_diamond_reads:
             : > {output}
         fi
         """
-rule summarize_diamond_reads:
+
+rule summarize_taxa_diamond_reads:
     input:
-        expand(config['output'] + "metagenomics/taxonomic_assignments/diamond_reads/reports/{sample}.diamond.krona.html", sample=config["samples"])
+        krona = config["output"] + "metagenomics/taxonomic_assignments/diamond_reads/results/{sample}.diamond.supported.krona_input.tsv",
+        plot = config["output"] + "metagenomics/taxonomic_assignments/diamond_reads/reports/{sample}.diamond.krona.html"
     output:
-        config['output'] + "metagenomics/taxonomic_assignments/diamond_reads/diamond_reads_metagenomics_summary.txt"
+        temp(config['output'] + "metagenomics/taxonomic_assignments/diamond_reads/summary/{sample}.taxa.tsv")
     params:
-        path = config['output'] + "metagenomics/taxonomic_assignments/diamond_reads/results/",
-        taxid_to_family = config['taxid_to_family']
+        taxdump = config["taxdump"],
+        tool = "diamond",
+        mode = "reads",
+        sample = "{sample}"
     script:
-        # fix bug here -> dependency on *.tax.tsv pattern
-        "scripts/summarize_diamond_taxonomic_results.py"
+        "scripts/summarize_krona_taxa.py"
+
+rule summarize_taxa_diamond_reads_all:
+    input:
+        expand(
+            config['output'] + "metagenomics/taxonomic_assignments/diamond_reads/summary/{sample}.taxa.tsv",
+            sample=config["samples"]
+        )
+    output:
+        config['output'] + "metagenomics/taxonomic_assignments/diamond_reads/diamond_reads_taxa_summary.tsv"
+    shell:
+        r"""
+        set -euo pipefail
+        mkdir -p $(dirname {output})
+
+        # Find first non-empty input to extract header
+        header_file=""
+        for f in {input}; do
+            if [ -s "$f" ]; then
+                header_file="$f"
+                break
+            fi
+        done
+
+        # Write header
+        if [ -n "$header_file" ]; then
+            head -n 1 "$header_file" > {output}
+        else
+            echo -e "sample\ttool\tmode\trank\ttaxid\tname\tcount\tpercent\tsource" > {output}
+        fi
+
+        # Append rows
+        for f in {input}; do
+            if [ -s "$f" ]; then
+                tail -n +2 "$f" >> {output}
+            fi
+        done
+        """
+
 
 ##############################################
 # De novo Assembly with MEGAHIT
@@ -354,9 +434,7 @@ rule run_megahit:
 # Contigs analyses
 ##############################################
 
-##############################################
 # Kraken2 on contigs
-##############################################
 
 rule run_kraken2_contigs:
     input:
@@ -416,21 +494,59 @@ rule create_krona_report_from_kraken2_contigs:
             touch {output};
         fi
         """
-rule summarize_kraken2_contigs:
+
+rule summarize_taxa_kraken2_contigs:
     input:
-        expand(config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/reports/{sample}.output.krona.html", sample=config["samples"])
+        krona = config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/results/{sample}.output.krona.txt",
+        plot = config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/reports/{sample}.output.krona.html"
     output:
-        config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/kraken2_contigs_metagenomics_summary.txt"
+        temp(config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/summary/{sample}.taxa.tsv")
     params:
-        path = config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/results/"
+        taxdump = config["taxdump"],
+        tool = "kraken2",
+        mode = "contigs",
+        sample = "{sample}"
+    script:
+        "scripts/summarize_krona_taxa.py"
+
+rule summarize_taxa_kraken2_contigs_all:
+    input:
+        expand(
+            config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/summary/{sample}.taxa.tsv",
+            sample=config["samples"]
+        )
+    output:
+        config['output'] + "metagenomics/taxonomic_assignments/kraken2_contigs/kraken2_contigs_taxa_summary.tsv"
     shell:
-        "echo \"file,percentage_of_reads,number_of_reads_rooted,number_of_reads_direct,number_of_k-mers,number_of_distinct_k-mers,rank_code,ncbi_taxid,taxon\" > {output}; "
-        "grep \"viridae\" {params.path}*report.txt | sed -E \"s/[	| |:]+/,/g\" |  sed  \"s/.*results\\///\" | sed \"s/.report.txt//\" >> {output}; "
+        r"""
+        set -euo pipefail
+        mkdir -p $(dirname {output})
 
+        # Find first non-empty input to extract header
+        header_file=""
+        for f in {input}; do
+            if [ -s "$f" ]; then
+                header_file="$f"
+                break
+            fi
+        done
 
-##############################################
+        # Write header
+        if [ -n "$header_file" ]; then
+            head -n 1 "$header_file" > {output}
+        else
+            echo -e "sample\ttool\tmode\trank\ttaxid\tname\tcount\tpercent\tsource" > {output}
+        fi
+
+        # Append rows
+        for f in {input}; do
+            if [ -s "$f" ]; then
+                tail -n +2 "$f" >> {output}
+            fi
+        done
+        """
+
 # Diamond on contigs
-##############################################
 
 rule run_diamond_contigs:
     input:
@@ -476,15 +592,12 @@ rule trim_diamond_contig_regions:
 
 rule medaka_consensus_trimmed:
     input:
-        # host-filtered Nanopore reads
         reads   = config["output"] + "host_filtered/{sample}.filtered.fastq",
-        # FASTA produced by our trimming rule
         contigs = config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/results/{sample}.diamond.trimmed.fa"
     output:
         polished_contigs = config["output"] + "medaka/{sample}/viral_consensus.fasta"
     params:
-        outdir = config["output"] + "medaka/{sample}/",
-    #    model  = config["medaka_model"]
+        outdir = config["output"] + "medaka/{sample}/"
     threads: config["threads"]
     log:
         config["output"] + "logs/medaka_consensus_trimmed/{sample}.log"
@@ -626,13 +739,54 @@ rule annotate_diamond_taxonomy:
     script:
         "scripts/annotate_diamond_taxonomy.py"
 
-rule summarize_diamond_contigs:
+rule summarize_taxa_diamond_contigs:
     input:
-        expand(config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/reports/{sample}.diamond.supported.krona.html", sample=config["samples"])
+        krona = config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/results/{sample}.diamond.supported.krona_input.tsv",
+        plot = config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/reports/{sample}.diamond.supported.krona.html"
     output:
-        config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_metagenomics_summary.txt"
+        temp(config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/summary/{sample}.taxa.tsv")
     params:
-        path = config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/results/",
-        taxid_to_family = config['taxid_to_family']
+        taxdump = config["taxdump"],
+        tool = "diamond",
+        mode = "contigs",
+        sample = "{sample}"
     script:
-        "scripts/summarize_diamond_taxonomic_results.py"
+        "scripts/summarize_krona_taxa.py"
+
+rule summarize_taxa_diamond_contigs_all:
+    input:
+        expand(
+            config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/summary/{sample}.taxa.tsv",
+            sample=config["samples"]
+        )
+    output:
+        config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary.tsv"
+    shell:
+        r"""
+        set -euo pipefail
+        mkdir -p $(dirname {output})
+
+        # Find first non-empty input to extract header
+        header_file=""
+        for f in {input}; do
+            if [ -s "$f" ]; then
+                header_file="$f"
+                break
+            fi
+        done
+
+        # Write header
+        if [ -n "$header_file" ]; then
+            head -n 1 "$header_file" > {output}
+        else
+            echo -e "sample\ttool\tmode\trank\ttaxid\tname\tcount\tpercent\tsource" > {output}
+        fi
+
+        # Append rows
+        for f in {input}; do
+            if [ -s "$f" ]; then
+                tail -n +2 "$f" >> {output}
+            fi
+        done
+        """
+
