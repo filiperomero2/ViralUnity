@@ -1,189 +1,196 @@
 #!/usr/bin/env python3
-"""
-summarize_krona_taxa.py
 
-Standardized taxonomic summary from Krona input files (seq_id<TAB>taxid).
-
-Inputs:
-  - One Krona input file (2-column TSV: sequence_id, taxid)
-  - NCBI taxdump directory (nodes.dmp, names.dmp)
-
-Outputs:
-  - taxa_summary.tsv with schema:
-      sample, tool, mode, rank, taxid, name, count, percent, source
-
-Notes:
-  - tool: kraken2 | diamond
-  - mode: reads | contigs
-  - rank: family | genus | species
-  - percent is computed as count / total_assigned * 100
-
-Supports:
-  - CLI execution (argparse)
-  - Snakemake `script:` execution via the `snakemake` object
-"""
-
-import argparse
 import os
-import csv
+import sys
 from collections import defaultdict
 
+RANKS_OF_INTEREST = ("family", "genus", "species")
 
-############################
-# Taxdump utilities
-############################
 
-def load_taxdump(taxdump_dir: str):
-    nodes_path = os.path.join(taxdump_dir, "nodes.dmp")
-    names_path = os.path.join(taxdump_dir, "names.dmp")
-
-    if not os.path.isfile(nodes_path):
-        raise FileNotFoundError(f"nodes.dmp not found at: {nodes_path}")
-    if not os.path.isfile(names_path):
-        raise FileNotFoundError(f"names.dmp not found at: {names_path}")
-
+def load_taxdump(nodes_dmp, names_dmp):
     parent = {}
     rank = {}
-    with open(nodes_path, newline="") as fh:
-        for line in fh:
-            parts = [p.strip() for p in line.split("|")]
-            taxid = parts[0]
-            parent[taxid] = parts[1]
-            rank[taxid] = parts[2]
-
     name = {}
-    with open(names_path, newline="") as fh:
-        for line in fh:
+
+    with open(nodes_dmp) as f:
+        for line in f:
+            if not line.strip():
+                continue
             parts = [p.strip() for p in line.split("|")]
+
             taxid = parts[0]
-            nm = parts[1]
-            cls = parts[3]
-            if cls == "scientific name":
-                name[taxid] = nm
+            parent_taxid = parts[1]
+            rank_name = parts[2]
+
+            parent[taxid] = parent_taxid
+            rank[taxid] = rank_name
+
+    with open(names_dmp) as f:
+        for line in f:
+            if not line.strip():
+                continue
+            parts = [p.strip() for p in line.split("|")]
+
+            taxid = parts[0]
+            taxname = parts[1]
+            name_class = parts[3]
+
+            if name_class == "scientific name":
+                name[taxid] = taxname
 
     return parent, rank, name
 
 
-def lineage_at_ranks(taxid: str, parent, rank_map, name_map, wanted):
-    """
-    Walk up taxonomy until root, collecting first hit for wanted ranks.
-    Returns dict rank -> (taxid, name)
-    """
-    out = {r: (None, None) for r in wanted}
-    cur = taxid
-    visited = set()
 
-    while cur and cur not in visited:
-        visited.add(cur)
-        r = rank_map.get(cur)
-        if r in wanted and out[r][0] is None:
-            out[r] = (cur, name_map.get(cur, ""))
-        cur = parent.get(cur)
-
-    return out
+def load_diamond_reads(diamond_tax_file):
+    reads = {}
+    with open(diamond_tax_file) as f:
+        for line in f:
+            if not line.strip():
+                continue
+            parts = line.rstrip("\n").split("\t")
+            contig_id = parts[0]
+            mapped_reads = int(parts[-4])
+            reads[contig_id] = mapped_reads
+    return reads
 
 
-############################
-# Core summarization logic
-############################
+def get_lineage(taxid, parent_map):
+    lineage = []
+    while taxid != "1" and taxid in parent_map:
+        lineage.append(taxid)
+        taxid = parent_map[taxid]
+    lineage.append("1")
+    return lineage
 
-def summarize_krona_file(
-    krona_input: str,
-    taxdump_dir: str,
-    tool: str,
-    mode: str,
-    sample: str,
-    output_tsv: str,
+
+def summarize_krona(krona_file, parent_map, rank_map, diamond_reads=None):
+    contig_counts = defaultdict(int)
+    read_counts = defaultdict(int)
+    totals_per_rank = defaultdict(int)
+
+    with open(krona_file) as f:
+        for line in f:
+            if not line.strip():
+                continue
+
+            contig_id, taxid = line.strip().split("\t")
+            lineage = get_lineage(taxid, parent_map)
+            seen_ranks = set()
+
+            for tid in lineage:
+                r = rank_map.get(tid)
+                if r in RANKS_OF_INTEREST and r not in seen_ranks:
+                    key = (r, tid)
+                    contig_counts[key] += 1
+                    totals_per_rank[r] += 1
+
+                    if diamond_reads is not None:
+                        read_counts[key] += diamond_reads.get(contig_id, 0)
+
+                    seen_ranks.add(r)
+
+    return contig_counts, read_counts, totals_per_rank
+
+
+def run(
+    krona,
+    diamond_tax,
+    taxdump_nodes,
+    taxdump_names,
+    sample,
+    classifier,
+    unit,
+    output,
 ):
-    parent, rank_map, name_map = load_taxdump(taxdump_dir)
+    parent_map, rank_map, name_map = load_taxdump(taxdump_nodes, taxdump_names)
 
-    wanted_ranks = ["family", "genus", "species"]
-    counts = defaultdict(int)
-    total = 0
+    diamond_reads = None
+    if diamond_tax:
+        diamond_reads = load_diamond_reads(diamond_tax)
 
-    # Fail-safe: if input is missing/empty, write header-only output and return
-    os.makedirs(os.path.dirname(output_tsv) or ".", exist_ok=True)
+    contig_counts, read_counts, totals_per_rank = summarize_krona(
+        krona, parent_map, rank_map, diamond_reads
+    )
 
-    if (not os.path.exists(krona_input)) or (os.path.getsize(krona_input) == 0):
-        with open(output_tsv, "w", newline="") as out:
-            out.write("sample\ttool\tmode\trank\ttaxid\tname\tcount\tpercent\tsource\n")
-        return
+    header = [
+        "sample",
+        "tool",
+        "mode",
+        "rank",
+        "taxid",
+        "name",
+        "count",
+        "percent",
+        "source",
+    ]
 
-    with open(krona_input, newline="") as fh:
-        reader = csv.reader(fh, delimiter="\t")
-        for row in reader:
-            if len(row) < 2:
-                continue
-            taxid = str(row[1]).strip()
-            if not taxid or taxid == "0":
-                continue
+    if diamond_reads is not None:
+        header.append("mapped_reads")
 
-            total += 1
-            lineage = lineage_at_ranks(taxid, parent, rank_map, name_map, wanted_ranks)
-            for r, (tid, _) in lineage.items():
-                if tid:
-                    counts[(r, tid)] += 1
+    with open(output, "w") as out:
+        out.write("\t".join(header) + "\n")
 
-    # IMPORTANT: write a fresh per-sample output (not append)
-    with open(output_tsv, "w", newline="") as out:
-        out.write("sample\ttool\tmode\trank\ttaxid\tname\tcount\tpercent\tsource\n")
-        for (r, tid), cnt in sorted(counts.items()):
-            nm = name_map.get(tid, "")
-            pct = (cnt / total * 100.0) if total > 0 else 0.0
-            out.write(
-                f"{sample}\t{tool}\t{mode}\t{r}\t{tid}\t{nm}\t{cnt}\t{pct:.4f}\t{krona_input}\n"
-            )
+        for rank in RANKS_OF_INTEREST:
+            for (r, taxid), count in sorted(contig_counts.items()):
+                if r != rank:
+                    continue
+
+                total = totals_per_rank[r]
+                percent = (count / total * 100) if total else 0.0
+                taxname = name_map.get(taxid, "NA")
+
+                fields = [
+                    sample,
+                    classifier,
+                    unit,
+                    r,
+                    taxid,
+                    taxname,
+                    str(count),
+                    f"{percent:.4f}",
+                    krona,
+                ]
+
+                if diamond_reads is not None:
+                    fields.append(str(read_counts.get((r, taxid), 0)))
+
+                out.write("\t".join(fields) + "\n")
 
 
-############################
-# Entrypoints
-############################
+# ---- Snakemake entrypoint ----
+if "snakemake" in globals():
+    run(
+        krona=snakemake.input.krona,
+        diamond_tax=snakemake.input.get("annotated", None),
+        taxdump_nodes=os.path.join(snakemake.params.taxdump, "nodes.dmp"),
+        taxdump_names=os.path.join(snakemake.params.taxdump, "names.dmp"),
+        sample=snakemake.params.sample,
+        classifier=snakemake.params.tool,
+        unit=snakemake.params.mode,
+        output=snakemake.output[0],
+    )
+else:
+    import argparse
 
-def main_cli():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--taxdump", required=True, help="Path to NCBI taxdump directory")
-    ap.add_argument("--tool", required=True, choices=["kraken2", "diamond"])
-    ap.add_argument("--mode", required=True, choices=["reads", "contigs"])
-    ap.add_argument("--sample", required=True, help="Sample ID")
-    ap.add_argument("--input", required=True, help="Krona input TSV (seq_id<TAB>taxid)")
-    ap.add_argument("--output", required=True, help="Output taxa_summary.tsv")
-    args = ap.parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--krona", required=True)
+    parser.add_argument("--diamond-tax")
+    parser.add_argument("--taxdump-dir", required=True)
+    parser.add_argument("--sample", required=True)
+    parser.add_argument("--classifier", required=True)
+    parser.add_argument("--unit", default="contigs")
+    parser.add_argument("--output", required=True)
 
-    summarize_krona_file(
-        krona_input=args.input,
-        taxdump_dir=args.taxdump,
-        tool=args.tool,
-        mode=args.mode,
+    args = parser.parse_args()
+
+    run(
+        krona=args.krona,
+        diamond_tax=args.diamond_tax,
+        taxdump_nodes=os.path.join(args.taxdump_dir, "nodes.dmp"),
+        taxdump_names=os.path.join(args.taxdump_dir, "names.dmp"),
         sample=args.sample,
-        output_tsv=args.output,
+        classifier=args.classifier,
+        unit=args.unit,
+        output=args.output,
     )
-
-
-def main_snakemake():
-    # Snakemake injects a global `snakemake` object
-    krona_input = str(snakemake.input[0])
-    output_tsv = str(snakemake.output[0])
-
-    taxdump_dir = str(snakemake.params["taxdump"])
-    tool = str(snakemake.params["tool"])
-    mode = str(snakemake.params["mode"])
-
-    # sample can be passed explicitly, or derived from wildcards
-    sample = str(snakemake.params.get("sample", snakemake.wildcards.sample))
-
-    summarize_krona_file(
-        krona_input=krona_input,
-        taxdump_dir=taxdump_dir,
-        tool=tool,
-        mode=mode,
-        sample=sample,
-        output_tsv=output_tsv,
-    )
-
-
-if __name__ == "__main__":
-    # If executed via Snakemake `script:`, a global `snakemake` exists
-    if "snakemake" in globals():
-        main_snakemake()
-    else:
-        main_cli()

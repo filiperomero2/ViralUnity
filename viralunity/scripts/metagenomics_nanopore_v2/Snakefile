@@ -727,7 +727,7 @@ rule create_krona_report_diamond_contigs:
 rule annotate_diamond_taxonomy:
     input:
         diamond   = config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/results/{sample}.diamond.supported.tsv",
-        assembly  = config['assembly_summary'],
+        assembly  = config['assembly_summary']
     output:
         annotated = config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/results/{sample}.diamond.supported.tax.tsv"
     log:
@@ -741,10 +741,11 @@ rule annotate_diamond_taxonomy:
 
 rule summarize_taxa_diamond_contigs:
     input:
-        krona = config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/results/{sample}.diamond.supported.krona_input.tsv",
-        plot = config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/reports/{sample}.diamond.supported.krona.html"
+        krona = config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/results/{sample}.diamond.supported.krona_input.tsv",
+        plot = config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/reports/{sample}.diamond.supported.krona.html",
+        annotated = config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/results/{sample}.diamond.supported.tax.tsv"
     output:
-        temp(config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/summary/{sample}.taxa.tsv")
+        config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/summary/{sample}.taxa.tsv"
     params:
         taxdump = config["taxdump"],
         tool = "diamond",
