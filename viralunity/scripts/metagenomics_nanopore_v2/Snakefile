@@ -49,7 +49,16 @@ rule all:
         diamond_contigs_summary = (
             config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary.tsv"
             if config.get("run_diamond", False) and config.get("run_denovo_assembly", False) else []
-        )
+        ),
+
+        kraken2_reads_RPM_summary = config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_taxa_summary_RPM.tsv"
+            if config.get("run_kraken2_reads", False) else [],
+
+        diamond_reads_RPM_summary = config['output'] + "metagenomics/taxonomic_assignments/diamond_reads/diamond_reads_taxa_summary_RPM.tsv"
+            if config.get("run_diamond_reads", False) else [],
+
+        diamond_contigs_RPM_summary = config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary_RPM.tsv"
+            if config.get("run_diamond", False) and config.get("run_denovo_assembly", False) else []
 
 
 
@@ -244,6 +253,17 @@ rule summarize_taxa_kraken2_reads_all:
         done
         """
 
+rule add_RPM_to_kraken2_reads_summary:
+    input:
+        aggregated_summary = config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_taxa_summary.tsv"
+    output:
+        config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_taxa_summary_RPM.tsv"
+    params:
+        samples = config["samples"],
+        reads_col = "count"
+    script:
+        "scripts/add_RPM_to_summary.py"
+
 # DIAMOND on reads
 
 rule create_diamond_db:
@@ -396,6 +416,17 @@ rule summarize_taxa_diamond_reads_all:
             fi
         done
         """
+
+rule add_RPM_to_diamond_reads_summary:
+    input:
+        aggregated_summary = config['output'] + "metagenomics/taxonomic_assignments/diamond_reads/diamond_reads_taxa_summary.tsv"
+    output:
+        config['output'] + "metagenomics/taxonomic_assignments/diamond_reads/diamond_reads_taxa_summary_RPM.tsv"
+    params:
+        samples = config["samples"],
+        reads_col = "count"
+    script:
+        "scripts/add_RPM_to_summary.py"
 
 
 ##############################################
@@ -790,4 +821,15 @@ rule summarize_taxa_diamond_contigs_all:
             fi
         done
         """
+
+rule add_RPM_to_diamond_contigs_summary:
+    input:
+        aggregated_summary = config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary.tsv"
+    output:
+        config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary_RPM.tsv"
+    params:
+        samples = config["samples"],
+        reads_col = "mapped_reads"
+    script:
+        "scripts/add_RPM_to_summary.py"
 
