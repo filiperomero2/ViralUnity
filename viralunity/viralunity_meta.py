@@ -14,7 +14,8 @@ from snakemake import snakemake
 from viralunity.validators import (
     get_samples_from_args,
     validate_illumina_requirements,
-    validate_metagenomics_requirements
+    validate_metagenomics_requirements,
+    parse_and_validate_negative_controls,
 )
 from viralunity.config_generator import ConfigGenerator
 from viralunity.exceptions import ValidationError
@@ -42,6 +43,9 @@ def validate_args(args: Dict[str, Any]) -> Dict[str, list]:
     samples = get_samples_from_args(args)
     
     logger.info(f"Found {len(samples)} samples")
+
+    # Parse/validate negatives (store back into args for config generation)
+    args["negative_controls"] = parse_and_validate_negative_controls(args, samples)
     
     # Validate metagenomics-specific requirements
     validate_metagenomics_requirements(args)
@@ -129,6 +133,9 @@ def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None
         # medaka
         #generator.config["medaka_model"] = args.get("medaka_model", "r941_min_high_g360")
         
+        # Negative controls (for post-processing filters)
+        generator.config["negative_controls"] = args.get("negative_controls", [])
+
     # Add Illumina-specific settings if needed
     if data_type == DataType.ILLUMINA:
         generator.add_illumina_settings(

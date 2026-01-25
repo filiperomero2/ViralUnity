@@ -123,6 +123,13 @@ def fill_arg_parser_meta(subparsers: argparse._SubParsersAction):
     # Medaka
     #meta_parser.add_argument("--medaka-model", default="r941_min_high_g360", help="(v2) Medaka model name.")
 
+    meta_parser.add_argument(
+        "--negative-controls",
+        type=str,
+        default="",
+        help="Comma-separated sample names to treat as negative controls (e.g. NEG01,NEG02).",
+    )
+
     # Preferred (new) names
     meta_parser.add_argument(
         "--remove-human-sequences",

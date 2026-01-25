@@ -17,9 +17,6 @@ def get_exclude_taxids():
 
 EXCLUDE_TAXIDS = get_exclude_taxids()
 
-print(f"[metagenomics_nanopore_v2] Excluding taxids: {EXCLUDE_TAXIDS}")
-
-
 def get_final_input_fastq(wildcards):
     return config["output"] + f"host_filtered/{wildcards.sample}.filtered.fastq"
 
@@ -67,9 +64,16 @@ rule all:
             if config.get("run_diamond_reads", False) else [],
         
         diamond_contigs_RPM_summary_bleed = config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary_RPM.bleed.tsv"
+            if config.get("run_diamond", False) and config.get("run_denovo_assembly", False) else [],
+
+        kraken2_reads_RPM_summary_neg = config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_taxa_summary_RPM.bleed.neg.tsv"
+            if config.get("run_kraken2_reads", False) else [],
+
+        diamond_reads_RPM_summary_neg = config['output'] + "metagenomics/taxonomic_assignments/diamond_reads/diamond_reads_taxa_summary_RPM.bleed.neg.tsv"
+            if config.get("run_diamond_reads", False) else [],
+
+        diamond_contigs_RPM_summary_neg = config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary_RPM.bleed.neg.tsv"
             if config.get("run_diamond", False) and config.get("run_denovo_assembly", False) else []
-
-
 
 ##############################################
 # Dehosting
@@ -285,6 +289,18 @@ rule apply_bleed_filter_kraken2_reads:
     script:
         "scripts/apply_max_rpm_bleed_filter.py"
 
+rule apply_negative_background_kraken2_reads:
+    input:
+        config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_taxa_summary_RPM.bleed.tsv"
+    output:
+        config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_taxa_summary_RPM.bleed.neg.tsv"
+    params:
+        negatives = config.get("negative_controls", []),
+        count_col = "count",
+        p_threshold = 0.01
+    script:
+        "scripts/apply_negative_background_filter.py"
+
 # DIAMOND on reads
 
 rule create_diamond_db:
@@ -460,6 +476,18 @@ rule apply_bleed_filter_diamond_reads:
         rpm_col = "rpm",
     script:
         "scripts/apply_max_rpm_bleed_filter.py"
+
+rule apply_negative_background_diamond_reads:
+    input:
+        config['output'] + "metagenomics/taxonomic_assignments/diamond_reads/diamond_reads_taxa_summary_RPM.bleed.tsv"
+    output:
+        config['output'] + "metagenomics/taxonomic_assignments/diamond_reads/diamond_reads_taxa_summary_RPM.bleed.neg.tsv"
+    params:
+        negatives = config.get("negative_controls", []),
+        count_col = "count",
+        p_threshold = 0.01
+    script:
+        "scripts/apply_negative_background_filter.py"
 
 ##############################################
 # De novo Assembly with MEGAHIT
@@ -876,3 +904,15 @@ rule apply_bleed_filter_diamond_contigs:
         rpm_col = "rpm",
     script:
         "scripts/apply_max_rpm_bleed_filter.py"
+
+rule apply_negative_background_diamond_contigs:
+    input:
+        config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary_RPM.bleed.tsv"
+    output:
+        config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary_RPM.bleed.neg.tsv"
+    params:
+        negatives = config.get("negative_controls", []),   # list like ["NEG01","NEG02"]
+        count_col = "mapped_reads",
+        p_threshold = 0.01
+    script:
+        "scripts/apply_negative_background_filter.py"

@@ -108,6 +108,40 @@ def validate_sample_sheet(
     return samples
 
 
+def parse_and_validate_negative_controls(args: Dict[str, Any], samples: Dict[str, List[str]]) -> List[str]:
+    """
+    Parse --negative-controls and validate that each provided sample exists in the sample sheet.
+
+    Returns a list of sample IDs (may be empty).
+    """
+    raw = args.get("negative_controls", "") or ""
+    raw = str(raw).strip()
+    if raw == "":
+        return []
+
+    negs = [x.strip() for x in raw.split(",") if x.strip()]
+    if not negs:
+        return []
+
+    missing = [n for n in negs if n not in samples]
+    if missing:
+        raise ValidationError(
+            "Negative control sample(s) not found in sample sheet: "
+            + ", ".join(missing)
+        )
+
+    # optional: deduplicate while preserving order
+    seen = set()
+    negs_unique = []
+    for n in negs:
+        n = "sample-" + n if not n.startswith("sample-") else n
+        if n not in seen:
+            seen.add(n)
+            negs_unique.append(n)
+
+    return negs_unique
+
+
 def validate_illumina_requirements(args: Dict[str, Any]) -> None:
     """Validate Illumina-specific requirements.
     
