@@ -58,6 +58,15 @@ rule all:
             if config.get("run_diamond_reads", False) else [],
 
         diamond_contigs_RPM_summary = config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary_RPM.tsv"
+            if config.get("run_diamond", False) and config.get("run_denovo_assembly", False) else [],
+
+        kraken2_reads_RPM_summary_bleed = config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_taxa_summary_RPM.bleed.tsv"
+            if config.get("run_kraken2_reads", False) else [],
+
+        diamond_reads_RPM_summary_bleed = config['output'] + "metagenomics/taxonomic_assignments/diamond_reads/diamond_reads_taxa_summary_RPM.bleed.tsv"
+            if config.get("run_diamond_reads", False) else [],
+        
+        diamond_contigs_RPM_summary_bleed = config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary_RPM.bleed.tsv"
             if config.get("run_diamond", False) and config.get("run_denovo_assembly", False) else []
 
 
@@ -264,6 +273,18 @@ rule add_RPM_to_kraken2_reads_summary:
     script:
         "scripts/add_RPM_to_summary.py"
 
+rule apply_bleed_filter_kraken2_reads:
+    input:
+        config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_taxa_summary_RPM.tsv"
+    output:
+        config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_taxa_summary_RPM.bleed.tsv"
+    params:
+        fraction = 0.005,
+        rpm_floor = 1.0,
+        rpm_col = "rpm",
+    script:
+        "scripts/apply_max_rpm_bleed_filter.py"
+
 # DIAMOND on reads
 
 rule create_diamond_db:
@@ -428,6 +449,17 @@ rule add_RPM_to_diamond_reads_summary:
     script:
         "scripts/add_RPM_to_summary.py"
 
+rule apply_bleed_filter_diamond_reads:
+    input:
+        config['output'] + "metagenomics/taxonomic_assignments/diamond_reads/diamond_reads_taxa_summary_RPM.tsv"
+    output:
+        config['output'] + "metagenomics/taxonomic_assignments/diamond_reads/diamond_reads_taxa_summary_RPM.bleed.tsv"
+    params:
+        fraction = 0.005,
+        rpm_floor = 1.0,
+        rpm_col = "rpm",
+    script:
+        "scripts/apply_max_rpm_bleed_filter.py"
 
 ##############################################
 # De novo Assembly with MEGAHIT
@@ -833,3 +865,14 @@ rule add_RPM_to_diamond_contigs_summary:
     script:
         "scripts/add_RPM_to_summary.py"
 
+rule apply_bleed_filter_diamond_contigs:
+    input:
+        config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary_RPM.tsv"
+    output:
+        config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary_RPM.bleed.tsv"
+    params:
+        fraction = 0.005,
+        rpm_floor = 1.0,
+        rpm_col = "rpm",
+    script:
+        "scripts/apply_max_rpm_bleed_filter.py"
