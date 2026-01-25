@@ -130,6 +130,20 @@ def fill_arg_parser_meta(subparsers: argparse._SubParsersAction):
         help="Comma-separated sample names to treat as negative controls (e.g. NEG01,NEG02).",
     )
 
+    meta_parser.add_argument(
+        "--bleed-fraction",
+        type=float,
+        default=0.005,
+        help="Fraction of max RPM used for bleed-through filtering (default: 0.005).",
+    )
+
+    meta_parser.add_argument(
+        "--negative-p-threshold",
+        type=float,
+        default=0.01,
+        help="P-value threshold for negative control background filter (default: 0.01).",
+    )
+
     # Preferred (new) names
     meta_parser.add_argument(
         "--remove-human-sequences",

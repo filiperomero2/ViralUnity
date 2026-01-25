@@ -135,6 +135,10 @@ def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None
         
         # Negative controls (for post-processing filters)
         generator.config["negative_controls"] = args.get("negative_controls", [])
+        
+        # Filtering parameters (post-processing)
+        generator.config["bleed_fraction"] = float(args.get("bleed_fraction", 0.005))
+        generator.config["negative_p_threshold"] = float(args.get("negative_p_threshold", 0.01))
 
     # Add Illumina-specific settings if needed
     if data_type == DataType.ILLUMINA:

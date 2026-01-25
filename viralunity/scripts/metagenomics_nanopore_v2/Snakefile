@@ -283,7 +283,7 @@ rule apply_bleed_filter_kraken2_reads:
     output:
         config['output'] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_taxa_summary_RPM.bleed.tsv"
     params:
-        fraction = 0.005,
+        fraction = config.get("bleed_fraction", 0.005),
         rpm_floor = 1.0,
         rpm_col = "rpm",
     script:
@@ -297,7 +297,7 @@ rule apply_negative_background_kraken2_reads:
     params:
         negatives = config.get("negative_controls", []),
         count_col = "count",
-        p_threshold = 0.01
+        p_threshold = config.get("negative_p_threshold", 0.01)
     script:
         "scripts/apply_negative_background_filter.py"
 
@@ -471,7 +471,7 @@ rule apply_bleed_filter_diamond_reads:
     output:
         config['output'] + "metagenomics/taxonomic_assignments/diamond_reads/diamond_reads_taxa_summary_RPM.bleed.tsv"
     params:
-        fraction = 0.005,
+        fraction = config.get("bleed_fraction", 0.005),
         rpm_floor = 1.0,
         rpm_col = "rpm",
     script:
@@ -485,7 +485,7 @@ rule apply_negative_background_diamond_reads:
     params:
         negatives = config.get("negative_controls", []),
         count_col = "count",
-        p_threshold = 0.01
+        p_threshold = config.get("negative_p_threshold", 0.01)
     script:
         "scripts/apply_negative_background_filter.py"
 
@@ -899,7 +899,7 @@ rule apply_bleed_filter_diamond_contigs:
     output:
         config['output'] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary_RPM.bleed.tsv"
     params:
-        fraction = 0.005,
+        fraction = config.get("bleed_fraction", 0.005),
         rpm_floor = 1.0,
         rpm_col = "rpm",
     script:
@@ -913,6 +913,6 @@ rule apply_negative_background_diamond_contigs:
     params:
         negatives = config.get("negative_controls", []),   # list like ["NEG01","NEG02"]
         count_col = "mapped_reads",
-        p_threshold = 0.01
+        p_threshold = config.get("negative_p_threshold", 0.01)
     script:
         "scripts/apply_negative_background_filter.py"
