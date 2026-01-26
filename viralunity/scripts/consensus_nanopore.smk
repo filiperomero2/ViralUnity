@@ -60,11 +60,12 @@ rule infer_consensus_sequence:
     output:
         temp(config['output'] + "assembly/consensus/final_consensus/{sample}.consensus.fasta")
     params:
-        minimum_depth = config["minimum_depth"]
+        minimum_depth = config["minimum_depth"],
+        af_threshold = config["af_threshold"]
     benchmark:
         config['output'] + "logs/samtools/consensus/{sample}.benchmark.txt"
     shell:
-        "samtools consensus -a -d {params.minimum_depth} -m simple -q -c 0.75 --show-ins yes {input.mapped_reads} -o {output}"
+        "samtools consensus -a -d {params.minimum_depth} -m simple -q -c {params.af_threshold} --show-ins yes {input.mapped_reads} -o {output}"
 
 
 rule calculate_coverage_basewise:

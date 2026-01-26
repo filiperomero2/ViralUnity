@@ -44,12 +44,66 @@ def fill_arg_parser_consensus(subparsers: argparse._SubParsersAction):
     )
     
     consensus_parser.add_argument(
-        "--trim",
+        "--trim-head",
         type=int,
         help="Number of bases to trim from the 5' end of reads (Default = 0) [Illumina QC]",
         nargs="?",
         const=1,
         default=0,
+    )
+
+    consensus_parser.add_argument(
+        "--trim-tail",
+        type=int,
+        help="Number of bases to trim from the 3' end of reads (Default = 0) [Illumina QC]",
+        nargs="?",
+        const=1,
+        default=0,
+    )
+
+    consensus_parser.add_argument(
+        "--cut-front-mean-quality",
+        type=int,
+        help="Mean quality requirement option for cut_front (Default = 10) [Illumina QC]",
+        nargs="?",
+        const=1,
+        default=10,
+    )
+
+    consensus_parser.add_argument(
+        "--cut-tail-mean-quality",
+        type=int,
+        help="Mean quality requirement option for cut_tail (Default = 10) [Illumina QC]",
+        nargs="?",
+        const=1,
+        default=10,
+    )
+
+    consensus_parser.add_argument(
+        "--cut-right-window-size",
+        type=int,
+        help="Window size for cut_right (Default = 4) [Illumina QC]",
+        nargs="?",
+        const=1,
+        default=4,
+    )
+
+    consensus_parser.add_argument(
+        "--cut-right-mean-quality",
+        type=int,
+        help="Mean quality requirement option for cut_right (Default = 15) [Illumina QC]",
+        nargs="?",
+        const=1,
+        default=15,
+    )
+
+    consensus_parser.add_argument(
+        "--af-threshold",
+        type=float,
+        help="Allele frequency threshold to call a variant into consensus (Default = 0.51)",
+        nargs="?",
+        const=1,
+        default=0.51,
     )
 
     consensus_parser.add_argument(

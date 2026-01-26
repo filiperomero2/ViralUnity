@@ -69,18 +69,36 @@ class ConfigGenerator:
         self,
         adapters: str,
         minimum_read_length: int,
-        trim: int
+        trim_head: int,
+        trim_tail: int,
+        cut_front_mean_quality: int,
+        cut_tail_mean_quality: int,
+        cut_right_window_size: int,
+        cut_right_mean_quality: int,
+        af_threshold: float,
     ) -> None:
         """Add Illumina-specific settings to configuration.
         
         Args:
             adapters: Path to adapters file
             minimum_read_length: Minimum read length threshold
-            trim: Number of bases to trim from 5' end
+            trim_head: Number of bases to trim from 5' end
+            trim_tail: Number of bases to trim from 3' end
+            cut_front_mean_quality: Mean quality requirement option for cut_front
+            cut_tail_mean_quality: Mean quality requirement option for cut_tail
+            cut_right_window_size: Window size for cut_right
+            cut_right_mean_quality: Mean quality requirement option for cut_right
+            af_threshold: Allele frequency threshold to call a variant into consensus
         """
         self.config[ConfigKeys.ADAPTERS] = adapters
         self.config[ConfigKeys.MINIMUM_LENGTH] = minimum_read_length
-        self.config[ConfigKeys.TRIM] = trim
+        self.config[ConfigKeys.TRIM_HEAD] = trim_head
+        self.config[ConfigKeys.TRIM_TAIL] = trim_tail
+        self.config[ConfigKeys.CUT_FRONT_MEAN_QUALITY] = cut_front_mean_quality
+        self.config[ConfigKeys.CUT_TAIL_MEAN_QUALITY] = cut_tail_mean_quality
+        self.config[ConfigKeys.CUT_RIGHT_WINDOW_SIZE] = cut_right_window_size
+        self.config[ConfigKeys.CUT_RIGHT_MEAN_QUALITY] = cut_right_mean_quality    
+        self.config[ConfigKeys.AF_THRESHOLD] = af_threshold
     
     def add_consensus_settings(
         self,

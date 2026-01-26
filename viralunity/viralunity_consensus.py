@@ -100,7 +100,13 @@ def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None
         generator.add_illumina_settings(
             adapters=args["adapters"],
             minimum_read_length=args.get("minimum_read_length", 50),
-            trim=args.get("trim", 0)
+            trim_head=args.get("trim_head", 0),
+            trim_tail=args.get("trim_tail", 0),
+            cut_front_mean_quality=args.get("cut_front_mean_quality", 10),
+            cut_tail_mean_quality=args.get("cut_tail_mean_quality", 10),
+            cut_right_window_size=args.get("cut_right_window_size", 4),
+            cut_right_mean_quality=args.get("cut_right_mean_quality", 15),
+            af_threshold=args.get("af_threshold", 0.51),
         )
     
     # Save config file
