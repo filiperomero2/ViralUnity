@@ -245,7 +245,10 @@ class Test_GenerateConfigFile(unittest.TestCase):
         
         generate_config_file(self.samples, self.args)
         
-        mock_makedirs.assert_called_once_with(os.path.dirname("config_file.yaml"), exist_ok=True)
+        # makedirs is only called if config file path has a directory component
+        config_dir = os.path.dirname("config_file.yaml")
+        if config_dir:
+            mock_makedirs.assert_called_once_with(config_dir, exist_ok=True)
         mock_open.assert_called_once_with("config_file.yaml", "w")
         # Check that yaml.dump was called with correct config structure
         self.assertEqual(mock_yaml_dump.call_count, 1)
@@ -276,7 +279,10 @@ class Test_GenerateConfigFile(unittest.TestCase):
         
         generate_config_file(self.samples, self.args)
         
-        mock_makedirs.assert_called_once_with(os.path.dirname("config_file.yaml"), exist_ok=True)
+        # makedirs is only called if config file path has a directory component
+        config_dir = os.path.dirname("config_file.yaml")
+        if config_dir:
+            mock_makedirs.assert_called_once_with(config_dir, exist_ok=True)
         mock_open.assert_called_once_with("config_file.yaml", "w")
         # Check that yaml.dump was called with correct config structure
         self.assertEqual(mock_yaml_dump.call_count, 1)
