@@ -13,87 +13,99 @@ rule map_reads:
         reference = config["reference"],
         fastq = get_map_input_fastqs
     output:
-        config['output'] + "assembly/mapped_reads/raw/{sample}.sorted.bam"
+        bam = config['output'] + "assembly/mapped_reads/raw/{sample}.sorted.bam",
+        bam_index = config['output'] + "assembly/mapped_reads/raw/{sample}.sorted.bam.bai",
     log:
         config['output'] + "logs/minimap2/{sample}.log"
     benchmark:
         config['output'] + "logs/minimap2/{sample}.benchmark.txt"
     threads: config["threads"] 
     shell:
-        "minimap2 -a -t {threads} -x map-ont {input.reference} {input.fastq} | "
-        "samtools view -bS -F 4 - | "
-        "samtools sort -o {output} - 2> {log}"
+        """
+        minimap2 -a -t {threads} -x map-ont {input.reference} {input.fastq} |
+        samtools view -bS -F 4 - |
+        samtools sort -o {output.bam} - 2> {log}
+        samtools index {output.bam} {output.bam_index}
+        """
 
-# experimental 
 rule trim_primer_sequences:
     input:
-        config['output'] + "assembly/mapped_reads/raw/{sample}.sorted.bam"
+        bam = rules.map_reads.output.bam,
+        bam_index = rules.map_reads.output.bam_index
     output:
-        config['output'] + "assembly/mapped_reads/trimmed/{sample}.sorted.bam"
+        bam = config['output'] + "assembly/mapped_reads/trimmed/{sample}.sorted.bam",
+        bam_index = config['output'] + "assembly/mapped_reads/trimmed/{sample}.sorted.bam.bai",
+        trimmed_info = config['output'] + "assembly/mapped_reads/trimmed/{sample}.trimmed.txt"
     params:
         bed = config["scheme"],
+        minimum_length = config["minimum_length"],
         path = config['output'] + "assembly/mapped_reads/raw/"
     shell:
         """
         if [ {params.bed} == NA ]; then
-           mv {input} {output};
-           echo "No primer scheme detected, assuming sequence data came from untargeted sequencing approach (fastq files moved to trimmed dir for convenience)." > {params.path}notes.txt
+            mv {input.bam} {output.bam};
+            mv {input.bam_index} {output.bam_index};
+            touch {output.trimmed_info};
+            echo "No primer scheme detected, assuming sequence data came from untargeted sequencing approach (fastq files moved to trimmed dir for convenience)." > {params.path}notes.txt
         else
-           ivar trim -b {params.bed} -e -q 0 -m 50 -p {params.path}trim.{wildcards.sample} -i {input};
-           samtools sort {params.path}trim.{wildcards.sample}.bam -o {output};
-           rm {params.path}trim.{wildcards.sample}.bam
+            samtools ampliconclip \
+                --both-ends \
+                --hard-clip \
+                --filter-len {params.minimum_length} \
+                -b {params.bed} \
+                -f {output.trimmed_info} \
+                {input.bam} > {output.bam}
+            samtools index {output.bam} {output.bam_index}
         fi
         """
 
-rule index_bam_files:
-    input:
-        config['output'] + "assembly/mapped_reads/trimmed/{sample}.sorted.bam"
-    output:
-        config['output'] + "assembly/mapped_reads/trimmed/{sample}.sorted.bam.bai"
-    shell:
-        "samtools index {input}"
-
 rule infer_consensus_sequence:
     input:
-        mapped_reads = config['output'] + "assembly/mapped_reads/trimmed/{sample}.sorted.bam",
-        bam_index = config['output'] + "assembly/mapped_reads/trimmed/{sample}.sorted.bam.bai"
+        bam = rules.trim_primer_sequences.output.bam,
+        bam_index = rules.trim_primer_sequences.output.bam_index
     output:
-        temp(config['output'] + "assembly/consensus/final_consensus/{sample}.consensus.fasta")
+        consensus = temp(config['output'] + "assembly/consensus/final_consensus/{sample}.consensus.fasta")
     params:
         minimum_depth = config["minimum_depth"],
         af_threshold = config["af_threshold"]
     benchmark:
         config['output'] + "logs/samtools/consensus/{sample}.benchmark.txt"
     shell:
-        "samtools consensus -a -d {params.minimum_depth} -m simple -q -c {params.af_threshold} --show-ins yes {input.mapped_reads} -o {output}"
+        "samtools consensus -a -d {params.minimum_depth} -m simple -q -c {params.af_threshold} --show-ins yes {input.bam} -o {output.consensus}"
+
 
 
 rule calculate_coverage_basewise:
     input:
-        config['output'] + "assembly/mapped_reads/trimmed/{sample}.sorted.bam"
+        bam = rules.trim_primer_sequences.output.bam,
+        bam_index = rules.trim_primer_sequences.output.bam_index
     output:
-        config['output'] + "assembly/coverage_stats/{sample}.table_cov_basewise.txt"
+        table_cov = config['output'] + "assembly/coverage_stats/{sample}.table_cov_basewise.txt"
     shell:
-        "bedtools genomecov -d -ibam {input} > {output}"
+        "bedtools genomecov -d -ibam {input.bam} > {output.table_cov}"
+
 
 rule rename_sequences:
     input:
-        config['output'] + "assembly/consensus/final_consensus/{sample}.consensus.fasta"
+        consensus = rules.infer_consensus_sequence.output.consensus
     output:
-        config['output'] + "assembly/consensus/final_consensus/{sample}.consensus.renamed.fasta"
+        consensus_renamed = config['output'] + "assembly/consensus/final_consensus/{sample}.consensus.renamed.fasta"
     script:
         "rename_sequences.py"
 
+# The calculate_assembly_stats.py expects three fastq inputs: raw_r1, raw_r2 and trimmed
+# Here we employ a workaround by passing the same fastq file for raw_r1 and raw_r2
+# in Nanopore scenario
 rule calculate_assembly_statistics:
     input:
         get_map_input_fastqs,
         get_map_input_fastqs,
         get_map_input_fastqs,
-        config['output'] + "assembly/mapped_reads/trimmed/{sample}.sorted.bam",
-        config['output'] + "assembly/coverage_stats/{sample}.table_cov_basewise.txt",
-        config['output'] + "assembly/consensus/final_consensus/{sample}.consensus.renamed.fasta"
+        rules.trim_primer_sequences.output.bam,
+        rules.calculate_coverage_basewise.output.table_cov,
+        rules.rename_sequences.output.consensus_renamed
     output:
-        temp(config['output'] + "assembly/coverage_stats/{sample}.stats_summary.csv")
+        stats_summary = temp(config['output'] + "assembly/coverage_stats/{sample}.stats_summary.csv")
     params:
         minimum_depth = config["minimum_depth"]
     script:
@@ -101,23 +113,28 @@ rule calculate_assembly_statistics:
 
 rule unify_assembly_statistics_reports:
     input:
-        reports = expand(config['output'] + "assembly/coverage_stats/{sample}.stats_summary.csv", sample=config["samples"])
+        reports = expand(rules.calculate_assembly_statistics.output.stats_summary, sample=config["samples"])
     output:
-        config['output'] + "assembly/assembly_stats_summary.csv"
+        unified_stats_summary = config['output'] + "assembly/assembly_stats_summary.csv"
     shell:
-        " echo \"sample_name,number_of_reads,number_of_trim_paired_reads,number_of_mapped_reads,average_depth,percentage_above_10x,percentage_above_100x,percentage_above_1000x,horizontal_coverage\" > {output} ;"
-        " cat {input} >> {output}"
+        """
+        echo \"sample_name,number_of_reads,number_of_trim_paired_reads,number_of_mapped_reads,average_depth,percentage_above_10x,percentage_above_100x,percentage_above_1000x,horizontal_coverage\" > {output.unified_stats_summary} ;
+        cat {input.reports} >> {output.unified_stats_summary}
+        """
+
 
 rule align_consensus_to_reference_genome:
     input:
-        config['output'] + "assembly/assembly_stats_summary.csv"
+        rules.unify_assembly_statistics_reports.output.unified_stats_summary
     output:
-        config['output'] + "assembly/consensus/final_consensus/aln.consensus.fasta"
+        aln_consensus = config['output'] + "assembly/consensus/final_consensus/aln.consensus.fasta"
     params:
         path_consensus = config['output'] + "assembly/consensus/final_consensus/",
         reference = config['reference']
     shell:
-        "cat {params.reference} {params.path_consensus}/*.fasta > {params.path_consensus}/consensus.fasta; "
-        "minimap2 -a --sam-hit-only --secondary=no --score-N=0 {params.reference} {params.path_consensus}/consensus.fasta -o {params.path_consensus}/aln.consensus.sam; "
-        "gofasta sam toMultiAlign --pad -s {params.path_consensus}/aln.consensus.sam -o {output}; "
-        "sed '/^>/! s/-/N/g' {output} > {params.path_consensus}/aln.consensus.indelsMasked.fasta"
+        """
+        cat {params.reference} {params.path_consensus}/*.fasta > {params.path_consensus}/consensus.fasta; 
+        minimap2 -a --sam-hit-only --secondary=no --score-N=0 {params.reference} {params.path_consensus}/consensus.fasta -o {params.path_consensus}/aln.consensus.sam; 
+        gofasta sam toMultiAlign --pad -s {params.path_consensus}/aln.consensus.sam -o {output.aln_consensus}; 
+        sed '/^>/! s/-/N/g' {output.aln_consensus} > {params.path_consensus}/aln.consensus.indelsMasked.fasta
+        """

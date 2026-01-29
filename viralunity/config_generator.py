@@ -64,7 +64,21 @@ class ConfigGenerator:
             threads: Number of threads
         """
         self.config[ConfigKeys.THREADS] = threads
-    
+
+    def add_nanopore_settings(
+        self,
+        minimum_read_length: int,
+        af_threshold: float,
+    ) -> None:
+        """Add Nanopore-specific settings to configuration.
+
+        Args:
+            minimum_read_length: Minimum read length threshold
+            af_threshold: Allele frequency threshold to call a variant into consensus
+        """
+        self.config[ConfigKeys.MINIMUM_LENGTH] = minimum_read_length
+        self.config[ConfigKeys.AF_THRESHOLD] = af_threshold
+
     def add_illumina_settings(
         self,
         adapters: str,

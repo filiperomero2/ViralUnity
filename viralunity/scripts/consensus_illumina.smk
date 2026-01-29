@@ -79,27 +79,34 @@ rule map_reads:
         samtools index {output.bam} {output.bam_index}
         """
 
-# experimental 
 rule trim_primer_sequences:
     input:
         bam = rules.map_reads.output.bam,
         bam_index = rules.map_reads.output.bam_index
     output:
         bam = config['output'] + "assembly/mapped_reads/trimmed/{sample}.sorted.bam",
-        bam_index = config['output'] + "assembly/mapped_reads/trimmed/{sample}.sorted.bam.bai"
+        bam_index = config['output'] + "assembly/mapped_reads/trimmed/{sample}.sorted.bam.bai",
+        trimmed_info = config['output'] + "assembly/mapped_reads/trimmed/{sample}.trimmed.txt"
     params:
         bed = config["scheme"],
+        minimum_length = config["minimum_length"],
         path = config['output'] + "assembly/mapped_reads/raw/"
     shell:
         """
         if [ {params.bed} == NA ]; then
-           mv {input.bam} {output.bam};
-           mv {input.bam_index} {output.bam_index};
-           echo "No primer scheme detected, assuming sequence data came from untargeted sequencing approach (fastq files moved to trimmed dir for convenience)." > {params.path}notes.txt
+            mv {input.bam} {output.bam};
+            mv {input.bam_index} {output.bam_index};
+            touch {output.trimmed_info};
+            echo "No primer scheme detected, assuming sequence data came from untargeted sequencing approach (fastq files moved to trimmed dir for convenience)." > {params.path}notes.txt
         else
-           ivar trim -b {params.bed} -e -q 0 -m 50 -p {params.path}trim.{wildcards.sample} -i {input.bam};
-           samtools sort {params.path}trim.{wildcards.sample}.bam -o {output.bam};
-           rm {params.path}trim.{wildcards.sample}.bam
+            samtools ampliconclip \
+                --both-ends \
+                --hard-clip \
+                --filter-len {params.minimum_length} \
+                -b {params.bed} \
+                -f {output.trimmed_info} \
+                {input.bam} > {output.bam}
+            samtools index {output.bam} {output.bam_index}
         fi
         """
 

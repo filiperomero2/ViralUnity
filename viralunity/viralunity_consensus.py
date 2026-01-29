@@ -95,6 +95,13 @@ def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None
     # Add workflow_path (consensus-specific)
     generator.add_workflow_path(sys.path[0])
     
+    # Add Nanopore-specific settings if needed
+    if data_type == DataType.NANOPORE:
+        generator.add_nanopore_settings(
+            minimum_read_length=args.get("minimum_read_length", 50),
+            af_threshold=args.get("af_threshold", 0.51),
+        )
+
     # Add Illumina-specific settings if needed
     if data_type == DataType.ILLUMINA:
         generator.add_illumina_settings(

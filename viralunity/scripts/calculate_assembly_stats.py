@@ -68,6 +68,7 @@ def generate_output(fastq, trim_fastq, bam, table_cov, sample_name, minimum_dept
 
 
 def main(input, output, minimum_depth):
+    # keep fist read and ignore paired in illumina scenario
     fastq = input[0]
     trim_fastq = input[2]
     bam = input[3]

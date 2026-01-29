@@ -159,7 +159,7 @@ def fill_arg_parser_consensus(subparsers: argparse._SubParsersAction):
     consensus_parser.add_argument(
         "--minimum-read-length",
         type=int,
-        help="Minimum read length threshold (Default = 50) [Illumina QC]",
+        help="Minimum read length threshold (Default = 50)",
         nargs="?",
         const=1,
         default=50,
