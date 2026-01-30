@@ -68,8 +68,12 @@ data/
 input/
 output/
 output-*/
-.snakemake/
+.snakemake/*
 viralunity/meta.yaml
 viralunity/scripts/metagenomics_nanopore_v2/config.test.yml
 viralunity/scripts/metagenomics_nanopore_v2/output/
 viralunity/scripts/metagenomics_nanopore_v2/.snakemake/
+config_diamond_test.yml
+test_sample_sheet.csv
+config.yml
+test_sample_sheet_withNegativeControl.csv
