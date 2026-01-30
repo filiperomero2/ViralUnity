@@ -18,7 +18,7 @@ def get_exclude_taxids():
 EXCLUDE_TAXIDS = get_exclude_taxids()
 
 def get_final_input_fastq(wildcards):
-    return config["output"] + f"host_filtered/{wildcards.sample}.filtered.fastq"
+    return config["output"] + f"host_filtered/{wildcards.sample}.filtered.fastq.gz"
 
 host_filtering_enabled = config.get("host_reference", "NA") != "NA"
 
@@ -102,7 +102,7 @@ if host_filtering_enabled:
             reads = lambda wildcards: config["samples"][wildcards.sample],
             index = config["host_reference"] + ".mmi"
         output:
-            filtered = config["output"] + "host_filtered/{sample}.filtered.fastq"
+            filtered = config["output"] + "host_filtered/{sample}.filtered.fastq.gz"
         threads: config["threads"]
         log:
             config["output"] + "logs/remove_host/{sample}.log"
@@ -111,18 +111,17 @@ if host_filtering_enabled:
         shell:
             r"""
             set -euo pipefail
-            mkdir -p $(dirname {output.filtered})
 
-            # Keep only UNMAPPED reads after alignment to host reference.
-            minimap2 -t {threads} -ax map-ont {input.index} {input.reads} 2>> {log} \
-              | samtools view -@ {threads} -u -f 4 - 2>> {log} \
-              | samtools fastq -@ {threads} - 2>> {log} \
-              > {output.filtered}
+            mkdir -p "$(dirname {output.filtered})" "$(dirname {log})"
 
-            # Robustness: if all reads were host, output will be empty.
-            if [ ! -s {output.filtered} ]; then
-                echo "WARNING: No reads remained after host filtering for sample {wildcards.sample}." >> {log}
-                # Leave empty FASTQ in place; downstream rules will handle it.
+            minimap2 -t {threads} -ax map-ont "{input.index}" "{input.reads}" 2>> "{log}" \
+            | samtools view -@ {threads} -u -f 4 - 2>> "{log}" \
+            | samtools fastq -@ {threads} - 2>> "{log}" \
+            | gzip -c > "{output.filtered}"
+
+            unc_size="$(gzip -l "{output.filtered}" | awk 'NR==2 {{print $2}}')"
+            if [[ "${{unc_size}}" == "0" ]]; then
+                echo "WARNING: No reads remained after host filtering for sample {wildcards.sample}." >> "{log}"
             fi
             """
 
@@ -132,7 +131,7 @@ else:
         input:
             reads = lambda wildcards: config["samples"][wildcards.sample],
         output:
-            filtered = config["output"] + "host_filtered/{sample}.filtered.fastq"
+            filtered = config["output"] + "host_filtered/{sample}.filtered.fastq.gz"
         log:
             config["output"] + "logs/remove_host/{sample}.log"
         benchmark:
@@ -140,9 +139,15 @@ else:
         shell:
             r"""
             set -euo pipefail
-            mkdir -p $(dirname {output.filtered})
-            cp {input.reads} {output.filtered}
-            echo "No host genome provided — skipping host read removal." > {log}
+            mkdir -p "$(dirname {output.filtered})" "$(dirname {log})"
+
+            if [[ "{input.reads}" == *.gz ]]; then
+                cp -f "{input.reads}" "{output.filtered}"
+            else
+                gzip -c "{input.reads}" > "{output.filtered}"
+            fi
+
+            echo "No host genome provided — skipping host read removal." > "{log}"
             """
 
 ##############################################
@@ -170,7 +175,8 @@ rule run_kraken2_reads:
         mkdir -p $(dirname {output.report})
         mkdir -p $(dirname {log})
 
-        if [ ! -s {input.fastq} ]; then
+        unc_size="$(gzip -l "{input.fastq}" | awk 'NR==2 {{print $2}}')"
+        if [[ "${{unc_size}}" == "0" ]]; then
             echo "WARNING: {input.fastq} missing or empty. Creating dummy Kraken2 READS outputs." > {log}
             : > {output.report}
             : > {output.outfile}
@@ -342,7 +348,8 @@ rule run_diamond_reads:
         mkdir -p $(dirname {output.tsv})
         mkdir -p $(dirname {log})
 
-        if [ ! -s {input.fastq} ]; then
+        unc_size="$(gzip -l "{input.fastq}" | awk 'NR==2 {{print $2}}')"
+        if [[ "${{unc_size}}" == "0" ]]; then
             echo "WARNING: {input.fastq} missing or empty. Creating dummy DIAMOND READS output." > {log}
             : > {output.tsv}
         else
@@ -493,33 +500,50 @@ rule apply_negative_background_diamond_reads:
 # De novo Assembly with MEGAHIT
 ##############################################
 
-rule run_megahit:
+rule fastq_for_assembly:
     input:
         fastq = get_final_input_fastq
+    output:
+        fq = temp("/tmp/viralunity_megahit_inputs/{sample}.fastq")
+    shell:
+        r"""
+        set -euo pipefail
+        mkdir -p "$(dirname {output.fq})"
+        if [[ "{input.fastq}" == *.gz ]]; then
+            gzip -cd "{input.fastq}" > "{output.fq}"
+        else
+            cp -f "{input.fastq}" "{output.fq}"
+        fi
+        """
+
+rule run_megahit:
+    input:
+        fastq = rules.fastq_for_assembly.output.fq
     output:
         contigs = config['output'] + "denovo_assembly/megahit/{sample}/final.contigs.fa"
     threads: config["threads"]
     log:
         config['output'] + "logs/megahit/{sample}.log"
-    benchmark:
-        config['output'] + "logs/megahit/{sample}.benchmark.txt"
     params:
-        prefix_temp = config['output'] + "denovo_assembly/megahit/temp_{sample}",
-        prefix_final = config['output'] + "denovo_assembly/megahit/{sample}"
+        workdir = "/tmp/viralunity_megahit/{sample}"
     shell:
         r"""
         set -euo pipefail
+        mkdir -p "$(dirname {log})" "$(dirname {output.contigs})"
+        rm -rf "{params.workdir}"
+        mkdir -p "{params.workdir}"
 
-        # If host filtering removed everything (or input was empty), skip assembly gracefully.
-        if [ ! -s {input.fastq} ]; then
-            echo "WARNING: Input FASTQ is empty for sample {wildcards.sample}. Skipping MEGAHIT." > {log}
-            mkdir -p {params.prefix_final}
-            : > {output.contigs}
-        else
-            megahit -r {input.fastq} -o {params.prefix_temp} --num-cpu-threads {threads} > {log} 2>&1
-            mv -T {params.prefix_temp} {params.prefix_final}
+        if [[ ! -s "{input.fastq}" ]]; then
+            echo "WARNING: Input FASTQ is empty for sample {wildcards.sample}. Skipping MEGAHIT." > "{log}"
+            : > "{output.contigs}"
+            exit 0
         fi
+
+        megahit -r "{input.fastq}" -o "{params.workdir}/out" --num-cpu-threads {threads} > "{log}" 2>&1
+        cp -f "{params.workdir}/out/final.contigs.fa" "{output.contigs}"
+        rm -rf "{params.workdir}"
         """
+
 
 ##############################################
 # Contigs analyses
@@ -683,7 +707,7 @@ rule trim_diamond_contig_regions:
 
 rule medaka_consensus_trimmed:
     input:
-        reads   = config["output"] + "host_filtered/{sample}.filtered.fastq",
+        reads   = config["output"] + "host_filtered/{sample}.filtered.fastq.gz",
         contigs = config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/results/{sample}.diamond.trimmed.fa"
     output:
         polished_contigs = config["output"] + "medaka/{sample}/viral_consensus.fasta"
