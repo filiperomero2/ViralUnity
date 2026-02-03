@@ -25,6 +25,11 @@ Tip: On macOS (with chips m1 or later), one may need to further configure the en
     conda env update -n viralunity --file environment.yml
     pip install .
 
+Or with micromamba
+
+    micromamba create -n viralunity -f environment.yml --platform osx-64
+    pip install .
+
 It is a good practice to verify whether all required dependencies (available on envs/vu_dependecies.yml) are available before running the pipeline. In case any installation fail, try re-installing separetely on the command line with conda. On certain systems, it might be necessary to manually set conda channels priority.
 
 ## Usage

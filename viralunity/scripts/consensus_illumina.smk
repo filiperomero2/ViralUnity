@@ -1,6 +1,7 @@
 rule all:
     input:
-        config['output'] + "assembly/consensus/final_consensus/aln.consensus.fasta"
+        config['output'] + "assembly/consensus/final_consensus/aln.consensus.fasta",
+        config['output'] + "isnvs/isnvs_summary.tsv"
 
 def get_map_input_fastqs(wildcards):
     reads = config["samples"][wildcards.sample].split()
@@ -91,6 +92,11 @@ rule trim_primer_sequences:
         bed = config["scheme"],
         minimum_length = config["minimum_length"],
         path = config['output'] + "assembly/mapped_reads/raw/"
+    log:
+        config['output'] + "logs/samtools/ampliconclip/{sample}.log"
+    benchmark:
+        config['output'] + "logs/samtools/ampliconclip/{sample}.benchmark.txt"
+    threads: config["threads"]
     shell:
         """
         if [ {params.bed} == NA ]; then
@@ -110,6 +116,44 @@ rule trim_primer_sequences:
         fi
         """
 
+rule detect_isnv:
+    input:
+        reference = config["reference"],
+        bam = rules.trim_primer_sequences.output.bam,
+        bam_index = rules.trim_primer_sequences.output.bam_index
+    output:
+        bam = temp(config['output'] + "isnvs/{sample}.lofreq.sorted.bam"),
+        bam_index = temp(config['output'] + "isnvs/{sample}.lofreq.sorted.bam.bai"),
+        vcf = config['output'] + "isnvs/{sample}.isnvs.vcf.gz",
+        vcf_index = config['output'] + "isnvs/{sample}.isnvs.vcf.gz.tbi"
+    params:
+        af_min_threshold = config["af_isnv_threshold"]
+    log:
+        config['output'] + "logs/lofreq/{sample}.log"
+    benchmark:
+        config['output'] + "logs/lofreq/{sample}.benchmark.txt"
+    threads: config["threads"]
+    shell:
+        """
+        lofreq indelqual \
+            -f {input.reference} \
+            -o {output.bam} \
+            --dindel \
+            {input.bam}
+        samtools index {output.bam} {output.bam_index}
+
+        lofreq call-parallel \
+            --pp-threads {threads} \
+            --call-indels \
+            -f {input.reference} \
+            -o tmp.vcf \
+            {output.bam}
+
+        bcftools view -i 'INFO/AF<0.5 & INFO/AF>={params.af_min_threshold}' tmp.vcf -Oz -o {output.vcf}
+        tabix {output.vcf}
+        rm tmp.vcf
+        """
+
 rule infer_consensus_sequence:
     input:
         bam = rules.trim_primer_sequences.output.bam,
@@ -121,6 +165,8 @@ rule infer_consensus_sequence:
         af_threshold = config["af_threshold"]
     benchmark:
         config['output'] + "logs/samtools/consensus/{sample}.benchmark.txt"
+    log:
+        config['output'] + "logs/samtools/consensus/{sample}.log"
     shell:
         "samtools consensus -a -d {params.minimum_depth} -m simple -q -c {params.af_threshold} --show-ins yes {input.bam} -o {output.consensus}"
 
@@ -130,6 +176,11 @@ rule calculate_coverage_basewise:
         bam_index = rules.trim_primer_sequences.output.bam_index
     output:
         table_cov = config['output'] + "assembly/coverage_stats/{sample}.table_cov_basewise.txt"
+    log:
+        config['output'] + "logs/bedtools/genomecov/{sample}.log"
+    benchmark:
+        config['output'] + "logs/bedtools/genomecov/{sample}.benchmark.txt"
+    threads: config["threads"]
     shell:
         "bedtools genomecov -d -ibam {input.bam} > {output.table_cov}"
 
@@ -138,6 +189,10 @@ rule rename_sequences:
         consensus = rules.infer_consensus_sequence.output.consensus
     output:
         consensus_renamed = config['output'] + "assembly/consensus/final_consensus/{sample}.consensus.renamed.fasta"
+    log:
+        config['output'] + "logs/consensus_illumina/rename_sequences/{sample}.log"
+    benchmark:
+        config['output'] + "logs/consensus_illumina/rename_sequences/{sample}.benchmark.txt"   
     script:
         "rename_sequences.py"
 
@@ -152,6 +207,10 @@ rule calculate_assembly_statistics:
         stats_summary = temp(config['output'] + "assembly/coverage_stats/{sample}.stats_summary.csv")
     params:
         minimum_depth = config["minimum_depth"]
+    log:
+        config['output'] + "logs/consensus_illumina/calculate_assembly_statistics/{sample}.log"
+    benchmark:
+        config['output'] + "logs/consensus_illumina/calculate_assembly_statistics/{sample}.benchmark.txt"   
     script:
         "calculate_assembly_stats.py"
 
@@ -160,6 +219,10 @@ rule unify_assembly_statistics_reports:
         reports = expand(rules.calculate_assembly_statistics.output.stats_summary, sample=config["samples"])
     output:
         unified_stats_summary = config['output'] + "assembly/assembly_stats_summary.csv"
+    log:
+        config['output'] + "logs/consensus_illumina/unify_assembly_statistics_reports/unify_assembly_statistics_reports.log"
+    benchmark:
+        config['output'] + "logs/consensus_illumina/unify_assembly_statistics_reports/unify_assembly_statistics_reports.benchmark.txt"   
     shell:
         """
         echo \"sample_name,number_of_reads,number_of_trim_paired_reads,number_of_mapped_reads,average_depth,percentage_above_10x,percentage_above_100x,percentage_above_1000x,horizontal_coverage\" > {output.unified_stats_summary} ;
@@ -173,8 +236,31 @@ rule generate_multiqc_report:
         multiqc_report = config['output'] + "qc/reports/multiqc_report.html"
     params:
         temp = config['output']
+    log:
+        config['output'] + "logs/consensus_illumina/generate_multiqc_report/generate_multiqc_report.log"
+    benchmark:
+        config['output'] + "logs/consensus_illumina/generate_multiqc_report/generate_multiqc_report.benchmark.txt"   
     shell:
         "multiqc -f -o {params.temp}/qc/reports/ {params.temp}/qc/reports/"
+
+rule summarize_isnvs:
+    input:
+        vcf_files = expand(rules.detect_isnv.output.vcf, sample=config["samples"])
+    output:
+        isnvs_summary = config['output'] +  "isnvs/isnvs_summary.tsv"
+    log:
+        config['output'] + "logs/consensus_illumina/summarize_isnvs/summarize_isnvs.log"
+    benchmark:
+        config['output'] + "logs/consensus_illumina/summarize_isnvs/summarize_isnvs.benchmark.txt"   
+    shell:
+        """
+        echo -e "sample\tnumber_of_isnvs" > {output.isnvs_summary};
+        for _file in {input.vcf_files}; do
+            sample=$(basename $_file .isnvs.vcf.gz);
+            isnv_count=$(bcftools view $_file | grep -v "^#" | wc -l);
+            echo -e "$sample\t$isnv_count" >> {output.isnvs_summary};
+        done
+        """
 
 rule align_consensus_to_reference_genome:
     input:
@@ -184,6 +270,10 @@ rule align_consensus_to_reference_genome:
     params:
         path_consensus = config['output'] + "assembly/consensus/final_consensus/",
         reference = config['reference']
+    log:
+        config['output'] + "logs/consensus_illumina/align_consensus_to_reference_genome/align_consensus_to_reference_genome.log"
+    benchmark:
+        config['output'] + "logs/consensus_illumina/align_consensus_to_reference_genome/align_consensus_to_reference_genome.benchmark.txt"   
     shell:
         """
         cat {params.reference} {params.path_consensus}/*.fasta > {params.path_consensus}/consensus.fasta; 

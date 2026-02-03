@@ -100,10 +100,19 @@ def fill_arg_parser_consensus(subparsers: argparse._SubParsersAction):
     consensus_parser.add_argument(
         "--af-threshold",
         type=float,
-        help="Allele frequency threshold to call a variant into consensus (Default = 0.51)",
+        help="Minimum allele frequency threshold to call a variant into consensus (Default = 0.51)",
         nargs="?",
         const=1,
         default=0.51,
+    )
+
+    consensus_parser.add_argument(
+        "--af-isnv-threshold",
+        type=float,
+        help="Minimum allele frequency threshold to call a variant into iSNV analysis (Default = 0)",
+        nargs="?",
+        const=1,
+        default=0,
     )
 
     consensus_parser.add_argument(

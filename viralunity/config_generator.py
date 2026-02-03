@@ -90,6 +90,7 @@ class ConfigGenerator:
         cut_right_window_size: int,
         cut_right_mean_quality: int,
         af_threshold: float,
+        af_isnv_threshold: float,
     ) -> None:
         """Add Illumina-specific settings to configuration.
         
@@ -103,6 +104,7 @@ class ConfigGenerator:
             cut_right_window_size: Window size for cut_right
             cut_right_mean_quality: Mean quality requirement option for cut_right
             af_threshold: Allele frequency threshold to call a variant into consensus
+            af_isnv_threshold: Minimum allele frequency threshold to call a variant into iSNV analysis
         """
         self.config[ConfigKeys.ADAPTERS] = adapters
         self.config[ConfigKeys.MINIMUM_LENGTH] = minimum_read_length
@@ -113,6 +115,7 @@ class ConfigGenerator:
         self.config[ConfigKeys.CUT_RIGHT_WINDOW_SIZE] = cut_right_window_size
         self.config[ConfigKeys.CUT_RIGHT_MEAN_QUALITY] = cut_right_mean_quality    
         self.config[ConfigKeys.AF_THRESHOLD] = af_threshold
+        self.config[ConfigKeys.AF_ISNV_THRESHOLD] = af_isnv_threshold
     
     def add_consensus_settings(
         self,

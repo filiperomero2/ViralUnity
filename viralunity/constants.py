@@ -32,6 +32,7 @@ class ConfigKeys:
     CUT_RIGHT_WINDOW_SIZE = "cut_right_window_size"
     CUT_RIGHT_MEAN_QUALITY = "cut_right_mean_quality"
     AF_THRESHOLD = "af_threshold"
+    AF_ISNV_THRESHOLD = "af_isnv_threshold"
     REMOVE_HUMAN_READS = "remove_human_reads"
     REMOVE_UNCLASSIFIED_READS = "remove_unclassified_reads"
 
