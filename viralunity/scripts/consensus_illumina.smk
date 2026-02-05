@@ -1,7 +1,8 @@
 rule all:
     input:
         config['output'] + "assembly/consensus/final_consensus/aln.consensus.fasta",
-        config['output'] + "isnvs/isnvs_summary.tsv"
+        config['output'] + "isnvs/isnvs_summary.tsv",
+        config['output'] + "benchmark.tsv"
 
 def get_map_input_fastqs(wildcards):
     reads = config["samples"][wildcards.sample].split()
@@ -159,7 +160,7 @@ rule infer_consensus_sequence:
         bam = rules.trim_primer_sequences.output.bam,
         bam_index = rules.trim_primer_sequences.output.bam_index
     output:
-        consensus = temp(config['output'] + "assembly/consensus/final_consensus/{sample}.consensus.fasta")
+        consensus = config['output'] + "assembly/consensus/final_consensus/{sample}.consensus.fasta"
     params:
         minimum_depth = config["minimum_depth"],
         af_threshold = config["af_threshold"]
@@ -169,6 +170,32 @@ rule infer_consensus_sequence:
         config['output'] + "logs/samtools/consensus/{sample}.log"
     shell:
         "samtools consensus -a -d {params.minimum_depth} -m simple -q -c {params.af_threshold} --show-ins yes {input.bam} -o {output.consensus}"
+
+rule generate_vcf_consensus:
+    input:
+        reference = config["reference"],
+        consensus = rules.infer_consensus_sequence.output.consensus
+    output:
+        vcf = config['output'] + "assembly/consensus/final_consensus/{sample}.consensus.vcf.gz",
+        vcf_index = config['output'] + "assembly/consensus/final_consensus/{sample}.consensus.vcf.gz.tbi"
+    benchmark:
+        config['output'] + "logs/gsaalign/{sample}.benchmark.txt"
+    log:
+        config['output'] + "logs/gsaalign/{sample}.log"
+    shell:
+        """
+        out_prefix=$(echo {output.vcf} | sed 's/.vcf.gz//')
+        GSAlign \
+        -r {input.reference} \
+        -q {input.consensus} \
+        -o $out_prefix \
+        -fmt 1 \
+        -sen
+
+        bgzip $out_prefix.vcf
+        tabix {output.vcf}
+        rm $out_prefix.maf
+        """
 
 rule calculate_coverage_basewise:
     input:
@@ -204,7 +231,7 @@ rule calculate_assembly_statistics:
         rules.calculate_coverage_basewise.output.table_cov,
         rules.rename_sequences.output.consensus_renamed
     output:
-        stats_summary = temp(config['output'] + "assembly/coverage_stats/{sample}.stats_summary.csv")
+        stats_summary = config['output'] + "assembly/coverage_stats/{sample}.stats_summary.csv"
     params:
         minimum_depth = config["minimum_depth"]
     log:
@@ -280,4 +307,80 @@ rule align_consensus_to_reference_genome:
         minimap2 -a --sam-hit-only --secondary=no --score-N=0 {params.reference} {params.path_consensus}/consensus.fasta -o {params.path_consensus}/aln.consensus.sam; 
         gofasta sam toMultiAlign --pad -s {params.path_consensus}/aln.consensus.sam -o {output.aln_consensus}; 
         sed '/^>/! s/-/N/g' {output.aln_consensus} > {params.path_consensus}/aln.consensus.indelsMasked.fasta
+        """
+
+rule organize_files:
+    input:
+        fastp_reports = expand(rules.perform_qc.output.html, sample=config["samples"]),
+        vcf_files = expand(rules.generate_vcf_consensus.output.vcf, sample=config["samples"]),
+        isn_vcf_files = expand(rules.detect_isnv.output.vcf, sample=config["samples"]),
+        stats_summary = expand(rules.calculate_assembly_statistics.output.stats_summary, sample=config["samples"]),
+        consensus_files = expand(rules.infer_consensus_sequence.output.consensus, sample=config["samples"]),
+        raw_mapped_reads = expand(rules.map_reads.output.bam, sample=config["samples"]),
+        trimmed_mapped_reads = expand(rules.trim_primer_sequences.output.bam, sample=config["samples"]),
+    output:
+        config['output'] + "benchmark.tsv"
+    params:
+        outdir = config['output'],
+        samples = " ".join(config["samples"].keys())
+    shell:
+        """
+        mkdir -p {params.outdir}samples/
+        for sample in {params.samples}; do
+            mkdir -p {params.outdir}samples/$sample;
+        done
+        for _file in {input.fastp_reports}; do
+            sample=$(basename $_file _fastp.html | sed 's/^trim.//');
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/fastp.html;
+        done
+        for _file in {input.vcf_files}; do
+            sample=$(basename $_file .consensus.vcf.gz);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/consensus.vcf.gz;
+            ln -sf $PWD/$_file.tbi {params.outdir}samples/$sample/consensus.vcf.gz.tbi;
+        done
+        for _file in {input.isn_vcf_files}; do
+            sample=$(basename $_file .isnvs.vcf.gz);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/isnvs.vcf.gz;
+            ln -sf $PWD/$_file.tbi {params.outdir}samples/$sample/isnvs.vcf.gz.tbi;
+        done
+        for _file in {input.stats_summary}; do
+            sample=$(basename $_file .stats_summary.csv);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/stats_summary.csv;
+        done
+        for _file in {input.consensus_files}; do
+            sample=$(basename $_file .consensus.fasta);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/consensus.fasta;
+        done
+        for _file in {input.raw_mapped_reads}; do
+            sample=$(basename $_file .sorted.bam);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/raw_mapped_reads.bam;
+            ln -sf $PWD/$_file.bai {params.outdir}samples/$sample/raw_mapped_reads.bam.bai;
+        done
+        for _file in {input.trimmed_mapped_reads}; do
+            sample=$(basename $_file .sorted.bam);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/trimmed_mapped_reads.bam;
+            ln -sf $PWD/$_file.bai {params.outdir}samples/$sample/trimmed_mapped_reads.bam.bai;
+        done
+        
+        echo -e "sample\ttask\tseconds\th:m:s\tmax_rss\tmax_vms\tmax_uss\tmax_pss\tio_in\tio_out\tmean_load\tcpu_time" > {output}
+        find {params.outdir} -name "*.benchmark.txt" | while read -r file; do
+            task=$(basename $(dirname $file))
+            sample=$(basename $file .benchmark.txt)
+            
+            matched=false
+            for s in {params.samples}; do
+                if [[ "$sample" == "$s" ]]; then
+                    matched=true
+                    break
+                fi
+            done
+            
+            if [[ "$matched" == "false" ]]; then
+                sample="All"
+            else
+                sample=$(echo $sample | sed 's/sample-//')
+            fi
+
+            tail -n +2 $file | awk -v sample=$sample -v task=$task '{{print sample"\\t"task"\\t"$0}}' >> {output}
+        done
         """
