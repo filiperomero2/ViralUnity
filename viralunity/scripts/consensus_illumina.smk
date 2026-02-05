@@ -186,11 +186,11 @@ rule generate_vcf_consensus:
         """
         out_prefix=$(echo {output.vcf} | sed 's/.vcf.gz//')
         GSAlign \
-        -r {input.reference} \
-        -q {input.consensus} \
-        -o $out_prefix \
-        -fmt 1 \
-        -sen
+            -r {input.reference} \
+            -q {input.consensus} \
+            -o $out_prefix \
+            -fmt 1 \
+            -sen
 
         bgzip $out_prefix.vcf
         tabix {output.vcf}
