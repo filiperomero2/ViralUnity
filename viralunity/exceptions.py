@@ -48,3 +48,13 @@ class ReferenceNotFoundError(ViralUnityError):
 class PrimerSchemeNotFoundError(ViralUnityError):
     """Raised when the primer scheme file is not found."""
     pass
+
+
+class TaxdumpNotFoundError(ViralUnityError):
+    """Raised when the NCBI taxdump directory is not found or invalid."""
+    pass
+
+
+class DiamondDatabaseNotFoundError(ViralUnityError):
+    """Raised when the Diamond database or assembly summary is not found."""
+    pass

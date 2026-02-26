@@ -1,7 +1,7 @@
 """Configuration file generation for ViralUnity pipelines."""
 
 import os
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 import yaml
 
 from viralunity.constants import ConfigKeys, DataType
@@ -69,18 +69,37 @@ class ConfigGenerator:
         self,
         adapters: str,
         minimum_read_length: int,
-        trim: int
+        trim: int,
+        trim_head: Optional[int] = None,
+        trim_tail: Optional[int] = None,
+        cut_front_mean_quality: int = 20,
+        cut_tail_mean_quality: int = 20,
+        cut_right_window_size: int = 4,
+        cut_right_mean_quality: int = 20,
     ) -> None:
-        """Add Illumina-specific settings to configuration.
-        
+        """Add Illumina-specific settings to configuration (fastp QC).
+
         Args:
-            adapters: Path to adapters file
+            adapters: Path to adapters file or "NA" for auto-detection
             minimum_read_length: Minimum read length threshold
-            trim: Number of bases to trim from 5' end
+            trim: Number of bases to trim from 5' end (used as trim_head if trim_head not set)
+            trim_head: Bases to trim from 5' (overrides trim if set)
+            trim_tail: Bases to trim from 3'
+            cut_front_mean_quality: fastp cut_front mean quality threshold
+            cut_tail_mean_quality: fastp cut_tail mean quality threshold
+            cut_right_window_size: fastp cut_right window size
+            cut_right_mean_quality: fastp cut_right mean quality threshold
         """
         self.config[ConfigKeys.ADAPTERS] = adapters
         self.config[ConfigKeys.MINIMUM_LENGTH] = minimum_read_length
         self.config[ConfigKeys.TRIM] = trim
+        head = trim_head if trim_head is not None else trim
+        self.config[ConfigKeys.TRIM_HEAD] = head
+        self.config[ConfigKeys.TRIM_TAIL] = trim_tail if trim_tail is not None else 0
+        self.config[ConfigKeys.CUT_FRONT_MEAN_QUALITY] = cut_front_mean_quality
+        self.config[ConfigKeys.CUT_TAIL_MEAN_QUALITY] = cut_tail_mean_quality
+        self.config[ConfigKeys.CUT_RIGHT_WINDOW_SIZE] = cut_right_window_size
+        self.config[ConfigKeys.CUT_RIGHT_MEAN_QUALITY] = cut_right_mean_quality
     
     def add_consensus_settings(
         self,
@@ -104,20 +123,62 @@ class ConfigGenerator:
         kraken2_database: str,
         krona_database: str,
         remove_human_reads: bool,
-        remove_unclassified_reads: bool
+        remove_unclassified_reads: bool,
+        host_reference: str = "NA",
+        taxdump: str = "NA",
+        run_denovo_assembly: bool = False,
+        run_kraken2_reads: bool = True,
+        run_kraken2_contigs: bool = True,
+        run_diamond_reads: bool = False,
+        run_diamond_contigs: bool = False,
+        assembly_summary: str = "NA",
+        diamond_database: str = "NA",
+        diamond_sensitivity: str = "sensitive",
+        evalue: float = 0.001,
+        bleed_fraction: float = 0.005,
+        negative_controls: Optional[List[str]] = None,
+        negative_p_threshold: float = 0.01,
     ) -> None:
         """Add metagenomics-specific settings to configuration.
-        
+
         Args:
             kraken2_database: Path to Kraken2 database
             krona_database: Path to Krona database
             remove_human_reads: Whether to remove human reads
             remove_unclassified_reads: Whether to remove unclassified reads
+            host_reference: Path to host genome FASTA for dehosting (or "NA")
+            taxdump: Path to NCBI taxdump dir (nodes.dmp, names.dmp)
+            run_denovo_assembly: Whether to run MEGAHIT assembly
+            run_kraken2_reads: Whether to run Kraken2 on reads
+            run_kraken2_contigs: Whether to run Kraken2 on contigs (if assembly)
+            run_diamond_reads: Whether to run DIAMOND on reads
+            run_diamond_contigs: Whether to run DIAMOND on contigs (if assembly)
+            assembly_summary: NCBI assembly summary for Diamond taxonomy (or "NA")
+            diamond_database: Path to Diamond DB (protein FASTA)
+            diamond_sensitivity: Diamond sensitivity (e.g. sensitive, mid-sensitive)
+            evalue: E-value threshold for Diamond
+            bleed_fraction: Max-RPM bleed filter fraction
+            negative_controls: Sample IDs to use as negative controls
+            negative_p_threshold: p-value threshold for negative filter
         """
         self.config[ConfigKeys.KRAKEN2_DATABASE] = kraken2_database
         self.config[ConfigKeys.KRONA_DATABASE] = krona_database
         self.config[ConfigKeys.REMOVE_HUMAN_READS] = remove_human_reads
         self.config[ConfigKeys.REMOVE_UNCLASSIFIED_READS] = remove_unclassified_reads
+        self.config[ConfigKeys.HOST_REFERENCE] = host_reference
+        self.config[ConfigKeys.TAXDUMP] = taxdump
+        self.config[ConfigKeys.RUN_DENOVO_ASSEMBLY] = run_denovo_assembly
+        self.config[ConfigKeys.RUN_KRAKEN2_READS] = run_kraken2_reads
+        self.config[ConfigKeys.RUN_KRAKEN2_CONTIGS] = run_kraken2_contigs
+        self.config[ConfigKeys.RUN_DIAMOND_READS] = run_diamond_reads
+        self.config[ConfigKeys.RUN_DIAMOND_CONTIGS] = run_diamond_contigs
+        self.config[ConfigKeys.ASSEMBLY_SUMMARY] = assembly_summary
+        self.config[ConfigKeys.DIAMOND_DATABASE] = diamond_database
+        self.config[ConfigKeys.DIAMOND_SENSITIVITY] = diamond_sensitivity
+        self.config[ConfigKeys.EVALUE] = evalue
+        self.config[ConfigKeys.BLEED_FRACTION] = bleed_fraction
+        self.config[ConfigKeys.NEGATIVE_CONTROLS] = negative_controls or []
+        self.config[ConfigKeys.NEGATIVE_P_THRESHOLD] = negative_p_threshold
     
     def add_workflow_path(self, workflow_path: str) -> None:
         """Add workflow path to configuration.

@@ -78,19 +78,45 @@ def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None
     generator.add_threads(args["threads"])
     
     # Add metagenomics-specific settings
+    negative = args.get("negative_controls")
+    if isinstance(negative, str):
+        negative = [x.strip() for x in negative.split(",") if x.strip()]
+    elif negative is None:
+        negative = []
+
     generator.add_metagenomics_settings(
         kraken2_database=args["kraken2_database"],
         krona_database=args["krona_database"],
         remove_human_reads=args.get("remove_human_reads", False),
-        remove_unclassified_reads=args.get("remove_unclassified_reads", False)
+        remove_unclassified_reads=args.get("remove_unclassified_reads", False),
+        host_reference=args.get("host_reference", "NA"),
+        taxdump=args.get("taxdump", "NA"),
+        run_denovo_assembly=args.get("run_denovo_assembly", False),
+        run_kraken2_reads=args.get("run_kraken2_reads", True),
+        run_kraken2_contigs=args.get("run_kraken2_contigs", True),
+        run_diamond_reads=args.get("run_diamond_reads", False),
+        run_diamond_contigs=args.get("run_diamond_contigs", False),
+        assembly_summary=args.get("assembly_summary", "NA"),
+        diamond_database=args.get("diamond_database", "NA"),
+        diamond_sensitivity=args.get("diamond_sensitivity", "sensitive"),
+        evalue=args.get("evalue", 0.001),
+        bleed_fraction=args.get("bleed_fraction", 0.005),
+        negative_controls=negative,
+        negative_p_threshold=args.get("negative_p_threshold", 0.01),
     )
     
-    # Add Illumina-specific settings if needed
+    # Add Illumina-specific settings if needed (fastp)
     if data_type == DataType.ILLUMINA:
         generator.add_illumina_settings(
-            adapters=args["adapters"],
+            adapters=args.get("adapters") or "NA",
             minimum_read_length=args.get("minimum_read_length", 50),
-            trim=args.get("trim", 0)
+            trim=args.get("trim", 0),
+            trim_head=args.get("trim_head"),
+            trim_tail=args.get("trim_tail"),
+            cut_front_mean_quality=args.get("cut_front_mean_quality", 20),
+            cut_tail_mean_quality=args.get("cut_tail_mean_quality", 20),
+            cut_right_window_size=args.get("cut_right_window_size", 4),
+            cut_right_mean_quality=args.get("cut_right_mean_quality", 20),
         )
     
     # Save config file

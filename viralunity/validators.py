@@ -13,7 +13,9 @@ from viralunity.exceptions import (
     SampleConfigurationNotFoundError,
     AdaptersNotFoundError,
     ReferenceNotFoundError,
-    PrimerSchemeNotFoundError
+    PrimerSchemeNotFoundError,
+    TaxdumpNotFoundError,
+    DiamondDatabaseNotFoundError,
 )
 from viralunity.constants import DataType
 
@@ -109,25 +111,16 @@ def validate_sample_sheet(
 
 
 def validate_illumina_requirements(args: Dict[str, Any]) -> None:
-    """Validate Illumina-specific requirements.
-    
-    Args:
-        args: Dictionary of pipeline arguments
-        
-    Raises:
-        ValidationError: If Illumina requirements are not met
-    """
+    """Validate Illumina-specific requirements (fastp: adapters optional)."""
     if args.get("data_type") != DataType.ILLUMINA:
         return
-    
+
     adapters = args.get("adapters")
-    if not adapters:
-        raise AdaptersNotFoundError("Illumina adapter sequences file is required")
-    
-    try:
-        validate_file_exists(adapters, "Illumina adapter sequences file")
-    except FileNotFoundError as e:
-        raise AdaptersNotFoundError(f"Illumina adapter sequences file does not exist: {e}")
+    if adapters and str(adapters).strip() and str(adapters).strip() != "NA":
+        try:
+            validate_file_exists(adapters, "Illumina adapter sequences file")
+        except FileNotFoundError as e:
+            raise AdaptersNotFoundError(f"Illumina adapter sequences file does not exist: {e}")
 
 
 def validate_consensus_requirements(args: Dict[str, Any]) -> None:
@@ -158,30 +151,79 @@ def validate_consensus_requirements(args: Dict[str, Any]) -> None:
 
 def validate_metagenomics_requirements(args: Dict[str, Any]) -> None:
     """Validate metagenomics pipeline requirements.
-    
-    Args:
-        args: Dictionary of pipeline arguments
-        
-    Raises:
-        ValidationError: If metagenomics requirements are not met
+
+    Kraken2 and Diamond are optional; validate only the resources for the tools
+    the user has enabled (run_kraken2_reads, run_kraken2_contigs, run_diamond_reads,
+    run_diamond_contigs).
     """
-    kraken2_db = args.get("kraken2_database")
-    if not kraken2_db:
-        raise Kraken2DatabaseNotFoundError("Kraken2 database directory is required")
-    
-    try:
-        validate_directory_exists(kraken2_db, "Kraken2 database directory")
-    except FileNotFoundError as e:
-        raise Kraken2DatabaseNotFoundError(f"Kraken2 database directory does not exist: {e}")
-    
-    krona_db = args.get("krona_database")
-    if not krona_db:
-        raise KronaDatabaseNotFoundError("Krona database directory is required")
-    
-    try:
-        validate_directory_exists(krona_db, "Krona database directory")
-    except FileNotFoundError as e:
-        raise KronaDatabaseNotFoundError(f"Krona database directory does not exist: {e}")
+    run_k2_reads = args.get("run_kraken2_reads", True)
+    run_k2_contigs = args.get("run_kraken2_contigs", True)
+    run_diamond_reads = args.get("run_diamond_reads", False)
+    run_diamond_contigs = args.get("run_diamond_contigs", False)
+    any_kraken2 = run_k2_reads or run_k2_contigs
+    any_diamond = run_diamond_reads or run_diamond_contigs
+    any_classification = any_kraken2 or any_diamond
+
+    # Krona database: required whenever any classification is run (Krona plots for both tools)
+    if any_classification:
+        krona_db = args.get("krona_database")
+        if not krona_db or krona_db == "NA":
+            raise KronaDatabaseNotFoundError(
+                "Krona database directory is required when running any classification "
+                "(Kraken2 and/or Diamond). Set --krona-database."
+            )
+        try:
+            validate_directory_exists(krona_db, "Krona database directory")
+        except FileNotFoundError as e:
+            raise KronaDatabaseNotFoundError(f"Krona database directory does not exist: {e}")
+
+    # Kraken2 database: required only when Kraken2 is enabled
+    if any_kraken2:
+        kraken2_db = args.get("kraken2_database")
+        if not kraken2_db or kraken2_db == "NA":
+            raise Kraken2DatabaseNotFoundError(
+                "Kraken2 database directory is required when running Kraken2. "
+                "Set --kraken2-database or disable Kraken2 with --no-kraken2-reads / --no-kraken2-contigs."
+            )
+        try:
+            validate_directory_exists(kraken2_db, "Kraken2 database directory")
+        except FileNotFoundError as e:
+            raise Kraken2DatabaseNotFoundError(f"Kraken2 database directory does not exist: {e}")
+
+    # Taxdump: required for taxonomic summaries whenever any classification is run
+    if any_classification:
+        taxdump = args.get("taxdump", "NA")
+        if not taxdump or taxdump == "NA":
+            raise TaxdumpNotFoundError(
+                "taxdump directory (NCBI nodes.dmp, names.dmp) is required for taxonomic summaries "
+                "when running any classification. Set --taxdump."
+            )
+        try:
+            validate_directory_exists(taxdump, "Taxdump directory")
+        except FileNotFoundError as e:
+            raise TaxdumpNotFoundError(f"Taxdump directory does not exist: {e}")
+        nodes = os.path.join(taxdump, "nodes.dmp")
+        names = os.path.join(taxdump, "names.dmp")
+        if not os.path.isfile(nodes) or not os.path.isfile(names):
+            raise TaxdumpNotFoundError(
+                f"Taxdump directory must contain nodes.dmp and names.dmp: {taxdump}"
+            )
+
+    # Diamond: require database and assembly summary only when Diamond is enabled
+    if any_diamond:
+        diamond_db = args.get("diamond_database", "NA")
+        if not diamond_db or diamond_db == "NA":
+            raise DiamondDatabaseNotFoundError(
+                "diamond_database is required when running Diamond. "
+                "Set --diamond-database or do not use --run-diamond-reads / --run-diamond-contigs."
+            )
+        assembly = args.get("assembly_summary", "NA")
+        if not assembly or assembly == "NA":
+            raise DiamondDatabaseNotFoundError(
+                "assembly_summary is required when running Diamond (for taxonomy mapping). Set --assembly-summary."
+            )
+        if not os.path.isfile(assembly) and not (assembly.endswith(".gz") and os.path.isfile(assembly)):
+            raise DiamondDatabaseNotFoundError(f"Assembly summary file not found: {assembly}")
 
 
 def get_samples_from_args(args: Dict[str, Any]) -> Dict[str, List[str]]:
