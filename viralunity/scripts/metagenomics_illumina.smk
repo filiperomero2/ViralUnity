@@ -165,8 +165,8 @@ if host_filtering_enabled:
             paired_R2 = rules.perform_qc.output.paired_R2,
             index = config["host_reference"] + ".mmi"
         output:
-            filtered_R1 = config["output"] + "host_filtered/{sample}.R1.filtered.fastq",
-            filtered_R2 = config["output"] + "host_filtered/{sample}.R2.filtered.fastq",
+            filtered_R1 = config["output"] + "host_filtered/{sample}.R1.filtered.fastq.gz",
+            filtered_R2 = config["output"] + "host_filtered/{sample}.R2.filtered.fastq.gz",
         threads: config["threads"]
         log:
             config["output"] + "logs/remove_host/{sample}.log"
@@ -196,8 +196,8 @@ else:
             paired_R1 = rules.perform_qc.output.paired_R1,
             paired_R2 = rules.perform_qc.output.paired_R2,
         output:
-            filtered_R1 = config["output"] + "host_filtered/{sample}.R1.filtered.fastq",
-            filtered_R2 = config["output"] + "host_filtered/{sample}.R2.filtered.fastq",
+            filtered_R1 = config["output"] + "host_filtered/{sample}.R1.filtered.fastq.gz",
+            filtered_R2 = config["output"] + "host_filtered/{sample}.R2.filtered.fastq.gz",
         log:
             config["output"] + "logs/remove_host/{sample}.log"
         benchmark:
@@ -236,7 +236,8 @@ rule merge_host_filtered_reads:
 
 rule run_kraken2_reads:
     input:
-        fastq = get_final_input_fastq
+        filtered_R1 = rules.remove_host_reads.output.filtered_R1,
+        filtered_R2 = rules.remove_host_reads.output.filtered_R2,
     output:
         report = config["output"] + "metagenomics/taxonomic_assignments/kraken2_reads/results/{sample}.report.txt",
         outfile = config["output"] + "metagenomics/taxonomic_assignments/kraken2_reads/results/{sample}.output.txt",
@@ -251,15 +252,16 @@ rule run_kraken2_reads:
         r"""
         set -euo pipefail
         mkdir -p $(dirname {output.report}) $(dirname {log})
-        unc_size=$(gzip -l "{input.fastq}" | awk 'NR==2 {{print $2}}')
-        if [ "$unc_size" = "0" ]; then
-            echo "WARNING: {input.fastq} empty. Creating dummy Kraken2 READS outputs." > {log}
+        unc_size_R1=$(gzip -l "{input.filtered_R1}" | awk 'NR==2 {{print $2}}')
+        unc_size_R2=$(gzip -l "{input.filtered_R2}" | awk 'NR==2 {{print $2}}')
+        if [ "$unc_size_R1" = "0" ] || [ "$unc_size_R2" = "0" ]; then
+            echo "WARNING: {input.filtered_R1} or {input.filtered_R2} empty. Creating dummy Kraken2 READS outputs." > {log}
             : > {output.report}
             : > {output.outfile}
         else
             kraken2 --db {params.database} --threads {threads} --report-minimizer-data \
                 --minimum-hit-group 3 --report {output.report} \
-                --output {output.outfile} {input.fastq} 2> {log}
+                --output {output.outfile} {input.filtered_R1} {input.filtered_R2} 2> {log}
         fi
         """
 
