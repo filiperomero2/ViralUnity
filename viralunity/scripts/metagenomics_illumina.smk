@@ -41,13 +41,13 @@ run_diamond_contigs = config.get("run_diamond_contigs", False)
 def _all_inputs():
     targets = [config["output"] + "qc/reports/multiqc_report.html"]
     if run_k2_reads:
-        targets.append(config["output"] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_taxa_summary.tsv")
+        targets.append(config["output"] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_taxa_summary_RPM.bleed.tsv")
     if run_denovo and run_k2_contigs:
         targets.append(config["output"] + "metagenomics/taxonomic_assignments/kraken2_contigs/kraken2_contigs_taxa_summary.tsv")
     if run_diamond_reads:
-        targets.append(config["output"] + "metagenomics/taxonomic_assignments/diamond_reads/diamond_reads_taxa_summary.tsv")
+        targets.append(config["output"] + "metagenomics/taxonomic_assignments/diamond_reads/diamond_reads_taxa_summary_RPM.bleed.tsv")
     if run_denovo and run_diamond_contigs:
-        targets.append(config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary.tsv")
+        targets.append(config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary_RPM.bleed.tsv")
     return targets
 
 rule all:
@@ -220,14 +220,20 @@ rule merge_host_filtered_reads:
         filtered_R1 = rules.remove_host_reads.output.filtered_R1,
         filtered_R2 = rules.remove_host_reads.output.filtered_R2,
     output:
-        merged = config["output"] + "host_filtered/{sample}.merged.fastq.gz",
+        merged = temp(config["output"] + "host_filtered/{sample}.merged.fastq.gz"),
     log:
         config["output"] + "logs/merge_reads/{sample}.log"
     shell:
         r"""
         set -euo pipefail
         mkdir -p $(dirname {output.merged}) $(dirname {log})
-        cat {input.filtered_R1} {input.filtered_R2} | gzip -c > {output.merged}
+        decompress() {{
+            case "$1" in
+                *.gz) gzip -dc "$1" 2>/dev/null || true ;;
+                *) [ -s "$1" ] && cat "$1" || true ;;
+            esac
+        }}
+        {{ decompress "{input.filtered_R1}"; decompress "{input.filtered_R2}"; }} | gzip -c > {output.merged}
         """
 
 ##############################################
@@ -252,8 +258,8 @@ rule run_kraken2_reads:
         r"""
         set -euo pipefail
         mkdir -p $(dirname {output.report}) $(dirname {log})
-        unc_size_R1=$(gzip -l "{input.filtered_R1}" | awk 'NR==2 {{print $2}}')
-        unc_size_R2=$(gzip -l "{input.filtered_R2}" | awk 'NR==2 {{print $2}}')
+        unc_size_R1=$(gzip -l "{input.filtered_R1}" | awk 'NR==2 {{print $1}}')
+        unc_size_R2=$(gzip -l "{input.filtered_R2}" | awk 'NR==2 {{print $1}}')
         if [ "$unc_size_R1" = "0" ] || [ "$unc_size_R2" = "0" ]; then
             echo "WARNING: {input.filtered_R1} or {input.filtered_R2} empty. Creating dummy Kraken2 READS outputs." > {log}
             : > {output.report}
@@ -333,7 +339,11 @@ rule summarize_taxa_kraken2_reads_all:
 
 rule add_RPM_to_kraken2_reads_summary:
     input:
-        config["output"] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_taxa_summary.tsv"
+        config["output"] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_taxa_summary.tsv",
+        merged_fastqs = expand(
+            config["output"] + "host_filtered/{sample}.merged.fastq.gz",
+            sample=config["samples"]
+        )
     output:
         config["output"] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_taxa_summary_RPM.tsv"
     params:
@@ -500,7 +510,11 @@ if run_diamond_reads:
 
     rule add_RPM_to_diamond_reads_summary:
         input:
-            config["output"] + "metagenomics/taxonomic_assignments/diamond_reads/diamond_reads_taxa_summary.tsv"
+            config["output"] + "metagenomics/taxonomic_assignments/diamond_reads/diamond_reads_taxa_summary.tsv",
+            merged_fastqs = expand(
+                config["output"] + "host_filtered/{sample}.merged.fastq.gz",
+                sample=config["samples"]
+            )
         output:
             config["output"] + "metagenomics/taxonomic_assignments/diamond_reads/diamond_reads_taxa_summary_RPM.tsv"
         params:
@@ -884,7 +898,11 @@ if run_denovo and run_diamond_contigs:
 
     rule add_RPM_to_diamond_contigs_summary:
         input:
-            config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary.tsv"
+            config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary.tsv",
+            merged_fastqs = expand(
+                config["output"] + "host_filtered/{sample}.merged.fastq.gz",
+                sample=config["samples"]
+            )
         output:
             config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary_RPM.tsv"
         params:
