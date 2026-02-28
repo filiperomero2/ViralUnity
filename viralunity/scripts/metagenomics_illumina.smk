@@ -565,26 +565,24 @@ if run_denovo:
         benchmark:
             config["output"] + "logs/megahit/{sample}.benchmark.txt"
         params:
-            prefix_temp = config["output"] + "denovo_assembly/megahit/temp_{sample}",
-            prefix_final = config["output"] + "denovo_assembly/megahit/{sample}"
+            tempdir = temp(config["output"] + "denovo_assembly/megahit/temp_{sample}"),
+            outdir = config["output"] + "denovo_assembly/megahit/{sample}"
         shell:
             r"""
             set -euo pipefail
-            mkdir -p $(dirname {log}) $(dirname {output.contigs})
+            mkdir -p $(dirname {log})
+            workdir="${{TMPDIR:-/tmp}}/megahit_{wildcards.sample}"
+            mkdir -p "$workdir"
             size_R1=$([ -s {input.filtered_R1} ] && echo 1 || echo 0)
             size_R2=$([ -s {input.filtered_R2} ] && echo 1 || echo 0)
-            if [ "$size_R1" -eq 0 ] && [ "$size_R2" -eq 0 ]; then
-                echo "No non-host reads; skipping MEGAHIT." > {log}
-                touch {output.contigs}
-            elif [ "$size_R1" -eq 1 ] && [ "$size_R2" -eq 0 ]; then
-                megahit -r {input.filtered_R1} -o {params.prefix_temp} --num-cpu-threads {threads} >> {log} 2>&1
-                mv -T {params.prefix_temp} {params.prefix_final}
-            elif [ "$size_R1" -eq 0 ] && [ "$size_R2" -eq 1 ]; then
-                megahit -r {input.filtered_R2} -o {params.prefix_temp} --num-cpu-threads {threads} >> {log} 2>&1
-                mv -T {params.prefix_temp} {params.prefix_final}
+            if [ "$size_R1" -eq 1 ] && [ "$size_R2" -eq 1 ]; then
+                megahit -1 {input.filtered_R1} -2 {input.filtered_R2} -o {params.tempdir} \
+                    --num-cpu-threads {threads} --tmp-dir "$workdir" >> {log} 2>&1
+                mv -T {params.tempdir} {params.outdir}
             else
-                megahit -1 {input.filtered_R1} -2 {input.filtered_R2} -o {params.prefix_temp} --num-cpu-threads {threads} >> {log} 2>&1
-                mv -T {params.prefix_temp} {params.prefix_final}
+                echo "R1 and/or R2 empty; skipping MEGAHIT." > {log}
+                mkdir -p $(dirname {output.contigs})
+                touch {output.contigs}
             fi
             """
 
