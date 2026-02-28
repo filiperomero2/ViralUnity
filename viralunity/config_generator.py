@@ -180,6 +180,24 @@ class ConfigGenerator:
         self.config[ConfigKeys.NEGATIVE_CONTROLS] = negative_controls or []
         self.config[ConfigKeys.NEGATIVE_P_THRESHOLD] = negative_p_threshold
     
+    def add_nanopore_settings(
+        self,
+        run_polish_racon: bool = False,
+        run_polish_medaka: bool = False,
+        medaka_model: Optional[str] = None,
+    ) -> None:
+        """Add Nanopore-specific settings (polishing: Racon, Medaka).
+        
+        Args:
+            run_polish_racon: Whether to run Racon polishing after MEGAHIT.
+            run_polish_medaka: Whether to run Medaka polishing (after Racon if both enabled).
+            medaka_model: Medaka model name (e.g. r941_min_high_g360). Optional; Medaka uses default if not set.
+        """
+        self.config[ConfigKeys.RUN_POLISH_RACON] = run_polish_racon
+        self.config[ConfigKeys.RUN_POLISH_MEDAKA] = run_polish_medaka
+        if medaka_model is not None:
+            self.config[ConfigKeys.MEDAKA_MODEL] = medaka_model
+    
     def add_workflow_path(self, workflow_path: str) -> None:
         """Add workflow path to configuration.
         

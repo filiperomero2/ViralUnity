@@ -123,6 +123,14 @@ def validate_illumina_requirements(args: Dict[str, Any]) -> None:
             raise AdaptersNotFoundError(f"Illumina adapter sequences file does not exist: {e}")
 
 
+def validate_nanopore_requirements(args: Dict[str, Any]) -> None:
+    """Validate Nanopore-specific requirements (e.g. polishing options)."""
+    if args.get("data_type") != DataType.NANOPORE:
+        return
+    # Optional: validate medaka_model if provided (Medaka accepts known model names)
+    # For now no strict validation; extend as needed.
+
+
 def validate_consensus_requirements(args: Dict[str, Any]) -> None:
     """Validate consensus pipeline requirements.
     

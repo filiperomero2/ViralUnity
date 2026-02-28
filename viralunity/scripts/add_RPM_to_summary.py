@@ -55,11 +55,10 @@ def add_rpm(
 
     if "sample" not in df.columns:
         raise ValueError("Input summary TSV must contain a 'sample' column.")
+    # Fail-safe: when no contigs are supported by Diamond, the summary may lack mapped_reads
     if reads_col not in df.columns:
-        raise ValueError(
-            f"Input summary TSV missing reads column '{reads_col}'. "
-            f"Available columns: {list(df.columns)}"
-        )
+        df = df.copy()
+        df[reads_col] = 0
 
     totals = {}
     for s in sorted(df["sample"].unique()):

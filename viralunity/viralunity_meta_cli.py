@@ -138,10 +138,24 @@ def fill_arg_parser_meta(subparsers: argparse._SubParsersAction):
     )
 
     meta_parser.add_argument(
+        "--run-kraken2-reads",
+        dest="run_kraken2_reads",
+        action="store_true",
+        help="Enable Kraken2 classification of reads (default: enabled).",
+    )
+
+    meta_parser.add_argument(
         "--no-kraken2-contigs",
         dest="run_kraken2_contigs",
         action="store_false",
         help="Disable Kraken2 classification of contigs when assembly is run (default: enabled).",
+    )
+
+    meta_parser.add_argument(
+        "--run-kraken2-contigs",
+        dest="run_kraken2_contigs",
+        action="store_true",
+        help="Enable Kraken2 classification of contigs when assembly is run (default: enabled).",
     )
 
     meta_parser.add_argument(
@@ -218,6 +232,44 @@ def fill_arg_parser_meta(subparsers: argparse._SubParsersAction):
         "--run-denovo-assembly",
         help="Run de novo assembly with MEGAHIT and classify contigs.",
         action="store_true",
+    )
+
+    # Nanopore polishing (ignored when --data-type illumina)
+    meta_parser.add_argument(
+        "--run-polish-racon",
+        dest="run_polish_racon",
+        action="store_true",
+        default=False,
+        help="[Nanopore] Run Racon polishing on MEGAHIT assembly (default: disabled).",
+    )
+
+    meta_parser.add_argument(
+        "--no-polish-racon",
+        dest="run_polish_racon",
+        action="store_false",
+        help="[Nanopore] Disable Racon polishing (default).",
+    )
+
+    meta_parser.add_argument(
+        "--run-polish-medaka",
+        dest="run_polish_medaka",
+        action="store_true",
+        default=False,
+        help="[Nanopore] Run Medaka polishing on assembly (default: disabled).",
+    )
+
+    meta_parser.add_argument(
+        "--no-polish-medaka",
+        dest="run_polish_medaka",
+        action="store_false",
+        help="[Nanopore] Disable Medaka polishing (default).",
+    )
+
+    meta_parser.add_argument(
+        "--medaka-model",
+        type=str,
+        default=None,
+        help="[Nanopore] Medaka model name (e.g. r941_min_high_g360). Omit to use Medaka default.",
     )
 
     meta_parser.add_argument(

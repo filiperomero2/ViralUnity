@@ -108,8 +108,12 @@ def run(
     parent_map, rank_map, name_map = load_taxdump(taxdump_nodes, taxdump_names)
 
     diamond_reads = None
-    if diamond_tax and os.path.exists(diamond_tax) and os.path.getsize(diamond_tax) > 0:
-        diamond_reads = load_diamond_reads(diamond_tax)
+    if diamond_tax:
+        diamond_reads = (
+            load_diamond_reads(diamond_tax)
+            if os.path.exists(diamond_tax) and os.path.getsize(diamond_tax) > 0
+            else {}
+        )
 
     contig_counts, read_counts, totals_per_rank = summarize_krona(
         krona, parent_map, rank_map, diamond_reads

@@ -49,6 +49,10 @@ class ConfigKeys:
     BLEED_FRACTION = "bleed_fraction"
     NEGATIVE_CONTROLS = "negative_controls"
     NEGATIVE_P_THRESHOLD = "negative_p_threshold"
+    # Nanopore polishing
+    RUN_POLISH_RACON = "run_polish_racon"
+    RUN_POLISH_MEDAKA = "run_polish_medaka"
+    MEDAKA_MODEL = "medaka_model"
 
 
 class SampleSheetPattern:

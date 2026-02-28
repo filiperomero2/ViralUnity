@@ -14,6 +14,7 @@ from snakemake import snakemake
 from viralunity.validators import (
     get_samples_from_args,
     validate_illumina_requirements,
+    validate_nanopore_requirements,
     validate_metagenomics_requirements
 )
 from viralunity.config_generator import ConfigGenerator
@@ -47,7 +48,11 @@ def validate_args(args: Dict[str, Any]) -> Dict[str, list]:
     validate_metagenomics_requirements(args)
     
     # Validate data-type specific requirements
-    validate_illumina_requirements(args)
+    data_type = args.get("data_type")
+    if data_type == DataType.ILLUMINA:
+        validate_illumina_requirements(args)
+    elif data_type == DataType.NANOPORE:
+        validate_nanopore_requirements(args)
     
     logger.info("All arguments validated successfully")
     return samples
@@ -117,6 +122,12 @@ def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None
             cut_tail_mean_quality=args.get("cut_tail_mean_quality", 20),
             cut_right_window_size=args.get("cut_right_window_size", 4),
             cut_right_mean_quality=args.get("cut_right_mean_quality", 20),
+        )
+    elif data_type == DataType.NANOPORE:
+        generator.add_nanopore_settings(
+            run_polish_racon=args.get("run_polish_racon", False),
+            run_polish_medaka=args.get("run_polish_medaka", False),
+            medaka_model=args.get("medaka_model"),
         )
     
     # Save config file
