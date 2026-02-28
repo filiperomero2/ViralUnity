@@ -1,23 +1,23 @@
 # ViralUnity
 
-ViralUnity is a simple tool to perform analysis of viral high-throughput sequencing data. It comprises a collection of python scripts and snakemake workflows, including several software dependecies, to perform data quality control, taxonomic assignments and reference genome assembly.
+ViralUnity is a simple tool to perform analysis of viral high-throughput sequencing data. It comprises a collection of python scripts and snakemake workflows, including several software dependencies, to perform data quality control, taxonomic assignments and reference genome assembly.
 
 ViralUnity runs on *nix systems and is able to process entire sequencing runs in minimal time on a regular computer.
 
 ## Installation
 
-ViralUnity is python package that launches snakemake workflows. All dependencies are documented in the conda environment file `environment.yml`. We recommend using <a href="https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html">mamba</a> for installation. 
+ViralUnity is a Python package that launches Snakemake workflows. All dependencies are documented in the conda environment file `environment.yml`. We recommend using <a href="https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html">mamba</a> for installation.
 
 To enable ViralUnity, clone the repo and create the environment:
 
     git clone https://github.com/filiperomero2/ViralUnity.git
-    cd viralunity/
+    cd ViralUnity
     conda create -n viralunity python=3.11
     conda activate viralunity
     conda env update -n viralunity --file environment.yml
     pip install .
 
-Tip: On macOS (with chips m1 or later), one may need to further configure the environment before installing dependencies:
+Tip: On macOS (with Apple Silicon M1 or later), you may need to further configure the environment before installing dependencies:
 
     conda create -n viralunity
     conda activate viralunity
@@ -25,11 +25,18 @@ Tip: On macOS (with chips m1 or later), one may need to further configure the en
     conda env update -n viralunity --file environment.yml
     pip install .
 
-It is a good practice to verify that all required dependencies (listed in `environment.yml`) are available before running the pipeline. On certain systems it may be necessary to manually set conda channel priority.
+Verify that all required dependencies (listed in `environment.yml`) are available before running the pipeline. On certain systems it may be necessary to manually set conda channel priority.
 
 ## Usage
 
-ViralUnity comprehends two main pipelines, embodied in separate scripts and snakemake workflows, for performing reference genome assembly (viralunity_consensus.py) and reads taxonomic assignment (viralunity_meta.py). 
+ViralUnity provides two main pipelines:
+
+| Command | Description |
+|--------|-------------|
+| `viralunity meta` | Metagenomics: taxonomic assignment of reads and/or contigs (Kraken2, Diamond), optional dehosting, assembly, and summaries. |
+| `viralunity consensus` | Reference-based consensus assembly from mapped reads. |
+
+Use `viralunity -h` and `viralunity meta -h` or `viralunity consensus -h` for full option lists. 
 
 ### Reference viral genome assembly
 
@@ -66,13 +73,32 @@ Check the contents of the samplesheet file. If the correct paths for fastq files
     conda activate viralunity
     viralunity consensus --data-type illumina --sample-sheet /home/Desktop/example.csv --config-file /home/Desktop/example.yml --run-name example_run --output /home/Desktop/example_output --reference /home/Desktop/references/viral_genome_reference.fasta --primer-scheme /home/Desktop/my_primers.bed --adapters /home/Desktop/trimmomatic_adapters/adapters.fa --threads 2 --threads-total 4
 
-The output directory will contain subdirectories with QC data and reports, logs and all files related to the asssembly pipeline, including consensus sequences and intermediate files (mapping files, coverage reports). 
+The output directory will contain subdirectories with QC data and reports, logs and all files related to the assembly pipeline, including consensus sequences and intermediate files (mapping files, coverage reports).
 
 Tip: Users are strongly encouraged to always use absolute paths. This minimizes the chances for mistakes and enforces the usage of all correct files. 
 
 ### Taxonomic assignment
 
-The viralunity metagenomics pipeline allows users to go from raw sequencing reads to metagenomics classifications and visualizations, characterizing viral diversity. You can choose **Kraken2 only**, **Diamond only**, or **both** for classification; each tool can be run on reads and (optionally) on assembled contigs.
+The **metagenomics pipeline** (`viralunity meta`) takes raw sequencing reads to taxonomic classifications and visualizations. You can use **Kraken2 only**, **Diamond only**, or **both**. Each tool can be run on **reads** and, when assembly is enabled, on **contigs**.
+
+#### Sample sheet format
+
+The `--sample-sheet` argument must point to a CSV file (no header row) with sample IDs and file paths.
+
+- **Illumina:** three columns — sample name, R1 path, R2 path.
+- **Nanopore:** two columns — sample name, path to single FASTQ/FASTA.
+
+Example Illumina:
+
+    sample1,/path/to/sample1_R1.fastq.gz,/path/to/sample1_R2.fastq.gz
+    sample2,/path/to/sample2_R1.fastq.gz,/path/to/sample2_R2.fastq.gz
+
+Example Nanopore:
+
+    barcode01,/path/to/barcode01.fastq
+    barcode02,/path/to/barcode02.fastq.gz
+
+You can create an Illumina sample sheet with `viralunity_create_samplesheet.py` (see `--help`). Prefer absolute paths.
 
 #### Pipeline overview (Illumina)
 
@@ -85,6 +111,17 @@ The viralunity metagenomics pipeline allows users to go from raw sequencing read
 7. **Summaries and filters** — Per-sample taxa tables (family/genus/species), RPM normalization, optional max-RPM bleed filter and negative-control background filter. [Krona](https://github.com/marbl/Krona) plots and [MultiQC](https://github.com/ewels/MultiQC) reports.
 
 Output directories include `qc/` (fastp + FastQC + MultiQC), `host_filtered/`, `metagenomics/taxonomic_assignments/` (per-tool and per-mode results), `denovo_assembly/` and `mapping/viral/` when assembly is enabled.
+
+#### Pipeline overview (Nanopore)
+
+1. **Optional dehosting** — If `--host-reference` is set, minimap2 aligns reads; unmapped reads are kept (no fastp QC).
+2. **Read classification** — Kraken2 and/or Diamond on (host-filtered or raw) reads.
+3. **Optional de novo assembly** — MEGAHIT on host-filtered reads.
+4. **Optional polishing** — [Racon](https://github.com/lbcb-sci/racon) and/or [Medaka](https://github.com/nanoporetech/medaka) on MEGAHIT contigs (Nanopore-only options).
+5. **Contig classification** — Kraken2 and/or Diamond on (polished or raw) contigs; Diamond contigs use read support and filtering as in Illumina.
+6. **Summaries and filters** — Same as Illumina: taxa tables, RPM, bleed filter, negative-control filter, Krona plots.
+
+Output layout matches Illumina where applicable; polishing outputs go under `denovo_assembly/megahit/{sample}/` and `medaka_work/`.
 
 #### Databases
 
@@ -107,21 +144,108 @@ Output directories include `qc/` (fastp + FastQC + MultiQC), `host_filtered/`, `
 
 - **Diamond** — Required only if using Diamond. Provide a protein FASTA (e.g. RefSeq viral) and build the database (pipeline runs `diamond makedb` if needed). You also need an NCBI **assembly summary** file for taxonomy mapping (e.g. `assembly_summary_refseq.txt` from NCBI).
 
-#### Metagenomics arguments
+#### Metagenomics pipeline — full option reference
 
-**Required:** `--data-type`, `--sample-sheet`, `--config-file`, `--output`
+Run `viralunity meta -h` for the complete list. Below is a structured reference of all options.
 
-**Classification (choose one or both):** `--kraken2-database`, `--krona-database`, `--taxdump` (all three required when running any classification); `--no-kraken2-reads`, `--no-kraken2-contigs`; `--run-diamond-reads`, `--run-diamond-contigs`, `--diamond-database`, `--assembly-summary`; `--diamond-sensitivity`, `--evalue`
+**Required (all runs)**
 
-**QC (fastp, Illumina):** `--adapters` (optional, default NA = auto-detect), `--minimum-read-length`, `--trim`, `--trim-head`, `--trim-tail`, `--cut-front-mean-quality`, `--cut-tail-mean-quality`, `--cut-right-window-size`, `--cut-right-mean-quality`
+| Option | Description |
+|--------|-------------|
+| `--data-type` | `illumina` or `nanopore`. |
+| `--sample-sheet` | Path to CSV with sample IDs and file paths (see Sample sheet format above). |
+| `--config-file` | Path to the YAML config file to be generated (and used when running the workflow). |
+| `--output` | Base output directory. Results go under `{output}/{run_name}/`. |
 
-**Dehosting and assembly:** `--host-reference`, `--run-denovo-assembly`
+**Run identity and resources**
 
-**Filters and other:** `--remove-human-reads`, `--remove-unclassified-reads`, `--bleed-fraction`, `--negative-controls`, `--negative-p-threshold`, `--run-name`, `--create-config-only`, `--threads`, `--threads-total`
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--run-name` | `undefined` | Name of the run; output is written to `{output}/{run_name}/`. |
+| `--threads` | `1` | Threads per job. |
+| `--threads-total` | `1` | Total cores for the workflow (Snakemake parallelization). |
+| `--create-config-only` | off | Only generate the config file; do not run the workflow. |
 
-Run `viralunity meta -h` for full help.
+**Classification — Kraken2**
 
-#### Minimal run examples
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--kraken2-database` | `NA` | Path to Kraken2 database (required if using Kraken2). |
+| `--run-kraken2-reads` | on | Enable Kraken2 on reads. |
+| `--no-kraken2-reads` | — | Disable Kraken2 on reads. |
+| `--run-kraken2-contigs` | on | Enable Kraken2 on contigs when assembly is run. |
+| `--no-kraken2-contigs` | — | Disable Kraken2 on contigs. |
+
+**Classification — Diamond**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--run-diamond-reads` | off | Enable DIAMOND blastx on reads. |
+| `--no-diamond-reads` | — | Disable DIAMOND on reads. |
+| `--run-diamond-contigs` | off | Enable DIAMOND on assembled contigs (when `--run-denovo-assembly`). |
+| `--no-diamond-contigs` | — | Disable DIAMOND on contigs. |
+| `--diamond-database` | `NA` | Protein FASTA for Diamond DB (required if running Diamond). |
+| `--assembly-summary` | `NA` | NCBI assembly summary for Diamond taxonomy (required if running Diamond). |
+| `--diamond-sensitivity` | `sensitive` | One of: `sensitive`, `mid-sensitive`, `more-sensitive`, `ultra-sensitive`. |
+| `--evalue` | `0.001` | Diamond E-value threshold. |
+
+**Classification — shared (Kraken2 and/or Diamond)**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--krona-database` | `NA` | Path to Krona taxonomy (required when running any classification). |
+| `--taxdump` | `NA` | Path to NCBI taxdump dir (`nodes.dmp`, `names.dmp`) for taxonomic summaries. |
+| `--remove-human-reads` | off | Remove human reads from Krona/summaries. |
+| `--remove-unclassified-reads` | off | Remove unclassified reads from Krona/summaries. |
+
+**QC — Illumina only (fastp)**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--adapters` | `NA` | Path to adapter FASTA; `NA` = auto-detect. |
+| `--minimum-read-length` | `50` | Minimum read length after trimming (fastp `--length_required`). |
+| `--trim` | `0` | Bases to trim from 5′ end (used as trim_head if `--trim-head` not set). |
+| `--trim-head` | — | Bases to trim from 5′ (overrides `--trim`). |
+| `--trim-tail` | — | Bases to trim from 3′. |
+| `--cut-front-mean-quality` | `20` | fastp cut_front mean quality threshold. |
+| `--cut-tail-mean-quality` | `20` | fastp cut_tail mean quality threshold. |
+| `--cut-right-window-size` | `4` | fastp cut_right window size. |
+| `--cut-right-mean-quality` | `20` | fastp cut_right mean quality threshold. |
+
+**Dehosting and assembly**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--host-reference` | `NA` | Host genome FASTA for dehosting (minimap2). Omit or `NA` to skip. |
+| `--run-denovo-assembly` | off | Run MEGAHIT and classify contigs. |
+
+**Nanopore-only — polishing**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--run-polish-racon` | off | Run Racon polishing on MEGAHIT assembly. |
+| `--no-polish-racon` | — | Disable Racon (default). |
+| `--run-polish-medaka` | off | Run Medaka polishing on assembly. |
+| `--no-polish-medaka` | — | Disable Medaka (default). |
+| `--medaka-model` | — | Medaka model (e.g. `r941_min_high_g360`). Omit to use Medaka default. |
+
+**Summary filters**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--bleed-fraction` | `0.005` | Max-RPM bleed filter fraction. |
+| `--negative-controls` | (empty) | Comma-separated sample IDs to use as negative controls for background filter. |
+| `--negative-p-threshold` | `0.01` | p-value threshold for negative-control filter. |
+
+#### How to run
+
+1. Create a sample sheet (see format above) or use `viralunity_create_samplesheet.py` for Illumina.
+2. Activate the environment: `conda activate viralunity`.
+3. Run `viralunity meta` with `--data-type illumina` or `--data-type nanopore`, plus required and optional arguments below.
+
+The script generates the config file from your arguments and then runs the Snakemake workflow. Use `--create-config-only` to only generate the config and run Snakemake yourself later (e.g. `snakemake --snakefile viralunity/scripts/metagenomics_<illumina|nanopore>.smk --configfile <config.yml> --cores N`).
+
+#### Run examples
 
 **QC only** (fastp + MultiQC, no classification):
 
@@ -151,9 +275,22 @@ Run `viralunity meta -h` for full help.
       --run-diamond-reads --run-diamond-contigs --diamond-database /path/to/proteins.faa --assembly-summary /path/to/assembly_summary.txt \
       --run-denovo-assembly --host-reference /path/to/host.fa --threads 4 --threads-total 8
 
+**Nanopore — full pipeline (dehosting, assembly, Medaka polishing, Kraken2 + Diamond):**
+
+    viralunity meta --data-type nanopore --sample-sheet samplesheet_nano.csv --config-file my_config_nano.yml --output output_nano \
+      --run-name undefined --threads 4 --threads-total 4 \
+      --kraken2-database /path/to/kraken2_db --krona-database /path/to/krona_taxonomy --taxdump /path/to/taxdump \
+      --assembly-summary /path/to/assembly_summary.txt --diamond-database /path/to/proteins.faa \
+      --host-reference /path/to/host.fa --run-denovo-assembly \
+      --run-kraken2-reads --run-kraken2-contigs --run-diamond-reads --run-diamond-contigs \
+      --run-polish-medaka --medaka-model r941_min_high_g360 \
+      --bleed-fraction 0.005 --negative-p-threshold 0.01
+
+Omit `--run-polish-medaka` and `--medaka-model` if you do not want polishing. Kraken2 on reads/contigs is on by default; add `--no-kraken2-reads` or `--no-kraken2-contigs` to disable.
+
 #### Run
 
-Create a sample sheet (e.g. with `viralunity_create_samplesheet.py`), then activate the environment and launch:
+Create a sample sheet (e.g. with `viralunity_create_samplesheet.py` for Illumina), then activate the environment and launch. Use `--data-type illumina` or `--data-type nanopore` and the options from the tables above.
 
     conda activate viralunity
     viralunity meta --data-type illumina --sample-sheet /path/to/example.csv --config-file /path/to/example_meta.yml \
@@ -161,7 +298,7 @@ Create a sample sheet (e.g. with `viralunity_create_samplesheet.py`), then activ
       --kraken2-database /path/to/kraken2_database/viral/ --krona-database /path/to/krona/taxonomy/ --taxdump /path/to/taxdump \
       --threads 2 --threads-total 4
 
-Output includes `qc/` (fastp reports, FastQC, MultiQC), `host_filtered/` (if dehosting is used), `metagenomics/taxonomic_assignments/` (Kraken2 and/or Diamond results, Krona plots, taxa summaries, RPM and filter tables when applicable), and optionally `denovo_assembly/` and `mapping/viral/`. 
+Output includes `qc/` (fastp reports, FastQC, MultiQC — Illumina only), `host_filtered/` (if dehosting is used), `metagenomics/taxonomic_assignments/` (Kraken2 and/or Diamond results, Krona plots, taxa summaries, RPM and filter tables when applicable), and optionally `denovo_assembly/`, `mapping/viral/`, and for Nanopore with polishing `medaka_work/`. 
 
 ### Running both pipelines
 
@@ -177,7 +314,7 @@ Once manual edition is finished, one can execute the workflow directly with snak
 
 ### Nanopore data
 
-Experimental pipelines for nanopore sequencing data were recently added. It is still a work in progress, and there's a lot of room for improvements. Unlike the Illumina pipeline, it does not include data quality control steps. In case you want to use it, just use the flag '--data-type nanopore'. 
+The metagenomics pipeline supports Nanopore data with `--data-type nanopore`. There is no fastp-based QC step; you can use optional dehosting, MEGAHIT assembly, and optional Racon/Medaka polishing. See **Pipeline overview (Nanopore)** and **Nanopore-only — polishing** in the option reference above, and the Nanopore run example. Sample sheets for Nanopore have two columns (sample ID, path to one FASTQ/FASTA per sample). 
 
  
 ### Segmented viruses
