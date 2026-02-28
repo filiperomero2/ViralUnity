@@ -66,8 +66,10 @@ coverage.xml
 ./DATA
 data/
 input/
-output/
-output-*/
+output*
 .snakemake/
 viralunity/meta.yaml
 assets/
+notes.txt
+my_config.yml
+samplesheet.csv

@@ -403,7 +403,7 @@ if run_diamond_reads:
 
     rule run_diamond_reads:
         input:
-            fastq = get_final_input_fastq,
+            fastq = rules.merge_host_filtered_reads.output.merged,
             db = config["diamond_database"] + ".dmnd"
         output:
             tsv = config["output"] + "metagenomics/taxonomic_assignments/diamond_reads/results/{sample}.diamond.tsv"
@@ -419,7 +419,7 @@ if run_diamond_reads:
             r"""
             set -euo pipefail
             mkdir -p $(dirname {output.tsv}) $(dirname {log})
-            unc_size=$(gzip -l "{input.fastq}" | awk 'NR==2 {{print $2}}')
+            unc_size=$(gzip -l "{input.fastq}" | awk 'NR==2 {{print $1}}')
             if [ "$unc_size" = "0" ]; then
                 echo "WARNING: {input.fastq} empty. Creating dummy DIAMOND READS output." > {log}
                 touch {output.tsv}
@@ -434,7 +434,7 @@ if run_diamond_reads:
     rule create_krona_input_from_diamond_reads:
         input:
             diamond = config["output"] + "metagenomics/taxonomic_assignments/diamond_reads/results/{sample}.diamond.tsv",
-            fastq = get_final_input_fastq,
+            fastq = rules.merge_host_filtered_reads.output.merged,
             assembly = config["assembly_summary"]
         output:
             krona_input = temp(config["output"] + "metagenomics/taxonomic_assignments/diamond_reads/results/{sample}.diamond.krona_input.temp.tsv")
