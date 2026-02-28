@@ -33,6 +33,7 @@ run_k2_reads = config.get("run_kraken2_reads", True)
 run_k2_contigs = config.get("run_kraken2_contigs", True)
 run_diamond_reads = config.get("run_diamond_reads", False)
 run_diamond_contigs = config.get("run_diamond_contigs", False)
+has_negative_controls = bool(config.get("negative_controls", []))
 
 ##############################################
 # Targets
@@ -41,13 +42,22 @@ run_diamond_contigs = config.get("run_diamond_contigs", False)
 def _all_inputs():
     targets = [config["output"] + "qc/reports/multiqc_report.html"]
     if run_k2_reads:
-        targets.append(config["output"] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_taxa_summary_RPM.bleed.tsv")
+        if has_negative_controls:
+            targets.append(config["output"] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_taxa_summary_RPM.bleed.neg.tsv")
+        else:
+            targets.append(config["output"] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_taxa_summary_RPM.bleed.tsv")
     if run_denovo and run_k2_contigs:
         targets.append(config["output"] + "metagenomics/taxonomic_assignments/kraken2_contigs/kraken2_contigs_taxa_summary.tsv")
     if run_diamond_reads:
-        targets.append(config["output"] + "metagenomics/taxonomic_assignments/diamond_reads/diamond_reads_taxa_summary_RPM.bleed.tsv")
+        if has_negative_controls:
+            targets.append(config["output"] + "metagenomics/taxonomic_assignments/diamond_reads/diamond_reads_taxa_summary_RPM.bleed.neg.tsv")
+        else:
+            targets.append(config["output"] + "metagenomics/taxonomic_assignments/diamond_reads/diamond_reads_taxa_summary_RPM.bleed.tsv")
     if run_denovo and run_diamond_contigs:
-        targets.append(config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary_RPM.bleed.tsv")
+        if has_negative_controls:
+            targets.append(config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary_RPM.bleed.neg.tsv")
+        else:
+            targets.append(config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary_RPM.bleed.tsv")
     return targets
 
 rule all:
