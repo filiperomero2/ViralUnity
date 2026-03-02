@@ -240,34 +240,34 @@ def validate_metagenomics_requirements(args: Dict[str, Any]) -> None:
             "taxid_to_family": ("taxid-to-family mapping (--taxid-to-family)", "file"),
         }
 
-    missing = []
-    for key, (label, _) in required.items():
-        val = args.get(key)
-        if val is None or str(val).strip().upper() in {"", "NA", "NONE", "NULL"}:
-            missing.append(label)
+        missing = []
+        for key, (label, _) in required.items():
+            val = args.get(key)
+            if val is None or str(val).strip().upper() in {"", "NA", "NONE", "NULL"}:
+                missing.append(label)
 
-    if missing:
-        which = []
-        if run_diamond_contigs:
-            which.append("contigs")
-        if run_diamond_reads:
-            which.append("reads")
-        which_str = " and ".join(which) if which else "DIAMOND"
-        raise ValidationError(
-            f"DIAMOND {which_str} analysis was requested, but required inputs are missing:\n- "
-            + "\n- ".join(missing)
-        )
+        if missing:
+            which = []
+            if run_diamond_contigs:
+                which.append("contigs")
+            if run_diamond_reads:
+                which.append("reads")
+            which_str = " and ".join(which) if which else "DIAMOND"
+            raise ValidationError(
+                f"DIAMOND {which_str} analysis was requested, but required inputs are missing:\n- "
+                + "\n- ".join(missing)
+            )
 
-    # validate paths exist
-    for key, (label, kind) in required.items():
-        val = args.get(key)
-        try:
-            if kind == "dir":
-                validate_directory_exists(val, label)
-            else:
-                validate_file_exists(val, label)
-        except FileNotFoundError as e:
-            raise ValidationError(f"{label} does not exist: {e}")
+        # validate paths exist
+        for key, (label, kind) in required.items():
+            val = args.get(key)
+            try:
+                if kind == "dir":
+                    validate_directory_exists(val, label)
+                else:
+                    validate_file_exists(val, label)
+            except FileNotFoundError as e:
+                raise ValidationError(f"{label} does not exist: {e}")
 
     krona_db = args.get("krona_database")
     if not krona_db:
