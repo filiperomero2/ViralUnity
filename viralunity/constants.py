@@ -47,6 +47,7 @@ class ConfigKeys:
     DIAMOND_DATABASE = "diamond_database"
     DIAMOND_SENSITIVITY = "diamond_sensitivity"
     EVALUE = "evalue"
+    MINIMUM_HIT_GROUP = "minimum_hit_group"
     BLEED_FRACTION = "bleed_fraction"
     NEGATIVE_CONTROLS = "negative_controls"
     NEGATIVE_P_THRESHOLD = "negative_p_threshold"

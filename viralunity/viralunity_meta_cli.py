@@ -323,3 +323,10 @@ def fill_arg_parser_meta(subparsers: argparse._SubParsersAction):
         default=0.01,
         help="p-value threshold for negative-control filter (default: 0.01).",
     )
+
+    meta_parser.add_argument(
+        "--minimum-hit-group",
+        type=int,
+        default=4,
+        help="Kraken2 minimum hit group (default: 4).",
+    )

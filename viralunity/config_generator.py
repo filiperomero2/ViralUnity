@@ -139,6 +139,7 @@ class ConfigGenerator:
         bleed_fraction: float = 0.005,
         negative_controls: Optional[List[str]] = None,
         negative_p_threshold: float = 0.01,
+        minimum_hit_group: int = 4,
     ) -> None:
         """Add metagenomics-specific settings to configuration.
 
@@ -162,6 +163,7 @@ class ConfigGenerator:
             bleed_fraction: Max-RPM bleed filter fraction
             negative_controls: Sample IDs to use as negative controls
             negative_p_threshold: p-value threshold for negative filter
+            minimum_hit_group: Kraken2 --minimum-hit-group (default: 4)
         """
         self.config[ConfigKeys.KRAKEN2_DATABASE] = kraken2_database
         self.config[ConfigKeys.KRONA_DATABASE] = krona_database
@@ -182,6 +184,7 @@ class ConfigGenerator:
         self.config[ConfigKeys.BLEED_FRACTION] = bleed_fraction
         self.config[ConfigKeys.NEGATIVE_CONTROLS] = negative_controls or []
         self.config[ConfigKeys.NEGATIVE_P_THRESHOLD] = negative_p_threshold
+        self.config[ConfigKeys.MINIMUM_HIT_GROUP] = minimum_hit_group
     
     def add_nanopore_settings(
         self,

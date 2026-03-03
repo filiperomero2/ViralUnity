@@ -190,7 +190,8 @@ if run_k2_reads:
             outfile = config["output"] + "metagenomics/taxonomic_assignments/kraken2_reads/results/{sample}.output.txt"
         threads: config["threads"]
         params:
-            database = config["kraken2_database"]
+            database = config["kraken2_database"],
+            minimum_hit_group = config.get("minimum_hit_group", 4)
         log:
             config["output"] + "logs/kraken2_reads/{sample}.log"
         benchmark:
@@ -206,7 +207,7 @@ if run_k2_reads:
                 : > {output.outfile}
             else
                 kraken2 --db {params.database} --threads {threads} --report-minimizer-data \
-                    --minimum-hit-group 3 --report {output.report} \
+                    --minimum-hit-group {params.minimum_hit_group} --report {output.report} \
                     --output {output.outfile} {input.filtered} 2> {log}
             fi
             """
@@ -365,7 +366,7 @@ if run_diamond_reads:
                 touch {output.tsv}
             else
                 diamond blastx --db {input.db} --query {input.fastq} \
-                    --out {output.tsv} --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore \
+                    --out {output.tsv} --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qcovhsp \
                     --max-target-seqs 1 --evalue {params.evalue} \
                     --{params.sensitivity} --threads {threads} 2> {log}
             fi
@@ -602,7 +603,8 @@ if run_denovo and run_k2_contigs:
             outfile = config["output"] + "metagenomics/taxonomic_assignments/kraken2_contigs/results/{sample}.output.txt"
         threads: config["threads"]
         params:
-            database = config["kraken2_database"]
+            database = config["kraken2_database"],
+            minimum_hit_group = config.get("minimum_hit_group", 4)
         log:
             config["output"] + "logs/kraken2_contigs/{sample}.log"
         benchmark:
@@ -615,7 +617,7 @@ if run_denovo and run_k2_contigs:
                 touch {output.report} {output.outfile}
             else
                 kraken2 --db {params.database} --threads {threads} --report-minimizer-data \
-                    --minimum-hit-group 3 --report {output.report} \
+                    --minimum-hit-group {params.minimum_hit_group} --report {output.report} \
                     --output {output.outfile} {input.fasta} 2> {log}
             fi
             """
@@ -714,7 +716,7 @@ if run_denovo and run_diamond_contigs:
                 touch {output.tsv}
             else
                 diamond blastx --db {input.db} --query {input.fasta} \
-                    --out {output.tsv} --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qlen slen qseq qseq_translated full_qseq sseq full_sseq \
+                    --out {output.tsv} --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qcovhsp qlen slen qseq qseq_translated full_qseq sseq full_sseq \
                     --max-target-seqs 1 --evalue {params.evalue} \
                     --{params.sensitivity} --threads {threads} 2> {log}
             fi

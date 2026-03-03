@@ -109,6 +109,7 @@ def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None
         bleed_fraction=args.get("bleed_fraction", 0.005),
         negative_controls=negative,
         negative_p_threshold=args.get("negative_p_threshold", 0.01),
+        minimum_hit_group=args.get("minimum_hit_group", 4),
     )
     
     # Add Illumina-specific settings if needed (fastp)
