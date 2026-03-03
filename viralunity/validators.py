@@ -233,6 +233,14 @@ def validate_metagenomics_requirements(args: Dict[str, Any]) -> None:
         if not os.path.isfile(assembly) and not (assembly.endswith(".gz") and os.path.isfile(assembly)):
             raise DiamondDatabaseNotFoundError(f"Assembly summary file not found: {assembly}")
 
+    # Deacon index: when provided for host depletion, must exist
+    deacon_idx = args.get("deacon_index", "NA")
+    if deacon_idx and str(deacon_idx).strip() not in ("", "NA"):
+        try:
+            validate_file_exists(deacon_idx, "Deacon index file")
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f"Deacon index file does not exist: {e}")
+
 
 def get_samples_from_args(args: Dict[str, Any]) -> Dict[str, List[str]]:
     """Extract and validate samples from arguments.

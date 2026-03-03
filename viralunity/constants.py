@@ -36,6 +36,7 @@ class ConfigKeys:
     REMOVE_UNCLASSIFIED_READS = "remove_unclassified_reads"
     # Extended metagenomics
     HOST_REFERENCE = "host_reference"
+    DEACON_INDEX = "deacon_index"
     TAXDUMP = "taxdump"
     RUN_DENOVO_ASSEMBLY = "run_denovo_assembly"
     RUN_KRAKEN2_READS = "run_kraken2_reads"

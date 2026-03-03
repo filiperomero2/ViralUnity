@@ -223,6 +223,12 @@ def fill_arg_parser_meta(subparsers: argparse._SubParsersAction):
     )
 
     meta_parser.add_argument(
+        "--deacon-index",
+        help="Path to Deacon minimizer index for host depletion (alternative to --host-reference). If set, host depletion uses Deacon instead of minimap2.",
+        default="NA",
+    )
+
+    meta_parser.add_argument(
         "--taxdump",
         help="Path to NCBI taxdump directory (nodes.dmp, names.dmp) for taxonomic summaries (required when running any classification).",
         default="NA",

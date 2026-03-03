@@ -103,7 +103,7 @@ You can create an Illumina sample sheet with `viralunity_create_samplesheet.py` 
 #### Pipeline overview (Illumina)
 
 1. **Quality control** — [fastp](https://github.com/OpenGene/fastp): trimming, quality filtering, adapter handling (auto-detect or custom FASTA), JSON/HTML reports.
-2. **Optional dehosting** — If a host reference is provided, [minimap2](https://github.com/lh3/minimap2) aligns reads and unmapped reads are kept for downstream steps.
+2. **Optional dehosting** — If `--host-reference` is set, [minimap2](https://github.com/lh3/minimap2) aligns reads and unmapped reads are kept. Alternatively, set `--deacon-index` to use [Deacon](https://github.com/bede/deacon) for fast minimizer-based host depletion (no host FASTA indexing).
 3. **Merged reads** — Host-filtered (or trimmed) R1 and R2 are merged per sample for read-level classification.
 4. **Read classification** — [Kraken2](https://github.com/DerrickWood/kraken2) and/or [DIAMOND](https://github.com/bbuchfink/diamond) blastx on reads (optional each).
 5. **Optional de novo assembly** — [MEGAHIT](https://github.com/voutcn/megahit) on host-filtered pairs.
@@ -114,7 +114,7 @@ Output directories include `qc/` (fastp + FastQC + MultiQC), `host_filtered/`, `
 
 #### Pipeline overview (Nanopore)
 
-1. **Optional dehosting** — If `--host-reference` is set, minimap2 aligns reads; unmapped reads are kept (no fastp QC).
+1. **Optional dehosting** — If `--host-reference` is set, minimap2 aligns reads; unmapped reads are kept. Or use `--deacon-index` for Deacon-based host depletion (no fastp QC).
 2. **Read classification** — Kraken2 and/or Diamond on (host-filtered or raw) reads.
 3. **Optional de novo assembly** — MEGAHIT on host-filtered reads.
 4. **Optional polishing** — [Racon](https://github.com/lbcb-sci/racon) and/or [Medaka](https://github.com/nanoporetech/medaka) on MEGAHIT contigs (Nanopore-only options).
@@ -216,7 +216,8 @@ Run `viralunity meta -h` for the complete list. Below is a structured reference 
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--host-reference` | `NA` | Host genome FASTA for dehosting (minimap2). Omit or `NA` to skip. |
+| `--host-reference` | `NA` | Host genome FASTA for dehosting with minimap2. Omit or `NA` to skip. |
+| `--deacon-index` | `NA` | Path to [Deacon](https://github.com/bede/deacon) minimizer index for host depletion. If set, host depletion uses Deacon instead of minimap2 (faster, no indexing step). E.g. `deacon index fetch panhuman-1` then pass the `.idx` path. |
 | `--run-denovo-assembly` | off | Run MEGAHIT and classify contigs. |
 
 **Nanopore-only — polishing**

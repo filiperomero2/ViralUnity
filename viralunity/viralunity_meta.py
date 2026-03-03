@@ -95,6 +95,7 @@ def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None
         remove_human_reads=args.get("remove_human_reads", False),
         remove_unclassified_reads=args.get("remove_unclassified_reads", False),
         host_reference=args.get("host_reference", "NA"),
+        deacon_index=args.get("deacon_index", "NA"),
         taxdump=args.get("taxdump", "NA"),
         run_denovo_assembly=args.get("run_denovo_assembly", False),
         run_kraken2_reads=args.get("run_kraken2_reads", True),

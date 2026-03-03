@@ -27,7 +27,8 @@ def get_final_input_fastq(wildcards):
     """Single merged FASTQ per sample for read-level Kraken2/Diamond."""
     return config["output"] + "host_filtered/" + wildcards.sample + ".merged.fastq.gz"
 
-host_filtering_enabled = config.get("host_reference", "NA") != "NA"
+host_filtering_enabled = (config.get("host_reference", "NA") != "NA") or (config.get("deacon_index", "NA") not in ("NA", "", None))
+dehost_with_deacon = config.get("deacon_index", "NA") not in ("NA", "", None)
 run_denovo = config.get("run_denovo_assembly", False)
 run_k2_reads = config.get("run_kraken2_reads", True)
 run_k2_contigs = config.get("run_kraken2_contigs", True)
@@ -149,9 +150,34 @@ rule generate_qc_report:
 
 ##############################################
 # Dehosting (Illumina paired-end)
+# Either Deacon (minimizer index) or minimap2 (host FASTA), or none
 ##############################################
 
-if host_filtering_enabled:
+if dehost_with_deacon:
+
+    rule remove_host_reads:
+        input:
+            paired_R1 = rules.perform_qc.output.paired_R1,
+            paired_R2 = rules.perform_qc.output.paired_R2,
+            index = config["deacon_index"]
+        output:
+            filtered_R1 = config["output"] + "host_filtered/{sample}.R1.filtered.fastq.gz",
+            filtered_R2 = config["output"] + "host_filtered/{sample}.R2.filtered.fastq.gz",
+            summary = config["output"] + "logs/remove_host/{sample}.deacon_summary.json",
+        threads: config["threads"]
+        log:
+            config["output"] + "logs/remove_host/{sample}.log"
+        benchmark:
+            config["output"] + "logs/remove_host/{sample}.benchmark.txt"
+        shell:
+            r"""
+            set -euo pipefail
+            mkdir -p $(dirname {output.filtered_R1}) $(dirname {log})
+            deacon filter -d -t {threads} -s {output.summary} "{input.index}" "{input.paired_R1}" "{input.paired_R2}" \
+                -o {output.filtered_R1} -O {output.filtered_R2} >> {log} 2>&1
+            """
+
+elif host_filtering_enabled:
 
     rule index_host_genome:
         input:

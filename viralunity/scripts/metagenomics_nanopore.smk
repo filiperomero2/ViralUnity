@@ -24,7 +24,8 @@ def get_map_input_fastqs(wildcards):
         paths = paths.strip().split()
     return paths
 
-host_filtering_enabled = config.get("host_reference", "NA") not in ("NA", "", None)
+host_filtering_enabled = (config.get("host_reference", "NA") not in ("NA", "", None)) or (config.get("deacon_index", "NA") not in ("NA", "", None))
+dehost_with_deacon = config.get("deacon_index", "NA") not in ("NA", "", None)
 run_denovo = config.get("run_denovo_assembly", False)
 run_polish_racon = config.get("run_polish_racon", False)
 run_polish_medaka = config.get("run_polish_medaka", False)
@@ -85,9 +86,31 @@ rule all:
 
 ##############################################
 # Dehosting (Nanopore long reads)
+# Either Deacon (minimizer index) or minimap2 (host FASTA), or none
 ##############################################
 
-if host_filtering_enabled:
+if dehost_with_deacon:
+
+    rule remove_host_reads:
+        input:
+            reads = lambda wildcards: config["samples"][wildcards.sample],
+            index = config["deacon_index"]
+        output:
+            filtered = config["output"] + "host_filtered/{sample}.filtered.fastq.gz",
+            summary = config["output"] + "logs/remove_host/{sample}.deacon_summary.json",
+        threads: config["threads"]
+        log:
+            config["output"] + "logs/remove_host/{sample}.log"
+        benchmark:
+            config["output"] + "logs/remove_host/{sample}.benchmark.txt"
+        shell:
+            r"""
+            set -euo pipefail
+            mkdir -p "$(dirname {output.filtered})" "$(dirname {log})"
+            deacon filter -d -t {threads} -s "{output.summary}" "{input.index}" "{input.reads}" -o "{output.filtered}" 2>> "{log}"
+            """
+
+elif host_filtering_enabled:
 
     rule index_host_genome:
         input:

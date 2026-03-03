@@ -125,6 +125,7 @@ class ConfigGenerator:
         remove_human_reads: bool,
         remove_unclassified_reads: bool,
         host_reference: str = "NA",
+        deacon_index: str = "NA",
         taxdump: str = "NA",
         run_denovo_assembly: bool = False,
         run_kraken2_reads: bool = True,
@@ -147,6 +148,7 @@ class ConfigGenerator:
             remove_human_reads: Whether to remove human reads
             remove_unclassified_reads: Whether to remove unclassified reads
             host_reference: Path to host genome FASTA for dehosting (or "NA")
+            deacon_index: Path to Deacon minimizer index for host depletion (or "NA"). If set, used instead of host_reference for dehosting.
             taxdump: Path to NCBI taxdump dir (nodes.dmp, names.dmp)
             run_denovo_assembly: Whether to run MEGAHIT assembly
             run_kraken2_reads: Whether to run Kraken2 on reads
@@ -166,6 +168,7 @@ class ConfigGenerator:
         self.config[ConfigKeys.REMOVE_HUMAN_READS] = remove_human_reads
         self.config[ConfigKeys.REMOVE_UNCLASSIFIED_READS] = remove_unclassified_reads
         self.config[ConfigKeys.HOST_REFERENCE] = host_reference
+        self.config[ConfigKeys.DEACON_INDEX] = deacon_index
         self.config[ConfigKeys.TAXDUMP] = taxdump
         self.config[ConfigKeys.RUN_DENOVO_ASSEMBLY] = run_denovo_assembly
         self.config[ConfigKeys.RUN_KRAKEN2_READS] = run_kraken2_reads
