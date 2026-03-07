@@ -35,7 +35,10 @@ class ConfigKeys:
     AF_ISNV_THRESHOLD = "af_isnv_threshold"
     REMOVE_HUMAN_READS = "remove_human_reads"
     REMOVE_UNCLASSIFIED_READS = "remove_unclassified_reads"
-
+    CHUNK_SIZE = "chunk_size"
+    CLAIR3_MODEL = "clair3_model"
+    VARIANT_QUALITY = "variant_quality"
+    MINIMUM_MAP_QUALITY = "minimum_map_quality"
 
 class SampleSheetPattern:
     """Patterns for identifying sample files."""

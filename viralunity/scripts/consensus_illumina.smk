@@ -125,6 +125,7 @@ rule detect_isnv:
     output:
         bam = temp(config['output'] + "isnvs/{sample}.lofreq.sorted.bam"),
         bam_index = temp(config['output'] + "isnvs/{sample}.lofreq.sorted.bam.bai"),
+	    vcf_tmp = temp(config['output'] + "isnvs/{sample}.lofreq.tmp.vcf"),
         vcf = config['output'] + "isnvs/{sample}.isnvs.vcf.gz",
         vcf_index = config['output'] + "isnvs/{sample}.isnvs.vcf.gz.tbi"
     params:
@@ -147,12 +148,11 @@ rule detect_isnv:
             --pp-threads {threads} \
             --call-indels \
             -f {input.reference} \
-            -o tmp.vcf \
+            -o {output.vcf_tmp} \
             {output.bam}
 
-        bcftools view -i 'INFO/AF<0.5 & INFO/AF>={params.af_min_threshold}' tmp.vcf -Oz -o {output.vcf}
+        bcftools view -i 'INFO/AF<0.5 & INFO/AF>={params.af_min_threshold}' {output.vcf_tmp} -Oz -o {output.vcf}
         tabix {output.vcf}
-        rm tmp.vcf
         """
 
 rule infer_consensus_sequence:

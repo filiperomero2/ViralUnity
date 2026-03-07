@@ -69,15 +69,27 @@ class ConfigGenerator:
         self,
         minimum_read_length: int,
         af_threshold: float,
+        chunk_size: int,
+        clair3_model: str,
+        variant_quality: int,
+        minimum_map_quality: int
     ) -> None:
         """Add Nanopore-specific settings to configuration.
 
         Args:
             minimum_read_length: Minimum read length threshold
             af_threshold: Allele frequency threshold to call a variant into consensus
+            chunk_size: Size of chunks to process [clair3]
+            clair3_model: Model to use for variant calling [clair3]
+            variant_quality: Minimum variant quality to call a variant into consensus [clair3]
+            minimum_map_quality: Minimum map quality to call a variant into consensus [clair3]
         """
         self.config[ConfigKeys.MINIMUM_LENGTH] = minimum_read_length
         self.config[ConfigKeys.AF_THRESHOLD] = af_threshold
+        self.config[ConfigKeys.CHUNK_SIZE] = chunk_size
+        self.config[ConfigKeys.CLAIR3_MODEL] = clair3_model
+        self.config[ConfigKeys.VARIANT_QUALITY] = variant_quality
+        self.config[ConfigKeys.MINIMUM_MAP_QUALITY] = minimum_map_quality
 
     def add_illumina_settings(
         self,

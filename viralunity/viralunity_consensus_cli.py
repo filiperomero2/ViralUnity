@@ -173,4 +173,42 @@ def fill_arg_parser_consensus(subparsers: argparse._SubParsersAction):
         const=1,
         default=50,
     )
+
+    # nanopore specific arguments
+    consensus_parser.add_argument(
+        "--chunk-size",
+        type=int,
+        help="Size of chunks to process (clair3) (Default = 10000)",
+        nargs="?",
+        const=1,
+        default=10000,
+    )
+
+    consensus_parser.add_argument(
+        "--clair3-model",
+        type=str,
+        help="Model to use for variant calling (clair3) (Default = r1041_e82_400bps_sup_v500)",
+        nargs="?",
+        const=1,
+        default="r1041_e82_400bps_sup_v500",
+    )
+
+    consensus_parser.add_argument(
+        "--variant-quality",
+        type=int,
+        help="Minimum variant quality to call a variant into consensus (clair3) (Default = 10)",
+        nargs="?",
+        const=1,
+        default=10,
+    )
+
+    consensus_parser.add_argument(
+        "--minimum-map-quality",
+        type=int,
+        help="Minimum map quality to call a variant into consensus (clair3) (Default = 30)",
+        nargs="?",
+        const=1,
+        default=30,
+    )
+    
  

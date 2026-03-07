@@ -100,6 +100,10 @@ def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None
         generator.add_nanopore_settings(
             minimum_read_length=args.get("minimum_read_length", 50),
             af_threshold=args.get("af_threshold", 0.51),
+            chunk_size=args.get("chunk_size", 10000),
+            clair3_model=args.get("clair3_model", "r1041_e82_400bps_sup_v500"),
+            variant_quality=args.get("variant_quality", 10),
+            minimum_map_quality=args.get("minimum_map_quality", 30),
         )
 
     # Add Illumina-specific settings if needed

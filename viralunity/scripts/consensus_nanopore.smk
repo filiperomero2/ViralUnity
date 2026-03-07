@@ -63,16 +63,51 @@ rule infer_consensus_sequence:
     input:
         bam = rules.trim_primer_sequences.output.bam,
         bam_index = rules.trim_primer_sequences.output.bam_index
+        reference = config["reference"]
     output:
+        vcf_norm = temp(config['output'] + "assembly/consensus/final_consensus/{sample}.norm.vcf.gz"),
+        vcf = config['output'] + "assembly/consensus/final_consensus/{sample}.vcf.gz",
+        low_cov_bed = config['output'] + "assembly/consensus/final_consensus/{sample}.low_cov.bed",
         consensus = temp(config['output'] + "assembly/consensus/final_consensus/{sample}.consensus.fasta")
     params:
+        output_prefix_dir = "./{sample}",
         minimum_depth = config["minimum_depth"],
-        af_threshold = config["af_threshold"]
+        af_threshold = config["af_threshold"],
+        chunk_size = config["chunk_size"],
+        clair3_model = config["clair3_model"],
+        variant_quality = config["variant_quality"],
+        minimum_map_quality = config["minimum_map_quality"]
     benchmark:
-        config['output'] + "logs/samtools/consensus/{sample}.benchmark.txt"
+        config['output'] + "logs/consensus/{sample}.benchmark.txt"
     shell:
-        "samtools consensus -a -d {params.minimum_depth} -m simple -q -c {params.af_threshold} --show-ins yes {input.bam} -o {output.consensus}"
+        """
+        samtools faidx {input.reference}
 
+        run_clair3.sh \
+            --bam_fn={input.bam} \
+            --ref_fn={input.reference} \
+            --qual={params.variant_quality} \
+            --min_mq={params.minimum_map_quality} \
+            --model_path={params.clair3_model} \
+            --chunk_size={params.chunk_size} \
+            --threads={task.cpus} \
+            --enable_long_indel \
+            --haploid_sensitive \
+            --no_phasing_for_fa \
+            --output={params.output_prefix_dir} \
+            --platform='ont' \
+            --include_all_ctgs 
+        
+        tabix {params.output_prefix_dir}/merge_output.vcf.gz 
+        bcftools norm -m - -f {input.reference} {params.output_prefix_dir}/merge_output.vcf.gz > {output.vcf_norm}
+        bcftools filter -i "FORMAT/AF >= {params.af_threshold}" {output.vcf_norm} -o {output.vcf} -O z
+        tabix {output.vcf}
+        
+        samtools depth -J -a {input.bam} | \
+            awk '$3 <= int({params.minimum_depth}) {print $1 "\t" $2-1 "\t" $2}' > {output.low_cov_bed}
+        
+        bcftools consensus -f {input.reference} --mask {output.low_cov_bed} {output.vcf} > {output.consensus}
+        """
 
 
 rule calculate_coverage_basewise:
