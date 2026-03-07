@@ -62,7 +62,7 @@ rule trim_primer_sequences:
 rule infer_consensus_sequence:
     input:
         bam = rules.trim_primer_sequences.output.bam,
-        bam_index = rules.trim_primer_sequences.output.bam_index
+        bam_index = rules.trim_primer_sequences.output.bam_index,
         reference = config["reference"]
     output:
         vcf_norm = temp(config['output'] + "assembly/consensus/final_consensus/{sample}.norm.vcf.gz"),
@@ -70,7 +70,7 @@ rule infer_consensus_sequence:
         low_cov_bed = config['output'] + "assembly/consensus/final_consensus/{sample}.low_cov.bed",
         consensus = temp(config['output'] + "assembly/consensus/final_consensus/{sample}.consensus.fasta")
     params:
-        output_prefix_dir = "./{sample}",
+        output_prefix_dir = config['output'] + "clair3/{sample}",
         minimum_depth = config["minimum_depth"],
         af_threshold = config["af_threshold"],
         chunk_size = config["chunk_size"],
@@ -79,6 +79,7 @@ rule infer_consensus_sequence:
         minimum_map_quality = config["minimum_map_quality"]
     benchmark:
         config['output'] + "logs/consensus/{sample}.benchmark.txt"
+    threads: config["threads"] 
     shell:
         """
         samtools faidx {input.reference}
@@ -88,9 +89,9 @@ rule infer_consensus_sequence:
             --ref_fn={input.reference} \
             --qual={params.variant_quality} \
             --min_mq={params.minimum_map_quality} \
-            --model_path={params.clair3_model} \
+            --model_path=$CONDA_PREFIX/bin/models/{params.clair3_model} \
             --chunk_size={params.chunk_size} \
-            --threads={task.cpus} \
+            --threads={threads} \
             --enable_long_indel \
             --haploid_sensitive \
             --no_phasing_for_fa \
@@ -98,15 +99,15 @@ rule infer_consensus_sequence:
             --platform='ont' \
             --include_all_ctgs 
         
-        tabix {params.output_prefix_dir}/merge_output.vcf.gz 
         bcftools norm -m - -f {input.reference} {params.output_prefix_dir}/merge_output.vcf.gz > {output.vcf_norm}
         bcftools filter -i "FORMAT/AF >= {params.af_threshold}" {output.vcf_norm} -o {output.vcf} -O z
         tabix {output.vcf}
         
         samtools depth -J -a {input.bam} | \
-            awk '$3 <= int({params.minimum_depth}) {print $1 "\t" $2-1 "\t" $2}' > {output.low_cov_bed}
+            awk '$3 <= int({params.minimum_depth}) {{print $1 "\t" $2-1 "\t" $2}}' > {output.low_cov_bed}
         
         bcftools consensus -f {input.reference} --mask {output.low_cov_bed} {output.vcf} > {output.consensus}
+        rm -rf {params.output_prefix_dir}
         """
 
 
