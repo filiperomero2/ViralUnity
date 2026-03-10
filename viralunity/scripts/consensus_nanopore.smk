@@ -2,7 +2,8 @@
 
 rule all:
     input:
-        config['output'] + "assembly/consensus/final_consensus/aln.consensus.fasta"
+        config['output'] + "assembly/consensus/final_consensus/aln.consensus.fasta",
+        config['output'] + "benchmark.tsv"
 
 def get_map_input_fastqs(wildcards):
     reads = config["samples"][wildcards.sample].split()
@@ -12,6 +13,8 @@ rule map_reads:
     input:
         reference = config["reference"],
         fastq = get_map_input_fastqs
+    params:
+        minimum_map_quality = config["minimum_map_quality"]
     output:
         bam = config['output'] + "assembly/mapped_reads/raw/{sample}.sorted.bam",
         bam_index = config['output'] + "assembly/mapped_reads/raw/{sample}.sorted.bam.bai",
@@ -23,7 +26,7 @@ rule map_reads:
     shell:
         """
         minimap2 -a -t {threads} -x map-ont {input.reference} {input.fastq} |
-        samtools view -bS -F 4 - |
+        samtools view --min-MQ {params.minimum_map_quality} -bS -F 4 - |
         samtools sort -o {output.bam} - 2> {log}
         samtools index {output.bam} {output.bam_index}
         """
@@ -173,4 +176,69 @@ rule align_consensus_to_reference_genome:
         minimap2 -a --sam-hit-only --secondary=no --score-N=0 {params.reference} {params.path_consensus}/consensus.fasta -o {params.path_consensus}/aln.consensus.sam; 
         gofasta sam toMultiAlign --pad -s {params.path_consensus}/aln.consensus.sam -o {output.aln_consensus}; 
         sed '/^>/! s/-/N/g' {output.aln_consensus} > {params.path_consensus}/aln.consensus.indelsMasked.fasta
+        """
+
+rule organize_files:
+    input:
+        vcf_files = expand(rules.infer_consensus_sequence.output.vcf, sample=config["samples"]),
+        table_cov = expand(rules.calculate_coverage_basewise.output.table_cov, sample=config["samples"]),
+        consensus_files = expand(rules.rename_sequences.output.consensus_renamed, sample=config["samples"]),
+        raw_mapped_reads = expand(rules.map_reads.output.bam, sample=config["samples"]),
+        trimmed_mapped_reads = expand(rules.trim_primer_sequences.output.bam, sample=config["samples"]),
+    output:
+        config['output'] + "benchmark.tsv"
+    params:
+        outdir = config['output'],
+        samples = " ".join(config["samples"].keys())
+    shell:
+        """
+        mkdir -p {params.outdir}samples/
+        for sample in {params.samples}; do
+            mkdir -p {params.outdir}samples/$sample;
+        done
+        for _file in {input.vcf_files}; do
+            sample=$(basename $_file .vcf.gz);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/consensus.vcf.gz;
+            ln -sf $PWD/$_file.tbi {params.outdir}samples/$sample/consensus.vcf.gz.tbi;
+        done
+        for _file in {input.table_cov}; do
+            sample=$(basename $_file .table_cov_basewise.txt);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/table_cov_basewise.txt;
+        done
+        for _file in {input.consensus_files}; do
+            sample=$(basename $_file .consensus.renamed.fasta);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/consensus.fasta;
+        done
+        for _file in {input.raw_mapped_reads}; do
+            sample=$(basename $_file .sorted.bam);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/raw_mapped_reads.bam;
+            ln -sf $PWD/$_file.bai {params.outdir}samples/$sample/raw_mapped_reads.bam.bai;
+        done
+        for _file in {input.trimmed_mapped_reads}; do
+            sample=$(basename $_file .sorted.bam);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/trimmed_mapped_reads.bam;
+            ln -sf $PWD/$_file.bai {params.outdir}samples/$sample/trimmed_mapped_reads.bam.bai;
+        done
+
+        echo -e "sample\ttask\tseconds\th:m:s\tmax_rss\tmax_vms\tmax_uss\tmax_pss\tio_in\tio_out\tmean_load\tcpu_time" > {output}
+        find {params.outdir} -name "*.benchmark.txt" | while read -r file; do
+            task=$(basename $(dirname $file))
+            sample=$(basename $file .benchmark.txt)
+
+            matched=false
+            for s in {params.samples}; do
+                if [[ "$sample" == "$s" ]]; then
+                    matched=true
+                    break
+                fi
+            done
+
+            if [[ "$matched" == "false" ]]; then
+                sample="All"
+            else
+                sample=$(echo $sample | sed 's/sample-//')
+            fi
+
+            tail -n +2 $file | awk -v sample=$sample -v task=$task '{{print sample"\t"task"\t"$0}}' >> {output}
+        done
         """
