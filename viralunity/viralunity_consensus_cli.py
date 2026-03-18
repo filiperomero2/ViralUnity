@@ -196,10 +196,10 @@ def fill_arg_parser_consensus(subparsers: argparse._SubParsersAction):
     consensus_parser.add_argument(
         "--variant-quality",
         type=int,
-        help="Minimum variant quality to call a variant into consensus (clair3) (Default = 10)",
+        help="Minimum variant quality to call a variant into consensus (clair3) (Default = 20)",
         nargs="?",
         const=1,
-        default=10,
+        default=20,
     )
 
     consensus_parser.add_argument(
