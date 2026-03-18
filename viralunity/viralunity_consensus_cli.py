@@ -203,6 +203,15 @@ def fill_arg_parser_consensus(subparsers: argparse._SubParsersAction):
     )
 
     consensus_parser.add_argument(
+        "--variant-depth",
+        type=int,
+        help="Minimum variant depth (alt allele depth) to call a variant into consensus (clair3) (Default = 10) [Nanopore]",
+        nargs="?",
+        const=1,
+        default=10,
+    )
+
+    consensus_parser.add_argument(
         "--minimum-map-quality",
         type=int,
         help="Minimum map quality to call a variant into consensus (clair3) (Default = 30)",

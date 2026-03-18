@@ -38,6 +38,7 @@ class ConfigKeys:
     CHUNK_SIZE = "chunk_size"
     CLAIR3_MODEL = "clair3_model"
     VARIANT_QUALITY = "variant_quality"
+    VARIANT_DEPTH = "variant_depth"
     MINIMUM_MAP_QUALITY = "minimum_map_quality"
 
 class SampleSheetPattern:

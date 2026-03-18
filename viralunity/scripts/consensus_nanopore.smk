@@ -68,8 +68,11 @@ rule infer_consensus_sequence:
         bam_index = rules.trim_primer_sequences.output.bam_index,
         reference = config["reference"]
     output:
+        vcf_raw = config['output'] + "clair3/{sample}/{sample}.raw.vcf.gz",
+        vcf_raw_index = config['output'] + "clair3/{sample}/{sample}.raw.vcf.gz.tbi",
         vcf_norm = temp(config['output'] + "assembly/consensus/final_consensus/{sample}.norm.vcf.gz"),
         vcf = config['output'] + "assembly/consensus/final_consensus/{sample}.vcf.gz",
+        vcf_index = config['output'] + "assembly/consensus/final_consensus/{sample}.vcf.gz.tbi",
         low_cov_bed = config['output'] + "assembly/consensus/final_consensus/{sample}.low_cov.bed",
         consensus = temp(config['output'] + "assembly/consensus/final_consensus/{sample}.consensus.fasta")
     params:
@@ -79,7 +82,8 @@ rule infer_consensus_sequence:
         chunk_size = config["chunk_size"],
         clair3_model = config["clair3_model"],
         variant_quality = config["variant_quality"],
-        minimum_map_quality = config["minimum_map_quality"]
+        minimum_map_quality = config["minimum_map_quality"],
+        variant_depth = config["variant_depth"]
     benchmark:
         config['output'] + "logs/consensus/{sample}.benchmark.txt"
     threads: config["threads"] 
@@ -102,15 +106,19 @@ rule infer_consensus_sequence:
             --platform='ont' \
             --include_all_ctgs 
         
-        bcftools norm -m - -f {input.reference} {params.output_prefix_dir}/merge_output.vcf.gz > {output.vcf_norm}
-        bcftools filter -i "FORMAT/AF >= {params.af_threshold}" {output.vcf_norm} -o {output.vcf} -O z
+        cp {params.output_prefix_dir}/merge_output.vcf.gz {output.vcf_raw}
+        cp {params.output_prefix_dir}/merge_output.vcf.gz.tbi {output.vcf_raw_index}
+
+        bcftools norm -m - -f {input.reference} {output.vcf_raw} > {output.vcf_norm}
+        bcftools filter -i 'FILTER="PASS" && FORMAT/AF >= {params.af_threshold} && FORMAT/AD[0:1] >= {params.variant_depth}' {output.vcf_norm} -o {output.vcf} -O z
         tabix {output.vcf}
         
         samtools depth -J -a {input.bam} | \
             awk '$3 <= int({params.minimum_depth}) {{print $1 "\t" $2-1 "\t" $2}}' > {output.low_cov_bed}
         
         bcftools consensus -f {input.reference} --mask {output.low_cov_bed} {output.vcf} > {output.consensus}
-        rm -rf {params.output_prefix_dir}
+
+        find {params.output_prefix_dir} -mindepth 1 ! -name '*.raw.vcf.gz' ! -name '*.raw.vcf.gz.tbi' -exec rm -rf {{}} +
         """
 
 
@@ -181,6 +189,7 @@ rule align_consensus_to_reference_genome:
 rule organize_files:
     input:
         vcf_files = expand(rules.infer_consensus_sequence.output.vcf, sample=config["samples"]),
+        vcf_raw_files = expand(rules.infer_consensus_sequence.output.vcf_raw, sample=config["samples"]),
         table_cov = expand(rules.calculate_coverage_basewise.output.table_cov, sample=config["samples"]),
         consensus_files = expand(rules.rename_sequences.output.consensus_renamed, sample=config["samples"]),
         raw_mapped_reads = expand(rules.map_reads.output.bam, sample=config["samples"]),
@@ -200,6 +209,11 @@ rule organize_files:
             sample=$(basename $_file .vcf.gz);
             ln -sf $PWD/$_file {params.outdir}samples/$sample/consensus.vcf.gz;
             ln -sf $PWD/$_file.tbi {params.outdir}samples/$sample/consensus.vcf.gz.tbi;
+        done
+        for _file in {input.vcf_raw_files}; do
+            sample=$(basename $_file .raw.vcf.gz);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/raw.vcf.gz;
+            ln -sf $PWD/$_file.tbi {params.outdir}samples/$sample/raw.vcf.gz.tbi;
         done
         for _file in {input.table_cov}; do
             sample=$(basename $_file .table_cov_basewise.txt);
