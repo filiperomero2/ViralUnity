@@ -16,7 +16,7 @@ cd viralunity/
 conda create -n viralunity python=3.11
 conda activate viralunity
 conda env update -n viralunity --file environment.yml
-pip install .
+pip install -e .
 ```
 
 > [!WARNING] 
@@ -29,7 +29,7 @@ Or with micromamba
 
 ```bash
 micromamba create -n viralunity -f environment.yml --platform osx-64
-pip install .
+pip install -e .
 ```
 
 It is a good practice to verify whether all required dependencies (available on environment.yml) are available before running the pipeline. In case any installation fail, try re-installing separetely on the command line with conda. On certain systems, it might be necessary to manually set conda channels priority.
