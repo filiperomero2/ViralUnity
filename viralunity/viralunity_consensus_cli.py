@@ -142,8 +142,20 @@ def fill_arg_parser_consensus(subparsers: argparse._SubParsersAction):
     ## Add consensus specific arguments
     consensus_parser.add_argument(
         "--reference",
-        help="Complete path for the reference genome in fasta format",
-        required=True,
+        help="Complete path for the reference genome in fasta format (mutually exclusive with --segmented-reference)",
+        required=False,
+        default=None,
+    )
+
+    consensus_parser.add_argument(
+        "--segmented-reference",
+        nargs="+",
+        help=(
+            "Reference genomes for segmented viruses, one per segment, "
+            "in the format SEGMENT=PATH (e.g. --segmented-reference S=/path/S.fasta L=/path/L.fasta M=/path/M.fasta). "
+            "Mutually exclusive with --reference."
+        ),
+        default=None,
     )
 
     consensus_parser.add_argument(

@@ -140,10 +140,13 @@ def run_snakemake_workflow(args: Dict[str, Any]) -> bool:
     logger.info("Starting Snakemake workflow")
     
     thisdir = os.path.abspath(os.path.dirname(__file__))
+    
+    # Select segmented workflow variant when reference is a dict
+    segmented_suffix = "_segmented" if isinstance(args.get("reference"), dict) else ""
     workflow_path = os.path.join(
         thisdir,
         'scripts',
-        f"consensus_{args['data_type']}.smk"
+        f"consensus_{args['data_type']}{segmented_suffix}.smk"
     )
     
     if not os.path.isfile(workflow_path):

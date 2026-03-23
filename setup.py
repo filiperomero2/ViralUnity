@@ -7,7 +7,9 @@ setup(
     packages=find_packages(),
     scripts=[
         'viralunity/scripts/consensus_illumina.smk',
+        'viralunity/scripts/consensus_illumina_segmented.smk',
         'viralunity/scripts/consensus_nanopore.smk',
+        'viralunity/scripts/consensus_nanopore_segmented.smk',
         'viralunity/scripts/metagenomics_illumina.smk',
         'viralunity/scripts/metagenomics_nanopore.smk',
     ],

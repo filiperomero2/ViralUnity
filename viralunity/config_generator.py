@@ -1,7 +1,7 @@
 """Configuration file generation for ViralUnity pipelines."""
 
 import os
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Union
 import yaml
 
 from viralunity.constants import ConfigKeys, DataType
@@ -100,12 +100,12 @@ class ConfigGenerator:
         minimum_read_length: int,
         trim_head: int,
         trim_tail: int,
-        cut_front_mean_quality: int,
-        cut_tail_mean_quality: int,
-        cut_right_window_size: int,
-        cut_right_mean_quality: int,
-        af_threshold: float,
-        af_isnv_threshold: float,
+        cut_front_mean_quality: int = 20,
+        cut_tail_mean_quality: int = 20,
+        cut_right_window_size: int = 4,
+        cut_right_mean_quality: int = 20,
+        af_threshold: float = 0.5,
+        af_isnv_threshold: float = 0.05,
     ) -> None:
         """Add Illumina-specific settings to configuration.
         
@@ -134,14 +134,15 @@ class ConfigGenerator:
     
     def add_consensus_settings(
         self,
-        reference: str,
+        reference: Union[str, Dict[str, str]],
         primer_scheme: str,
         minimum_coverage: int
     ) -> None:
         """Add consensus-specific settings to configuration.
         
         Args:
-            reference: Path to reference genome
+            reference: Path to reference genome (str) or dict mapping
+                segment names to paths for segmented viruses
             primer_scheme: Path to primer scheme file or "NA"
             minimum_coverage: Minimum coverage for consensus
         """

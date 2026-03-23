@@ -85,12 +85,13 @@ def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None
         remove_unclassified_reads=args.get("remove_unclassified_reads", False)
     )
     
-    # Add Illumina-specific settings if needed
     if data_type == DataType.ILLUMINA:
+        trim = args.get("trim", 0)
         generator.add_illumina_settings(
             adapters=args["adapters"],
             minimum_read_length=args.get("minimum_read_length", 50),
-            trim=args.get("trim", 0)
+            trim_head=trim,
+            trim_tail=trim
         )
     
     # Save config file
