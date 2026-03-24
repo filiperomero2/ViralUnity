@@ -19,6 +19,9 @@ def cli(args):
     fill_arg_parser_consensus(subparsers)
     
     arguments = viralunity_parser.parse_args(args)
+    if not hasattr(arguments, 'func'):
+        viralunity_parser.print_help()
+        sys.exit(1)
     try:
         arguments.func(vars(arguments))
     except Exception as e:

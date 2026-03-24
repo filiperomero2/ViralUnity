@@ -44,12 +44,81 @@ def fill_arg_parser_consensus(subparsers: argparse._SubParsersAction):
     )
     
     consensus_parser.add_argument(
-        "--trim",
+        "--trim-head",
         type=int,
         help="Number of bases to trim from the 5' end of reads (Default = 0) [Illumina QC]",
         nargs="?",
         const=1,
         default=0,
+    )
+
+    consensus_parser.add_argument(
+        "--trim-tail",
+        type=int,
+        help="Number of bases to trim from the 3' end of reads (Default = 0) [Illumina QC]",
+        nargs="?",
+        const=1,
+        default=0,
+    )
+
+    consensus_parser.add_argument(
+        "--cut-front-mean-quality",
+        type=int,
+        help="Mean quality requirement option for cut_front (Default = 10) [Illumina QC]",
+        nargs="?",
+        const=1,
+        default=10,
+    )
+
+    consensus_parser.add_argument(
+        "--cut-tail-mean-quality",
+        type=int,
+        help="Mean quality requirement option for cut_tail (Default = 10) [Illumina QC]",
+        nargs="?",
+        const=1,
+        default=10,
+    )
+
+    consensus_parser.add_argument(
+        "--cut-right-window-size",
+        type=int,
+        help="Window size for cut_right (Default = 4) [Illumina QC]",
+        nargs="?",
+        const=1,
+        default=4,
+    )
+
+    consensus_parser.add_argument(
+        "--cut-right-mean-quality",
+        type=int,
+        help="Mean quality requirement option for cut_right (Default = 15) [Illumina QC]",
+        nargs="?",
+        const=1,
+        default=15,
+    )
+
+    consensus_parser.add_argument(
+        "--af-threshold",
+        type=float,
+        help="Minimum allele frequency threshold to call a variant into consensus (Default = 0.51)",
+        nargs="?",
+        const=1,
+        default=0.51,
+    )
+
+    consensus_parser.add_argument(
+        "--af-isnv-threshold",
+        type=float,
+        help="Minimum allele frequency threshold to call a variant into iSNV analysis (Default = 0)",
+        nargs="?",
+        const=1,
+        default=0,
+    )
+
+    consensus_parser.add_argument(
+        "--run-isnv",
+        help="Run intra-host SNV (iSNV) analysis with LoFreq (Illumina only, default: disabled)",
+        action="store_true",
     )
 
     consensus_parser.add_argument(
@@ -79,8 +148,20 @@ def fill_arg_parser_consensus(subparsers: argparse._SubParsersAction):
     ## Add consensus specific arguments
     consensus_parser.add_argument(
         "--reference",
-        help="Complete path for the reference genome in fasta format",
-        required=True,
+        help="Complete path for the reference genome in fasta format (mutually exclusive with --segmented-reference)",
+        required=False,
+        default=None,
+    )
+
+    consensus_parser.add_argument(
+        "--segmented-reference",
+        nargs="+",
+        help=(
+            "Reference genomes for segmented viruses, one per segment, "
+            "in the format SEGMENT=PATH (e.g. --segmented-reference S=/path/S.fasta L=/path/L.fasta M=/path/M.fasta). "
+            "Mutually exclusive with --reference."
+        ),
+        default=None,
     )
 
     consensus_parser.add_argument(
@@ -105,9 +186,56 @@ def fill_arg_parser_consensus(subparsers: argparse._SubParsersAction):
     consensus_parser.add_argument(
         "--minimum-read-length",
         type=int,
-        help="Minimum read length threshold (Default = 50) [Illumina QC]",
+        help="Minimum read length threshold (Default = 50)",
         nargs="?",
         const=1,
         default=50,
     )
+
+    # nanopore specific arguments
+    consensus_parser.add_argument(
+        "--chunk-size",
+        type=int,
+        help="Size of chunks to process (clair3) (Default = 10000)",
+        nargs="?",
+        const=1,
+        default=10000,
+    )
+
+    consensus_parser.add_argument(
+        "--clair3-model",
+        type=str,
+        help="Model to use for variant calling (clair3) (Default = r1041_e82_400bps_sup_v500)",
+        nargs="?",
+        const=1,
+        default="r1041_e82_400bps_sup_v500",
+    )
+
+    consensus_parser.add_argument(
+        "--variant-quality",
+        type=int,
+        help="Minimum variant quality to call a variant into consensus (clair3) (Default = 20)",
+        nargs="?",
+        const=1,
+        default=20,
+    )
+
+    consensus_parser.add_argument(
+        "--variant-depth",
+        type=int,
+        help="Minimum variant depth (alt allele depth) to call a variant into consensus (clair3) (Default = 10) [Nanopore]",
+        nargs="?",
+        const=1,
+        default=10,
+    )
+
+    consensus_parser.add_argument(
+        "--minimum-map-quality",
+        type=int,
+        help="Minimum map quality to call a variant into consensus (clair3) (Default = 30)",
+        nargs="?",
+        const=1,
+        default=30,
+    )
+    
  

@@ -155,7 +155,8 @@ class Test_GenerateConfigFile(unittest.TestCase):
             "sample2": ["sample2_R1.fastq", "sample2_R2.fastq"],
         }
         generate_config_file(self.samples, self.args)
-        mock_makedirs.assert_called_once_with(os.path.dirname("config_file.yaml"), exist_ok=True)
+        # config_file.yaml has no directory component, so makedirs should NOT be called
+        mock_makedirs.assert_not_called()
         mock_open.assert_called_once_with("config_file.yaml", "w")
         # Check that yaml.dump was called with correct config structure
         self.assertEqual(mock_yaml_dump.call_count, 1)
@@ -169,7 +170,8 @@ class Test_GenerateConfigFile(unittest.TestCase):
         self.assertEqual(config_dict["output"], "output_dir/run_name/")
         self.assertEqual(config_dict["adapters"], "adapters.fasta")
         self.assertEqual(config_dict["minimum_length"], 50)
-        self.assertEqual(config_dict["trim"], 0)
+        self.assertEqual(config_dict["trim_head"], 0)
+        self.assertEqual(config_dict["trim_tail"], 0)
         self.assertEqual(config_dict["remove_human_reads"], True)
         self.assertEqual(config_dict["remove_unclassified_reads"], False)
 
@@ -183,7 +185,8 @@ class Test_GenerateConfigFile(unittest.TestCase):
             "sample2": ["sample2.fastq"],
         }
         generate_config_file(self.samples, self.args)
-        mock_makedirs.assert_called_once_with(os.path.dirname("config_file.yaml"), exist_ok=True)
+        # config_file.yaml has no directory component, so makedirs should NOT be called
+        mock_makedirs.assert_not_called()
         mock_open.assert_called_once_with("config_file.yaml", "w")
         # Check that yaml.dump was called with correct config structure
         self.assertEqual(mock_yaml_dump.call_count, 1)
@@ -200,7 +203,8 @@ class Test_GenerateConfigFile(unittest.TestCase):
         # Nanopore should not have Illumina-specific settings
         self.assertNotIn("adapters", config_dict)
         self.assertNotIn("minimum_length", config_dict)
-        self.assertNotIn("trim", config_dict)
+        self.assertNotIn("trim_head", config_dict)
+        self.assertNotIn("trim_tail", config_dict)
 
 
 class Test_MainFunction(unittest.TestCase):

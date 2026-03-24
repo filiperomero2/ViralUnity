@@ -50,17 +50,16 @@ class Test_FillArgParserMeta(unittest.TestCase):
         subparsers = parser.add_subparsers()
         fill_arg_parser_meta(subparsers)
         readArgs = vars(parser.parse_args(args))
-        self.assertDictContainsSubset(
-            {
-                "data_type": "illumina",
-                "sample_sheet": "sample_sheet.csv",
-                "config_file": "config_file.yaml",
-                "output": "output_dir",
-                "kraken2_database": "kraken2_db",
-                "krona_database": "krona_db",
-            },
-            readArgs,
-        )
+        expected_subset = {
+            "data_type": "illumina",
+            "sample_sheet": "sample_sheet.csv",
+            "config_file": "config_file.yaml",
+            "output": "output_dir",
+            "kraken2_database": "kraken2_db",
+            "krona_database": "krona_db",
+        }
+        for key, value in expected_subset.items():
+            self.assertEqual(readArgs.get(key), value)
 
     def test_default_values_optional_args(self):
         args = [

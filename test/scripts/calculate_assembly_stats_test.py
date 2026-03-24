@@ -151,6 +151,7 @@ class TestMainFunction(unittest.TestCase):
             "sample",
             minimum_depth,
             output,
+            None
         )
         mock_to_csv.assert_called_once_with(output, header=False, index=False)
 

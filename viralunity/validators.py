@@ -11,7 +11,6 @@ from viralunity.exceptions import (
     FileNotFoundError,
     SampleSheetError,
     SampleConfigurationNotFoundError,
-    AdaptersNotFoundError,
     ReferenceNotFoundError,
     PrimerSchemeNotFoundError
 )
@@ -119,19 +118,13 @@ def validate_illumina_requirements(args: Dict[str, Any]) -> None:
     """
     if args.get("data_type") != DataType.ILLUMINA:
         return
-    
-    adapters = args.get("adapters")
-    if not adapters:
-        raise AdaptersNotFoundError("Illumina adapter sequences file is required")
-    
-    try:
-        validate_file_exists(adapters, "Illumina adapter sequences file")
-    except FileNotFoundError as e:
-        raise AdaptersNotFoundError(f"Illumina adapter sequences file does not exist: {e}")
-
 
 def validate_consensus_requirements(args: Dict[str, Any]) -> None:
     """Validate consensus pipeline requirements.
+    
+    Exactly one of --reference or --segmented-reference must be provided.
+    When --segmented-reference is used, the values are parsed from
+    SEGMENT=PATH format and stored as a dict in args["reference"].
     
     Args:
         args: Dictionary of pipeline arguments
@@ -140,13 +133,46 @@ def validate_consensus_requirements(args: Dict[str, Any]) -> None:
         ValidationError: If consensus requirements are not met
     """
     reference = args.get("reference")
-    if not reference:
-        raise ValidationError("Reference sequence file is required")
+    segmented_reference = args.get("segmented_reference")
     
-    try:
-        validate_file_exists(reference, "Reference sequence file")
-    except FileNotFoundError as e:
-        raise ReferenceNotFoundError(f"Reference sequence file does not exist: {e}")
+    if reference and segmented_reference:
+        raise ValidationError(
+            "--reference and --segmented-reference are mutually exclusive. "
+            "Please provide only one."
+        )
+    
+    if not reference and not segmented_reference:
+        raise ValidationError(
+            "A reference is required. Provide --reference for a single reference "
+            "or --segmented-reference for segmented viruses."
+        )
+    
+    if segmented_reference:
+        parsed_segments = {}
+        for entry in segmented_reference:
+            if "=" not in entry:
+                raise ValidationError(
+                    f"Invalid segmented reference format: '{entry}'. "
+                    f"Expected SEGMENT=PATH (e.g. S=/path/to/S.fasta)"
+                )
+            segment_name, segment_path = entry.split("=", 1)
+            if not segment_name or not segment_path:
+                raise ValidationError(
+                    f"Invalid segmented reference format: '{entry}'. "
+                    f"Both segment name and path are required."
+                )
+            try:
+                validate_file_exists(segment_path, f"Reference file for segment '{segment_name}'")
+            except FileNotFoundError as e:
+                raise ReferenceNotFoundError(str(e))
+            parsed_segments[segment_name] = segment_path
+        
+        args["reference"] = parsed_segments
+    else:
+        try:
+            validate_file_exists(reference, "Reference sequence file")
+        except FileNotFoundError as e:
+            raise ReferenceNotFoundError(f"Reference sequence file does not exist: {e}")
     
     primer_scheme = args.get("primer_scheme")
     if primer_scheme:

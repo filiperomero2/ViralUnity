@@ -1,172 +1,180 @@
+SEGMENT_WILDCARD = ""
+REFERENCE = config["reference"]
+
 rule all:
     input:
-        config['output'] + "assembly/consensus/final_consensus/aln.consensus.fasta"
+        config['output'] + "assembly/consensus/final_consensus/aln.consensus.fasta",
+        config['output'] + "isnvs/isnvs_summary.tsv" if config.get("run_isnv", False) else [],
+        config['output'] + "benchmark.tsv"
 
 def get_map_input_fastqs(wildcards):
     reads = config["samples"][wildcards.sample].split()
     return(reads)
 
-rule perform_qc:
-    input:
-        get_map_input_fastqs,
-    output:
-        paired_R1 = config['output'] + "qc/data/trim.p.{sample}_R1.fastq.gz",
-        unpaired_R1 = config['output'] + "qc/data/trim.u.{sample}_R1.fastq.gz",
-        paired_R2 = config['output'] + "qc/data/trim.p.{sample}_R2.fastq.gz",
-        unpaired_R2 = config['output'] + "qc/data/trim.u.{sample}_R2.fastq.gz"
-    params:
-        minimum_length = config["minimum_length"],
-        adapters = config["adapters"],
-        trim = config["trim"]
-    threads: config["threads"]
-    log:
-        config['output'] + "logs/trimmomatic/{sample}.log"
-    benchmark:
-        config['output'] + "logs/trimmomatic/{sample}.benchmark.txt"
-    shell:
-        "trimmomatic PE -quiet -threads {threads} -phred33 {input} "
-        "{output.paired_R1} {output.unpaired_R1} "
-        "{output.paired_R2} {output.unpaired_R2} "
-        "ILLUMINACLIP:{params.adapters}:2:30:10 "
-        "LEADING:10 TRAILING:10 SLIDINGWINDOW:4:15 "
-        "HEADCROP:{params.trim} MINLEN:{params.minimum_length} 2> {log}"
+include: "rules/alignment_illumina.smk"
+include: "rules/consensus_illumina.smk"
+include: "rules/stats.smk"
 
-rule generate_qc_report:
-    input:
-        config['output'] + "qc/data/trim.p.{sample}_R1.fastq.gz",
-        config['output'] + "qc/data/trim.p.{sample}_R2.fastq.gz"
-    output:
-        config['output'] + "qc/reports/trim.p.{sample}_R1_fastqc.html",
-        config['output'] + "qc/reports/trim.p.{sample}_R2_fastqc.html",
-        config['output'] + "qc/reports/trim.p.{sample}_R1_fastqc.zip",
-        config['output'] + "qc/reports/trim.p.{sample}_R2_fastqc.zip"
-    threads: config["threads"]
-    params:
-        temp = config['output']
-    shell:
-        "mkdir -p {params.temp}/qc/reports; "
-        "fastqc -q -t {threads} -o {params.temp}/qc/reports/ {input} "
-
-rule map_reads:
-    input:
-        reference = config["reference"],
-        R1 = config['output'] + "qc/data/trim.p.{sample}_R1.fastq.gz",
-        R2 = config['output'] + "qc/data/trim.p.{sample}_R2.fastq.gz",
-        qc_report_R1 = config['output'] + "qc/reports/trim.p.{sample}_R1_fastqc.html",
-        qc_report_R2 = config['output'] + "qc/reports/trim.p.{sample}_R2_fastqc.html"
-    output:
-        config['output'] + "assembly/mapped_reads/raw/{sample}.sorted.bam"
-    log:
-        config['output'] + "logs/minimap2/{sample}.log"
-    benchmark:
-        config['output'] + "logs/minimap2/{sample}.benchmark.txt"
-    threads: config["threads"] 
-    shell:
-        "minimap2 -a -t {threads} -x sr {input.reference} {input.R1} {input.R2} | "
-        "samtools view -bS -F 4 - | "
-        "samtools sort -o {output} - 2> {log}"
-
-# experimental 
-rule trim_primer_sequences:
-    input:
-        config['output'] + "assembly/mapped_reads/raw/{sample}.sorted.bam"
-    output:
-        config['output'] + "assembly/mapped_reads/trimmed/{sample}.sorted.bam"
-    params:
-        bed = config["scheme"],
-        path = config['output'] + "assembly/mapped_reads/raw/"
-    shell:
-        """
-        if [ {params.bed} == NA ]; then
-           mv {input} {output};
-           echo "No primer scheme detected, assuming sequence data came from untargeted sequencing approach (fastq files moved to trimmed dir for convenience)." > {params.path}notes.txt
-        else
-           ivar trim -b {params.bed} -e -q 0 -m 50 -p {params.path}trim.{wildcards.sample} -i {input};
-           samtools sort {params.path}trim.{wildcards.sample}.bam -o {output};
-           rm {params.path}trim.{wildcards.sample}.bam
-        fi
-        """
-
-rule index_bam_files:
-    input:
-        config['output'] + "assembly/mapped_reads/trimmed/{sample}.sorted.bam"
-    output:
-        config['output'] + "assembly/mapped_reads/trimmed/{sample}.sorted.bam.bai"
-    shell:
-        "samtools index {input}"
-
-rule infer_consensus_sequence:
-    input:
-        mapped_reads = config['output'] + "assembly/mapped_reads/trimmed/{sample}.sorted.bam",
-        bam_index = config['output'] + "assembly/mapped_reads/trimmed/{sample}.sorted.bam.bai"
-    output:
-        temp(config['output'] + "assembly/consensus/final_consensus/{sample}.consensus.fasta")
-    params:
-        minimum_depth = config["minimum_depth"]
-    benchmark:
-        config['output'] + "logs/samtools/consensus/{sample}.benchmark.txt"
-    shell:
-        "samtools consensus -a -d {params.minimum_depth} -m simple -q -c 0.75 --show-ins yes {input.mapped_reads} -o {output}"
-
-rule calculate_coverage_basewise:
-    input:
-        config['output'] + "assembly/mapped_reads/trimmed/{sample}.sorted.bam"
-    output:
-        config['output'] + "assembly/coverage_stats/{sample}.table_cov_basewise.txt"
-    shell:
-        "bedtools genomecov -d -ibam {input} > {output}"
-
-rule rename_sequences:
-    input:
-        config['output'] + "assembly/consensus/final_consensus/{sample}.consensus.fasta"
-    output:
-        config['output'] + "assembly/consensus/final_consensus/{sample}.consensus.renamed.fasta"
-    script:
-        "rename_sequences.py"
 
 rule calculate_assembly_statistics:
     input:
         get_map_input_fastqs,
-        config['output'] + "qc/data/trim.p.{sample}_R1.fastq.gz",
-        config['output'] + "assembly/mapped_reads/trimmed/{sample}.sorted.bam",
-        config['output'] + "assembly/coverage_stats/{sample}.table_cov_basewise.txt",
-        config['output'] + "assembly/consensus/final_consensus/{sample}.consensus.renamed.fasta"
+        rules.perform_qc.output.paired_R1,
+        rules.trim_primer_sequences.output.bam,
+        rules.calculate_coverage_basewise.output.table_cov,
+        rules.rename_sequences.output.consensus_renamed
     output:
-        temp(config['output'] + "assembly/coverage_stats/{sample}.stats_summary.csv")
+        stats_summary = config['output'] + "assembly/coverage_stats/{sample}.stats_summary.csv"
     params:
         minimum_depth = config["minimum_depth"]
+    log:
+        config['output'] + "logs/consensus_illumina/calculate_assembly_statistics/{sample}.log"
+    benchmark:
+        config['output'] + "logs/consensus_illumina/calculate_assembly_statistics/{sample}.benchmark.txt"   
     script:
         "calculate_assembly_stats.py"
 
 rule unify_assembly_statistics_reports:
     input:
-        reports = expand(config['output'] + "assembly/coverage_stats/{sample}.stats_summary.csv", sample=config["samples"])
+        reports = expand(rules.calculate_assembly_statistics.output.stats_summary, sample=config["samples"])
     output:
-        config['output'] + "assembly/assembly_stats_summary.csv"
+        unified_stats_summary = config['output'] + "assembly/assembly_stats_summary.csv"
+    log:
+        config['output'] + "logs/consensus_illumina/unify_assembly_statistics_reports/unify_assembly_statistics_reports.log"
+    benchmark:
+        config['output'] + "logs/consensus_illumina/unify_assembly_statistics_reports/unify_assembly_statistics_reports.benchmark.txt"   
     shell:
-        " echo \"sample_name,number_of_reads,number_of_trim_paired_reads,number_of_mapped_reads,average_depth,percentage_above_10x,percentage_above_100x,percentage_above_1000x,horizontal_coverage\" > {output} ;"
-        " cat {input} >> {output}"
+        """
+        echo \"sample_name,number_of_reads,number_of_trim_paired_reads,number_of_mapped_reads,average_depth,percentage_above_10x,percentage_above_100x,percentage_above_1000x,horizontal_coverage\" > {output.unified_stats_summary} ;
+        cat {input.reports} >> {output.unified_stats_summary}
+        """
 
 rule generate_multiqc_report:
     input:
-        config['output'] + "assembly/assembly_stats_summary.csv"
+        unified_stats_summary = rules.unify_assembly_statistics_reports.output.unified_stats_summary
     output:
-        config['output'] + "qc/reports/multiqc_report.html"
+        multiqc_report = config['output'] + "qc/reports/multiqc_report.html"
     params:
         temp = config['output']
+    log:
+        config['output'] + "logs/consensus_illumina/generate_multiqc_report/generate_multiqc_report.log"
+    benchmark:
+        config['output'] + "logs/consensus_illumina/generate_multiqc_report/generate_multiqc_report.benchmark.txt"   
     shell:
-        "multiqc -f -s -o {params.temp}/qc/reports/ {params.temp}/qc/reports/"
+        "multiqc -f -o {params.temp}/qc/reports/ {params.temp}/qc/reports/"
+
+rule summarize_isnvs:
+    input:
+        vcf_files = expand(rules.detect_isnv.output.vcf, sample=config["samples"])
+    output:
+        isnvs_summary = config['output'] +  "isnvs/isnvs_summary.tsv"
+    log:
+        config['output'] + "logs/consensus_illumina/summarize_isnvs/summarize_isnvs.log"
+    benchmark:
+        config['output'] + "logs/consensus_illumina/summarize_isnvs/summarize_isnvs.benchmark.txt"   
+    shell:
+        """
+        echo -e "sample\\tnumber_of_isnvs" > {output.isnvs_summary};
+        for _file in {input.vcf_files}; do
+            sample=$(basename $_file .isnvs.vcf.gz);
+            isnv_count=$(bcftools view -H $_file | wc -l);
+            echo -e "$sample\\t$isnv_count" >> {output.isnvs_summary};
+        done
+        """
 
 rule align_consensus_to_reference_genome:
     input:
-        config['output'] + "qc/reports/multiqc_report.html"
+        rules.generate_multiqc_report.output.multiqc_report
     output:
-        config['output'] + "assembly/consensus/final_consensus/aln.consensus.fasta"
+        aln_consensus = config['output'] + "assembly/consensus/final_consensus/aln.consensus.fasta"
     params:
         path_consensus = config['output'] + "assembly/consensus/final_consensus/",
-        reference = config['reference']
+        reference = REFERENCE
+    log:
+        config['output'] + "logs/consensus_illumina/align_consensus_to_reference_genome/align_consensus_to_reference_genome.log"
+    benchmark:
+        config['output'] + "logs/consensus_illumina/align_consensus_to_reference_genome/align_consensus_to_reference_genome.benchmark.txt"   
     shell:
-        "cat {params.reference} {params.path_consensus}/*.fasta > {params.path_consensus}/consensus.fasta; "
-        "minimap2 -a --sam-hit-only --secondary=no --score-N=0 {params.reference} {params.path_consensus}/consensus.fasta -o {params.path_consensus}/aln.consensus.sam; "
-        "gofasta sam toMultiAlign --pad -s {params.path_consensus}/aln.consensus.sam -o {output}; "
-        "sed '/^>/! s/-/N/g' {output} > {params.path_consensus}/aln.consensus.indelsMasked.fasta"
+        """
+        cat {params.reference} {params.path_consensus}/*renamed.fasta > {params.path_consensus}/consensus.fasta; 
+        minimap2 -a --sam-hit-only --secondary=no --score-N=0 {params.reference} {params.path_consensus}/consensus.fasta -o {params.path_consensus}/aln.consensus.sam; 
+        gofasta sam toMultiAlign --pad -s {params.path_consensus}/aln.consensus.sam -o {output.aln_consensus}; 
+        sed '/^>/ ! s/-/N/g' {output.aln_consensus} > {params.path_consensus}/aln.consensus.indelsMasked.fasta
+        """
+
+rule organize_files:
+    input:
+        fastp_reports = expand(rules.perform_qc.output.html, sample=config["samples"]),
+        vcf_files = expand(rules.generate_vcf_consensus.output.vcf, sample=config["samples"]),
+        isn_vcf_files = expand(rules.detect_isnv.output.vcf, sample=config["samples"]) if config.get("run_isnv", False) else [],
+        stats_summary = expand(rules.calculate_assembly_statistics.output.stats_summary, sample=config["samples"]),
+        consensus_files = expand(rules.infer_consensus_sequence.output.consensus, sample=config["samples"]),
+        raw_mapped_reads = expand(rules.map_reads.output.bam, sample=config["samples"]),
+        trimmed_mapped_reads = expand(rules.trim_primer_sequences.output.bam, sample=config["samples"]),
+    output:
+        config['output'] + "benchmark.tsv"
+    params:
+        outdir = config['output'],
+        samples = " ".join(config["samples"].keys())
+    shell:
+        """
+        mkdir -p {params.outdir}samples/
+        for sample in {params.samples}; do
+            mkdir -p {params.outdir}samples/$sample;
+        done
+        for _file in {input.fastp_reports}; do
+            sample=$(basename $_file _fastp.html | sed 's/^trim.//');
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/fastp.html;
+        done
+        for _file in {input.vcf_files}; do
+            sample=$(basename $_file .consensus.vcf.gz);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/consensus.vcf.gz;
+            ln -sf $PWD/$_file.tbi {params.outdir}samples/$sample/consensus.vcf.gz.tbi;
+        done
+        for _file in {input.isn_vcf_files} ""; do
+            if [ -z "$_file" ]; then continue; fi
+            sample=$(basename $_file .isnvs.vcf.gz);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/isnvs.vcf.gz;
+            ln -sf $PWD/$_file.tbi {params.outdir}samples/$sample/isnvs.vcf.gz.tbi;
+        done
+        for _file in {input.stats_summary}; do
+            sample=$(basename $_file .stats_summary.csv);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/stats_summary.csv;
+        done
+        for _file in {input.consensus_files}; do
+            sample=$(basename $_file .consensus.fasta);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/consensus.fasta;
+        done
+        for _file in {input.raw_mapped_reads}; do
+            sample=$(basename $_file .sorted.bam);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/raw_mapped_reads.bam;
+            ln -sf $PWD/$_file.bai {params.outdir}samples/$sample/raw_mapped_reads.bam.bai;
+        done
+        for _file in {input.trimmed_mapped_reads}; do
+            sample=$(basename $_file .sorted.bam);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/trimmed_mapped_reads.bam;
+            ln -sf $PWD/$_file.bai {params.outdir}samples/$sample/trimmed_mapped_reads.bam.bai;
+        done
+        
+        echo -e "sample\\ttask\\tseconds\\th:m:s\\tmax_rss\\tmax_vms\\tmax_uss\\tmax_pss\\tio_in\\tio_out\\tmean_load\\tcpu_time" > {output}
+        find {params.outdir} -name "*.benchmark.txt" | while read -r file; do
+            task=$(basename $(dirname $file))
+            sample=$(basename $file .benchmark.txt)
+            
+            matched=false
+            for s in {params.samples}; do
+                if [[ "$sample" == "$s" ]]; then
+                    matched=true
+                    break
+                fi
+            done
+            
+            if [[ "$matched" == "false" ]]; then
+                sample="All"
+            else
+                sample=$(echo $sample | sed 's/sample-//')
+            fi
+
+            tail -n +2 $file | awk -v sample=$sample -v task=$task '{{print sample"\\t"task"\\t"$0}}' >> {output}
+        done
+        """

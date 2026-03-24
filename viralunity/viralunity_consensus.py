@@ -95,12 +95,32 @@ def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None
     # Add workflow_path (consensus-specific)
     generator.add_workflow_path(sys.path[0])
     
+    # Add Nanopore-specific settings if needed
+    if data_type == DataType.NANOPORE:
+        generator.add_nanopore_settings(
+            minimum_read_length=args.get("minimum_read_length", 50),
+            af_threshold=args.get("af_threshold", 0.51),
+            chunk_size=args.get("chunk_size", 10000),
+            clair3_model=args.get("clair3_model", "r1041_e82_400bps_sup_v500"),
+            variant_quality=args.get("variant_quality", 20),
+            variant_depth=args.get("variant_depth", 10),
+            minimum_map_quality=args.get("minimum_map_quality", 30),
+        )
+
     # Add Illumina-specific settings if needed
     if data_type == DataType.ILLUMINA:
         generator.add_illumina_settings(
             adapters=args["adapters"],
             minimum_read_length=args.get("minimum_read_length", 50),
-            trim=args.get("trim", 0)
+            trim_head=args.get("trim_head", 0),
+            trim_tail=args.get("trim_tail", 0),
+            cut_front_mean_quality=args.get("cut_front_mean_quality", 10),
+            cut_tail_mean_quality=args.get("cut_tail_mean_quality", 10),
+            cut_right_window_size=args.get("cut_right_window_size", 4),
+            cut_right_mean_quality=args.get("cut_right_mean_quality", 15),
+            af_threshold=args.get("af_threshold", 0.51),
+            af_isnv_threshold=args.get("af_isnv_threshold", 0),
+            run_isnv=args.get("run_isnv", False),
         )
     
     # Save config file
@@ -121,10 +141,13 @@ def run_snakemake_workflow(args: Dict[str, Any]) -> bool:
     logger.info("Starting Snakemake workflow")
     
     thisdir = os.path.abspath(os.path.dirname(__file__))
+    
+    # Select segmented workflow variant when reference is a dict
+    segmented_suffix = "_segmented" if isinstance(args.get("reference"), dict) else ""
     workflow_path = os.path.join(
         thisdir,
         'scripts',
-        f"consensus_{args['data_type']}.smk"
+        f"consensus_{args['data_type']}{segmented_suffix}.smk"
     )
     
     if not os.path.isfile(workflow_path):

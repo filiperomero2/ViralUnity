@@ -37,10 +37,6 @@ class KronaDatabaseNotFoundError(ViralUnityError):
     """Raised when the Krona database is not found."""
     pass
 
-class AdaptersNotFoundError(ViralUnityError):
-    """Raised when the adapters are not found."""
-    pass
-
 class ReferenceNotFoundError(ViralUnityError):
     """Raised when the reference sequence file is not found."""
     pass

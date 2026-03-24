@@ -26,6 +26,7 @@ class Test_ValidateArgs(unittest.TestCase):
             "output": "output_dir",
             "run_name": "run_name",
             "reference": "reference.fasta",
+            "segmented_reference": None,
             "primer_scheme": "scheme",
             "minimum_coverage": 5,
             "adapters": "adapters.fasta",
@@ -96,6 +97,39 @@ class Test_ValidateArgs(unittest.TestCase):
         """Test validation fails when reference file doesn't exist."""
         mock_get_samples.return_value = {"sample1": ["file1.fastq"]}
         mock_validate_consensus.side_effect = ValidationError("Reference sequence file does not exist")
+        
+        with self.assertRaises(ValidationError):
+            validate_args(self.args)
+
+    @patch("viralunity.viralunity_consensus.validate_illumina_requirements")
+    @patch("viralunity.viralunity_consensus.validate_consensus_requirements")
+    @patch("viralunity.viralunity_consensus.get_samples_from_args")
+    def test_validate_args_both_reference_and_segmented_fails(
+        self, mock_get_samples, mock_validate_consensus, mock_validate_illumina
+    ):
+        """Test validation fails when both --reference and --segmented-reference are provided."""
+        mock_get_samples.return_value = {"sample1": ["file1.fastq"]}
+        mock_validate_consensus.side_effect = ValidationError(
+            "--reference and --segmented-reference are mutually exclusive."
+        )
+        self.args["segmented_reference"] = ["S=ref_S.fasta"]
+        
+        with self.assertRaises(ValidationError):
+            validate_args(self.args)
+
+    @patch("viralunity.viralunity_consensus.validate_illumina_requirements")
+    @patch("viralunity.viralunity_consensus.validate_consensus_requirements")
+    @patch("viralunity.viralunity_consensus.get_samples_from_args")
+    def test_validate_args_no_reference_fails(
+        self, mock_get_samples, mock_validate_consensus, mock_validate_illumina
+    ):
+        """Test validation fails when neither --reference nor --segmented-reference are provided."""
+        mock_get_samples.return_value = {"sample1": ["file1.fastq"]}
+        mock_validate_consensus.side_effect = ValidationError(
+            "A reference is required."
+        )
+        self.args["reference"] = None
+        self.args["segmented_reference"] = None
         
         with self.assertRaises(ValidationError):
             validate_args(self.args)
@@ -222,6 +256,7 @@ class Test_GenerateConfigFile(unittest.TestCase):
             "output": "output_dir",
             "run_name": "run_name",
             "reference": "reference.fasta",
+            "segmented_reference": None,
             "primer_scheme": "scheme",
             "minimum_coverage": 5,
             "adapters": "adapters.fasta",
@@ -245,7 +280,8 @@ class Test_GenerateConfigFile(unittest.TestCase):
         
         generate_config_file(self.samples, self.args)
         
-        mock_makedirs.assert_called_once_with(os.path.dirname("config_file.yaml"), exist_ok=True)
+        # config_file.yaml has no directory component, so makedirs should NOT be called
+        mock_makedirs.assert_not_called()
         mock_open.assert_called_once_with("config_file.yaml", "w")
         # Check that yaml.dump was called with correct config structure
         self.assertEqual(mock_yaml_dump.call_count, 1)
@@ -261,8 +297,30 @@ class Test_GenerateConfigFile(unittest.TestCase):
         self.assertEqual(config_dict["output"], "output_dir/run_name/")
         self.assertEqual(config_dict["adapters"], "adapters.fasta")
         self.assertEqual(config_dict["minimum_length"], 50)
-        self.assertEqual(config_dict["trim"], 0)
-        
+        self.assertEqual(config_dict["trim_head"], 0)
+        self.assertEqual(config_dict["trim_tail"], 0)
+        self.assertEqual(config_dict["run_isnv"], False)
+
+    @patch("builtins.open", new_callable=mock_open)
+    @patch("os.makedirs")
+    @patch("viralunity.config_generator.yaml.dump")
+    def test_generate_config_file_illumina_with_isnv(self, mock_yaml_dump, mock_makedirs, mock_open):
+        """Test config file generation for Illumina data with iSNV enabled."""
+        self.args['data_type'] = 'illumina'
+        self.args['run_isnv'] = True
+        self.samples = {
+            "sample1": ["R1_sample1.fastq", "R2_sample1.fastq"],
+            "sample2": ["R1_sample2.fastq", "R2_sample2.fastq"],
+        }
+
+        generate_config_file(self.samples, self.args)
+
+        self.assertEqual(mock_yaml_dump.call_count, 1)
+        call_args = mock_yaml_dump.call_args
+        config_dict = call_args[0][0]
+        self.assertEqual(config_dict["data"], "illumina")
+        self.assertEqual(config_dict["run_isnv"], True)
+
     @patch("builtins.open", new_callable=mock_open)
     @patch("os.makedirs")
     @patch("viralunity.config_generator.yaml.dump")
@@ -276,7 +334,8 @@ class Test_GenerateConfigFile(unittest.TestCase):
         
         generate_config_file(self.samples, self.args)
         
-        mock_makedirs.assert_called_once_with(os.path.dirname("config_file.yaml"), exist_ok=True)
+        # config_file.yaml has no directory component, so makedirs should NOT be called
+        mock_makedirs.assert_not_called()
         mock_open.assert_called_once_with("config_file.yaml", "w")
         # Check that yaml.dump was called with correct config structure
         self.assertEqual(mock_yaml_dump.call_count, 1)
@@ -292,8 +351,34 @@ class Test_GenerateConfigFile(unittest.TestCase):
         self.assertEqual(config_dict["output"], "output_dir/run_name/")
         # Nanopore should not have Illumina-specific settings
         self.assertNotIn("adapters", config_dict)
-        self.assertNotIn("minimum_length", config_dict)
-        self.assertNotIn("trim", config_dict)
+        self.assertNotIn("trim_head", config_dict)
+        self.assertNotIn("trim_tail", config_dict)
+        # Nanopore should have nanopore-specific settings
+        self.assertIn("minimum_length", config_dict)
+        self.assertIn("af_threshold", config_dict)
+        self.assertIn("chunk_size", config_dict)
+        self.assertIn("clair3_model", config_dict)
+
+    @patch("builtins.open", new_callable=mock_open)
+    @patch("os.makedirs")
+    @patch("viralunity.config_generator.yaml.dump")
+    def test_generate_config_file_segmented_reference(self, mock_yaml_dump, mock_makedirs, mock_open):
+        """Test config file generation with segmented reference."""
+        self.args['data_type'] = 'nanopore'
+        self.args['reference'] = {"S": "/path/to/S.fasta", "L": "/path/to/L.fasta"}
+        self.samples = {
+            "sample1": ["R1_sample1.fastq"],
+        }
+        
+        generate_config_file(self.samples, self.args)
+        
+        self.assertEqual(mock_yaml_dump.call_count, 1)
+        call_args = mock_yaml_dump.call_args
+        config_dict = call_args[0][0]
+        self.assertEqual(
+            config_dict["reference"],
+            {"S": "/path/to/S.fasta", "L": "/path/to/L.fasta"}
+        )
 
 
 class Test_MainFunction(unittest.TestCase):
