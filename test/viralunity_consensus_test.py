@@ -299,7 +299,28 @@ class Test_GenerateConfigFile(unittest.TestCase):
         self.assertEqual(config_dict["minimum_length"], 50)
         self.assertEqual(config_dict["trim_head"], 0)
         self.assertEqual(config_dict["trim_tail"], 0)
-        
+        self.assertEqual(config_dict["run_isnv"], False)
+
+    @patch("builtins.open", new_callable=mock_open)
+    @patch("os.makedirs")
+    @patch("viralunity.config_generator.yaml.dump")
+    def test_generate_config_file_illumina_with_isnv(self, mock_yaml_dump, mock_makedirs, mock_open):
+        """Test config file generation for Illumina data with iSNV enabled."""
+        self.args['data_type'] = 'illumina'
+        self.args['run_isnv'] = True
+        self.samples = {
+            "sample1": ["R1_sample1.fastq", "R2_sample1.fastq"],
+            "sample2": ["R1_sample2.fastq", "R2_sample2.fastq"],
+        }
+
+        generate_config_file(self.samples, self.args)
+
+        self.assertEqual(mock_yaml_dump.call_count, 1)
+        call_args = mock_yaml_dump.call_args
+        config_dict = call_args[0][0]
+        self.assertEqual(config_dict["data"], "illumina")
+        self.assertEqual(config_dict["run_isnv"], True)
+
     @patch("builtins.open", new_callable=mock_open)
     @patch("os.makedirs")
     @patch("viralunity.config_generator.yaml.dump")

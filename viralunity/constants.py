@@ -40,6 +40,7 @@ class ConfigKeys:
     VARIANT_QUALITY = "variant_quality"
     VARIANT_DEPTH = "variant_depth"
     MINIMUM_MAP_QUALITY = "minimum_map_quality"
+    RUN_ISNV = "run_isnv"
 
 class SampleSheetPattern:
     """Patterns for identifying sample files."""

@@ -106,6 +106,7 @@ class ConfigGenerator:
         cut_right_mean_quality: int = 20,
         af_threshold: float = 0.5,
         af_isnv_threshold: float = 0.05,
+        run_isnv: bool = False,
     ) -> None:
         """Add Illumina-specific settings to configuration.
         
@@ -131,6 +132,7 @@ class ConfigGenerator:
         self.config[ConfigKeys.CUT_RIGHT_MEAN_QUALITY] = cut_right_mean_quality    
         self.config[ConfigKeys.AF_THRESHOLD] = af_threshold
         self.config[ConfigKeys.AF_ISNV_THRESHOLD] = af_isnv_threshold
+        self.config[ConfigKeys.RUN_ISNV] = run_isnv
     
     def add_consensus_settings(
         self,

@@ -63,12 +63,12 @@ rule map_reads:
         R1 = rules.perform_qc.output.paired_R1,
         R2 = rules.perform_qc.output.paired_R2,
     output:
-        bam = config['output'] + f"{SEGMENT_WILDCARD}assembly/mapped_reads/raw/{{sample}}.sorted.bam",
-        bam_index = config['output'] + f"{SEGMENT_WILDCARD}assembly/mapped_reads/raw/{{sample}}.sorted.bam.bai"
+        bam = config['output'] + f"assembly/{SEGMENT_WILDCARD}mapped_reads/raw/{{sample}}.sorted.bam",
+        bam_index = config['output'] + f"assembly/{SEGMENT_WILDCARD}mapped_reads/raw/{{sample}}.sorted.bam.bai"
     log:
-        config['output'] + f"{SEGMENT_WILDCARD}logs/minimap2/{{sample}}.log"
+        config['output'] + f"assembly/{SEGMENT_WILDCARD}logs/minimap2/{{sample}}.log"
     benchmark:
-        config['output'] + f"{SEGMENT_WILDCARD}logs/minimap2/{{sample}}.benchmark.txt"
+        config['output'] + f"assembly/{SEGMENT_WILDCARD}logs/minimap2/{{sample}}.benchmark.txt"
     threads: config["threads"] 
     shell:
         """
@@ -83,17 +83,17 @@ rule trim_primer_sequences:
         bam = rules.map_reads.output.bam,
         bam_index = rules.map_reads.output.bam_index
     output:
-        bam = config['output'] + f"{SEGMENT_WILDCARD}assembly/mapped_reads/trimmed/{{sample}}.sorted.bam",
-        bam_index = config['output'] + f"{SEGMENT_WILDCARD}assembly/mapped_reads/trimmed/{{sample}}.sorted.bam.bai",
-        trimmed_info = config['output'] + f"{SEGMENT_WILDCARD}assembly/mapped_reads/trimmed/{{sample}}.trimmed.txt"
+        bam = config['output'] + f"assembly/{SEGMENT_WILDCARD}mapped_reads/trimmed/{{sample}}.sorted.bam",
+        bam_index = config['output'] + f"assembly/{SEGMENT_WILDCARD}mapped_reads/trimmed/{{sample}}.sorted.bam.bai",
+        trimmed_info = config['output'] + f"assembly/{SEGMENT_WILDCARD}mapped_reads/trimmed/{{sample}}.trimmed.txt"
     params:
         bed = config["scheme"],
         minimum_length = config["minimum_length"],
-        path = config['output'] + f"{SEGMENT_WILDCARD}assembly/mapped_reads/raw/"
+        path = config['output'] + f"assembly/{SEGMENT_WILDCARD}mapped_reads/raw/"
     log:
-        config['output'] + f"{SEGMENT_WILDCARD}logs/samtools/ampliconclip/{{sample}}.log"
+        config['output'] + f"assembly/{SEGMENT_WILDCARD}logs/samtools/ampliconclip/{{sample}}.log"
     benchmark:
-        config['output'] + f"{SEGMENT_WILDCARD}logs/samtools/ampliconclip/{{sample}}.benchmark.txt"
+        config['output'] + f"assembly/{SEGMENT_WILDCARD}logs/samtools/ampliconclip/{{sample}}.benchmark.txt"
     threads: config["threads"]
     shell:
         """

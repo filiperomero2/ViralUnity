@@ -10,15 +10,15 @@ rule infer_consensus_sequence:
         bam_index = rules.trim_primer_sequences.output.bam_index,
         reference = REFERENCE
     output:
-        vcf_raw = config['output'] + f"{SEGMENT_WILDCARD}clair3/{{sample}}/{{sample}}.raw.vcf.gz",
-        vcf_raw_index = config['output'] + f"{SEGMENT_WILDCARD}clair3/{{sample}}/{{sample}}.raw.vcf.gz.tbi",
-        vcf_norm = temp(config['output'] + f"{SEGMENT_WILDCARD}assembly/consensus/final_consensus/{{sample}}.norm.vcf.gz"),
-        vcf = config['output'] + f"{SEGMENT_WILDCARD}assembly/consensus/final_consensus/{{sample}}.vcf.gz",
-        vcf_index = config['output'] + f"{SEGMENT_WILDCARD}assembly/consensus/final_consensus/{{sample}}.vcf.gz.tbi",
-        low_cov_bed = config['output'] + f"{SEGMENT_WILDCARD}assembly/consensus/final_consensus/{{sample}}.low_cov.bed",
-        consensus = temp(config['output'] + f"{SEGMENT_WILDCARD}assembly/consensus/final_consensus/{{sample}}.consensus.fasta")
+        vcf_raw = config['output'] + f"assembly/{SEGMENT_WILDCARD}clair3/{{sample}}/{{sample}}.raw.vcf.gz",
+        vcf_raw_index = config['output'] + f"assembly/{SEGMENT_WILDCARD}clair3/{{sample}}/{{sample}}.raw.vcf.gz.tbi",
+        vcf_norm = temp(config['output'] + f"assembly/{SEGMENT_WILDCARD}consensus/final_consensus/{{sample}}.norm.vcf.gz"),
+        vcf = config['output'] + f"assembly/{SEGMENT_WILDCARD}consensus/final_consensus/{{sample}}.vcf.gz",
+        vcf_index = config['output'] + f"assembly/{SEGMENT_WILDCARD}consensus/final_consensus/{{sample}}.vcf.gz.tbi",
+        low_cov_bed = config['output'] + f"assembly/{SEGMENT_WILDCARD}consensus/final_consensus/{{sample}}.low_cov.bed",
+        consensus = temp(config['output'] + f"assembly/{SEGMENT_WILDCARD}consensus/final_consensus/{{sample}}.consensus.fasta")
     params:
-        output_prefix_dir = config['output'] + f"{SEGMENT_WILDCARD}clair3/{{sample}}",
+        output_prefix_dir = config['output'] + f"assembly/{SEGMENT_WILDCARD}clair3/{{sample}}",
         minimum_depth = config["minimum_depth"],
         af_threshold = config["af_threshold"],
         chunk_size = config["chunk_size"],
@@ -27,7 +27,7 @@ rule infer_consensus_sequence:
         minimum_map_quality = config["minimum_map_quality"],
         variant_depth = config["variant_depth"]
     benchmark:
-        config['output'] + f"{SEGMENT_WILDCARD}logs/consensus/{{sample}}.benchmark.txt"
+        config['output'] + f"assembly/{SEGMENT_WILDCARD}logs/consensus/{{sample}}.benchmark.txt"
     threads: config["threads"] 
     shell:
         """

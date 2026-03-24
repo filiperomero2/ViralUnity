@@ -116,6 +116,12 @@ def fill_arg_parser_consensus(subparsers: argparse._SubParsersAction):
     )
 
     consensus_parser.add_argument(
+        "--run-isnv",
+        help="Run intra-host SNV (iSNV) analysis with LoFreq (Illumina only, default: disabled)",
+        action="store_true",
+    )
+
+    consensus_parser.add_argument(
         "--create-config-only",
         help="Only create config file, not running the workflow (boolean)",
         action="store_true",

@@ -11,7 +11,6 @@ from viralunity.exceptions import (
     FileNotFoundError,
     SampleSheetError,
     SampleConfigurationNotFoundError,
-    AdaptersNotFoundError,
     ReferenceNotFoundError,
     PrimerSchemeNotFoundError
 )
@@ -119,16 +118,6 @@ def validate_illumina_requirements(args: Dict[str, Any]) -> None:
     """
     if args.get("data_type") != DataType.ILLUMINA:
         return
-    
-    adapters = args.get("adapters")
-    if not adapters:
-        raise AdaptersNotFoundError("Illumina adapter sequences file is required")
-    
-    try:
-        validate_file_exists(adapters, "Illumina adapter sequences file")
-    except FileNotFoundError as e:
-        raise AdaptersNotFoundError(f"Illumina adapter sequences file does not exist: {e}")
-
 
 def validate_consensus_requirements(args: Dict[str, Any]) -> None:
     """Validate consensus pipeline requirements.

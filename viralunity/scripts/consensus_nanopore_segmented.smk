@@ -3,7 +3,7 @@ SEGMENTS = config["reference"]  # dict: {"S": "/path/S.fa", "L": "/path/L.fa", .
 rule all:
     input:
         expand(
-            config['output'] + "{segment}/assembly/consensus/final_consensus/aln.consensus.fasta",
+            config['output'] + "assembly/{segment}/consensus/final_consensus/aln.consensus.fasta",
             segment=SEGMENTS.keys()
         ),
         config['output'] + "benchmark.tsv"
@@ -31,7 +31,7 @@ rule calculate_assembly_statistics:
         rules.calculate_coverage_basewise.output.table_cov,
         rules.rename_sequences.output.consensus_renamed
     output:
-        stats_summary = temp(config['output'] + "{segment}/assembly/coverage_stats/{sample}.stats_summary.csv")
+        stats_summary = temp(config['output'] + "assembly/{segment}/coverage_stats/{sample}.stats_summary.csv")
     params:
         minimum_depth = config["minimum_depth"]
     script:
@@ -61,13 +61,13 @@ rule align_consensus_to_reference_genome:
             allow_missing=True
         )
     output:
-        aln_consensus = config['output'] + "{segment}/assembly/consensus/final_consensus/aln.consensus.fasta"
+        aln_consensus = config['output'] + "assembly/{segment}/consensus/final_consensus/aln.consensus.fasta"
     params:
-        path_consensus = config['output'] + "{segment}/assembly/consensus/final_consensus/",
+        path_consensus = config['output'] + "assembly/{segment}/consensus/final_consensus/",
         reference = get_segment_reference
     shell:
         """
-        cat {params.reference} {params.path_consensus}/*.fasta > {params.path_consensus}/consensus.fasta; 
+        cat {params.reference} {params.path_consensus}/*.renamed.fasta > {params.path_consensus}/consensus.fasta; 
         minimap2 -a --sam-hit-only --secondary=no --score-N=0 {params.reference} {params.path_consensus}/consensus.fasta -o {params.path_consensus}/aln.consensus.sam; 
         gofasta sam toMultiAlign --pad -s {params.path_consensus}/aln.consensus.sam -o {output.aln_consensus}; 
         sed '/^>/ ! s/-/N/g' {output.aln_consensus} > {params.path_consensus}/aln.consensus.indelsMasked.fasta
@@ -114,50 +114,58 @@ rule organize_files:
             done
         done
         for _file in {input.vcf_files}; do
-            outdir="{params.outdir}"; rel=${{_file#$outdir}};
+            outdir="{params.outdir}"; rel=${{_file#$outdir}}; rel=${{rel#assembly/}};
             segment=$(echo \"$rel\" | cut -d'/' -f1);
             sample=$(basename $_file .vcf.gz);
             ln -sf $PWD/$_file {params.outdir}samples/$sample/$segment/consensus.vcf.gz;
             ln -sf $PWD/$_file.tbi {params.outdir}samples/$sample/$segment/consensus.vcf.gz.tbi;
         done
         for _file in {input.vcf_raw_files}; do
-            outdir="{params.outdir}"; rel=${{_file#$outdir}};
+            outdir="{params.outdir}"; rel=${{_file#$outdir}}; rel=${{rel#assembly/}};
             segment=$(echo "$rel" | cut -d'/' -f1);
             sample=$(basename $_file .raw.vcf.gz);
             ln -sf $PWD/$_file {params.outdir}samples/$sample/$segment/raw.vcf.gz;
             ln -sf $PWD/$_file.tbi {params.outdir}samples/$sample/$segment/raw.vcf.gz.tbi;
         done
         for _file in {input.table_cov}; do
-            outdir="{params.outdir}"; rel=${{_file#$outdir}};
+            outdir="{params.outdir}"; rel=${{_file#$outdir}}; rel=${{rel#assembly/}};
             segment=$(echo \"$rel\" | cut -d'/' -f1);
             sample=$(basename $_file .table_cov_basewise.txt);
             ln -sf $PWD/$_file {params.outdir}samples/$sample/$segment/table_cov_basewise.txt;
         done
         for _file in {input.consensus_files}; do
-            outdir="{params.outdir}"; rel=${{_file#$outdir}};
+            outdir="{params.outdir}"; rel=${{_file#$outdir}}; rel=${{rel#assembly/}};
             segment=$(echo \"$rel\" | cut -d'/' -f1);
             sample=$(basename $_file .consensus.renamed.fasta);
             ln -sf $PWD/$_file {params.outdir}samples/$sample/$segment/consensus.fasta;
         done
         for _file in {input.raw_mapped_reads}; do
-            outdir="{params.outdir}"; rel=${{_file#$outdir}};
+            outdir="{params.outdir}"; rel=${{_file#$outdir}}; rel=${{rel#assembly/}};
             segment=$(echo \"$rel\" | cut -d'/' -f1);
             sample=$(basename $_file .sorted.bam);
             ln -sf $PWD/$_file {params.outdir}samples/$sample/$segment/raw_mapped_reads.bam;
             ln -sf $PWD/$_file.bai {params.outdir}samples/$sample/$segment/raw_mapped_reads.bam.bai;
         done
         for _file in {input.trimmed_mapped_reads}; do
-            outdir="{params.outdir}"; rel=${{_file#$outdir}};
+            outdir="{params.outdir}"; rel=${{_file#$outdir}}; rel=${{rel#assembly/}};
             segment=$(echo \"$rel\" | cut -d'/' -f1);
             sample=$(basename $_file .sorted.bam);
             ln -sf $PWD/$_file {params.outdir}samples/$sample/$segment/trimmed_mapped_reads.bam;
             ln -sf $PWD/$_file.bai {params.outdir}samples/$sample/$segment/trimmed_mapped_reads.bam.bai;
         done
 
-        echo -e "sample\\ttask\\tseconds\\th:m:s\\tmax_rss\\tmax_vms\\tmax_uss\\tmax_pss\\tio_in\\tio_out\\tmean_load\\tcpu_time" > {output}
+        echo -e "sample\\tsegment\\ttask\\tseconds\\th:m:s\\tmax_rss\\tmax_vms\\tmax_uss\\tmax_pss\\tio_in\\tio_out\\tmean_load\\tcpu_time" > {output}
         find {params.outdir} -name "*.benchmark.txt" | while read -r file; do
             task=$(basename $(dirname $file))
             sample=$(basename $file .benchmark.txt)
+
+            outdir="{params.outdir}"; rel=${{file#$outdir}};
+            if [[ "$rel" == assembly/* ]]; then
+                rel=${{rel#assembly/}}
+                segment=$(echo "$rel" | cut -d'/' -f1);
+            else
+                segment="-"
+            fi
 
             matched=false
             for s in {params.samples}; do
@@ -173,6 +181,6 @@ rule organize_files:
                 sample=$(echo $sample | sed 's/sample-//')
             fi
 
-            tail -n +2 $file | awk -v sample=$sample -v task=$task '{{print sample"\\t"task"\\t"$0}}' >> {output}
+            tail -n +2 $file | awk -v sample=$sample -v segment=$segment -v task=$task '{{print sample"\\t"segment"\\t"task"\\t"$0}}' >> {output}
         done
         """

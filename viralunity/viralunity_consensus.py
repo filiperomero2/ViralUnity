@@ -120,6 +120,7 @@ def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None
             cut_right_mean_quality=args.get("cut_right_mean_quality", 15),
             af_threshold=args.get("af_threshold", 0.51),
             af_isnv_threshold=args.get("af_isnv_threshold", 0),
+            run_isnv=args.get("run_isnv", False),
         )
     
     # Save config file

@@ -4,7 +4,7 @@ REFERENCE = config["reference"]
 rule all:
     input:
         config['output'] + "assembly/consensus/final_consensus/aln.consensus.fasta",
-        config['output'] + "isnvs/isnvs_summary.tsv",
+        config['output'] + "isnvs/isnvs_summary.tsv" if config.get("run_isnv", False) else [],
         config['output'] + "benchmark.tsv"
 
 def get_map_input_fastqs(wildcards):
@@ -96,7 +96,7 @@ rule align_consensus_to_reference_genome:
         config['output'] + "logs/consensus_illumina/align_consensus_to_reference_genome/align_consensus_to_reference_genome.benchmark.txt"   
     shell:
         """
-        cat {params.reference} {params.path_consensus}/*.fasta > {params.path_consensus}/consensus.fasta; 
+        cat {params.reference} {params.path_consensus}/*renamed.fasta > {params.path_consensus}/consensus.fasta; 
         minimap2 -a --sam-hit-only --secondary=no --score-N=0 {params.reference} {params.path_consensus}/consensus.fasta -o {params.path_consensus}/aln.consensus.sam; 
         gofasta sam toMultiAlign --pad -s {params.path_consensus}/aln.consensus.sam -o {output.aln_consensus}; 
         sed '/^>/ ! s/-/N/g' {output.aln_consensus} > {params.path_consensus}/aln.consensus.indelsMasked.fasta
@@ -106,7 +106,7 @@ rule organize_files:
     input:
         fastp_reports = expand(rules.perform_qc.output.html, sample=config["samples"]),
         vcf_files = expand(rules.generate_vcf_consensus.output.vcf, sample=config["samples"]),
-        isn_vcf_files = expand(rules.detect_isnv.output.vcf, sample=config["samples"]),
+        isn_vcf_files = expand(rules.detect_isnv.output.vcf, sample=config["samples"]) if config.get("run_isnv", False) else [],
         stats_summary = expand(rules.calculate_assembly_statistics.output.stats_summary, sample=config["samples"]),
         consensus_files = expand(rules.infer_consensus_sequence.output.consensus, sample=config["samples"]),
         raw_mapped_reads = expand(rules.map_reads.output.bam, sample=config["samples"]),
@@ -131,7 +131,8 @@ rule organize_files:
             ln -sf $PWD/$_file {params.outdir}samples/$sample/consensus.vcf.gz;
             ln -sf $PWD/$_file.tbi {params.outdir}samples/$sample/consensus.vcf.gz.tbi;
         done
-        for _file in {input.isn_vcf_files}; do
+        for _file in {input.isn_vcf_files} ""; do
+            if [ -z "$_file" ]; then continue; fi
             sample=$(basename $_file .isnvs.vcf.gz);
             ln -sf $PWD/$_file {params.outdir}samples/$sample/isnvs.vcf.gz;
             ln -sf $PWD/$_file.tbi {params.outdir}samples/$sample/isnvs.vcf.gz.tbi;

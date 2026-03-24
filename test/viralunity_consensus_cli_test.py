@@ -154,6 +154,7 @@ class Test_FillArgParserConsensus(unittest.TestCase):
                 "cut_right_mean_quality": 15,
                 "af_threshold": 0.51,
                 "af_isnv_threshold": 0,
+                "run_isnv": False,
                 "chunk_size": 10000,
                 "clair3_model": "r1041_e82_400bps_sup_v500",
                 "variant_quality": 20,
