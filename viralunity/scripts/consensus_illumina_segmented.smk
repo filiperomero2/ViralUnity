@@ -96,7 +96,7 @@ rule summarize_isnvs:
             outdir="{params.outdir}"; rel=${{_file#$outdir}}; rel=${{rel#assembly/}};
             segment=$(echo \"$rel\" | cut -d'/' -f1);
             sample=$(basename $_file .isnvs.vcf.gz);
-            isnv_count=$(bcftools view $_file | grep -v "^#" | wc -l);
+            isnv_count=$(bcftools view -H $_file | wc -l);
             echo -e "$sample\\t$segment\\t$isnv_count" >> {output.isnvs_summary};
         done
         """

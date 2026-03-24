@@ -77,7 +77,7 @@ rule summarize_isnvs:
         echo -e "sample\\tnumber_of_isnvs" > {output.isnvs_summary};
         for _file in {input.vcf_files}; do
             sample=$(basename $_file .isnvs.vcf.gz);
-            isnv_count=$(bcftools view $_file | grep -v "^#" | wc -l);
+            isnv_count=$(bcftools view -H $_file | wc -l);
             echo -e "$sample\\t$isnv_count" >> {output.isnvs_summary};
         done
         """
