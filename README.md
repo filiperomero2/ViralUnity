@@ -11,7 +11,7 @@ ViralUnity is a Python package that launches Snakemake workflows. The tool depen
 To enable ViralUnity, clone the repo and create the environment:
 
 ```bash
-git clone https://github.com/filiperomero2/ViralUnity.git
+git clone https://github.com/InstitutoTodosPelaSaude/ViralUnity.git
 cd ViralUnity/
 conda env create -f environment.yml
 conda activate viralunity

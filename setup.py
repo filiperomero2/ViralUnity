@@ -16,7 +16,7 @@ setup(
         "pytest>=9.0",
     ],
     description=_description,
-    url="https://github.com/filiperomero2/ViralUnity",
+    url="https://github.com/InstitutoTodosPelaSaude/ViralUnity",
     author="Filipe Moreira, Felippe Nacif",
     author_email="filiperomero2@gmail.com",
     entry_points={
