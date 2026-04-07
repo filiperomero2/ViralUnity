@@ -11,7 +11,7 @@ if run_denovo:
         benchmark:
             config["output"] + "logs/megahit/{sample}.benchmark.txt"
         params:
-            tempdir = temp(config["output"] + "denovo_assembly/megahit/temp_{sample}"),
+            tempdir = config["output"] + "denovo_assembly/megahit/temp_{sample}",
             outdir = config["output"] + "denovo_assembly/megahit/{sample}"
         conda:
             "../envs/assembly.yaml"
@@ -27,7 +27,8 @@ if run_denovo:
                 touch {output.contigs}
             else
                 megahit -r {input.reads} -o {params.tempdir} --num-cpu-threads {threads} --tmp-dir "$workdir" >> {log} 2>&1
-                mv {params.tempdir} {params.outdir}
+                mv {params.tempdir}/final.contigs.fa {output.contigs}
+                rm -rf {params.tempdir}
             fi
             """
 

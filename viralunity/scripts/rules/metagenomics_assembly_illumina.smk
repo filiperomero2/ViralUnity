@@ -12,7 +12,7 @@ if run_denovo:
         benchmark:
             config["output"] + "logs/megahit/{sample}.benchmark.txt"
         params:
-            tempdir = temp(config["output"] + "denovo_assembly/megahit/temp_{sample}"),
+            tempdir = config["output"] + "denovo_assembly/megahit/temp_{sample}",
             outdir = config["output"] + "denovo_assembly/megahit/{sample}"
         conda:
             "../envs/assembly.yaml"
@@ -27,7 +27,8 @@ if run_denovo:
             if [ "$size_R1" -eq 1 ] && [ "$size_R2" -eq 1 ]; then
                 megahit -1 {input.filtered_R1} -2 {input.filtered_R2} -o {params.tempdir} \
                     --num-cpu-threads {threads} --tmp-dir "$workdir" >> {log} 2>&1
-                mv {params.tempdir} {params.outdir}
+                mv {params.tempdir}/final.contigs.fa {output.contigs}
+                rm -rf {params.tempdir}
             else
                 echo "R1 and/or R2 empty; skipping MEGAHIT." > {log}
                 mkdir -p $(dirname {output.contigs})
