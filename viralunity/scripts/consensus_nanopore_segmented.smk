@@ -35,7 +35,7 @@ rule calculate_assembly_statistics:
     params:
         minimum_depth = config["minimum_depth"]
     script:
-        "calculate_assembly_stats.py"
+        "python/calculate_assembly_stats.py"
 
 rule unify_assembly_statistics_reports:
     conda:
