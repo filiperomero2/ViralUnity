@@ -5,22 +5,6 @@ from typing import Optional, Tuple
 from viralunity.viralunity_consensus import main as consensus_main
 
 
-def _parse_segmented_reference(ctx, param, value: Tuple[str, ...]):
-    """Parse SEGMENT=PATH pairs into a dict, or return None if empty."""
-    if not value:
-        return None
-    result = {}
-    for item in value:
-        if "=" not in item:
-            raise click.BadParameter(
-                f"Expected SEGMENT=PATH format, got: {item!r}",
-                param=param,
-            )
-        segment, path = item.split("=", 1)
-        result[segment.strip()] = path.strip()
-    return result
-
-
 # Common options (applied to both illumina and nanopore subcommands)
 _COMMON_OPTIONS = [
     click.option(
@@ -48,8 +32,6 @@ _COMMON_OPTIONS = [
     click.option(
         "--segmented-reference",
         multiple=True,
-        callback=_parse_segmented_reference,
-        is_eager=False,
         metavar="SEGMENT=PATH",
         help="Reference for segmented viruses: SEGMENT=PATH per segment "
         "(e.g. S=/path/S.fasta). Mutually exclusive with --reference.",

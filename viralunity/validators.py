@@ -170,20 +170,27 @@ def validate_consensus_requirements(args: Dict[str, Any]) -> None:
                     f"Expected SEGMENT=PATH (e.g. S=/path/to/S.fasta)"
                 )
             segment_name, segment_path = entry.split("=", 1)
+            segment_name = segment_name.strip()
+            segment_path = segment_path.strip()
             if not segment_name or not segment_path:
                 raise ValidationError(
                     f"Invalid segmented reference format: '{entry}'. "
                     f"Both segment name and path are required."
                 )
+            parsed_segments[segment_name] = segment_path
+        
+        args["reference"] = parsed_segments
+        args["segmented_reference"] = None
+        reference = parsed_segments
+
+    if isinstance(reference, dict):
+        for segment_name, segment_path in reference.items():
             try:
                 validate_file_exists(
                     segment_path, f"Reference file for segment '{segment_name}'"
                 )
             except FileNotFoundError as e:
                 raise ReferenceNotFoundError(str(e))
-            parsed_segments[segment_name] = segment_path
-
-        args["reference"] = parsed_segments
     else:
         try:
             validate_file_exists(reference, "Reference sequence file")
