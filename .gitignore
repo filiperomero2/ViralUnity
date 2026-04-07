@@ -75,5 +75,4 @@ my_config.yml
 samplesheet.csv
 
 # Local test assets
-test/dryrun_configs/
 test/dryrun_output/
