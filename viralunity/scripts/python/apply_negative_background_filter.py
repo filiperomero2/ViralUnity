@@ -25,7 +25,9 @@ def poisson_sf(k: int, mu: float) -> float:
     return max(0.0, sf)
 
 
-def infer_group_cols(df: pd.DataFrame, extra_group_cols: Optional[List[str]] = None) -> List[str]:
+def infer_group_cols(
+    df: pd.DataFrame, extra_group_cols: Optional[List[str]] = None
+) -> List[str]:
     """Default grouping: (tool,mode if present) + rank + taxid"""
     group_cols = []
     for c in ["tool", "mode"]:
@@ -103,9 +105,13 @@ def apply_negative_background_filter(
     neg_set = set(negatives)
     out["is_negative_control"] = out["sample"].isin(neg_set)
 
-    neg_samples_present = sorted(set(out.loc[out["is_negative_control"], "sample"].unique()))
+    neg_samples_present = sorted(
+        set(out.loc[out["is_negative_control"], "sample"].unique())
+    )
     if len(neg_samples_present) == 0:
-        raise ValueError("None of the provided negative controls are present in the input table.")
+        raise ValueError(
+            "None of the provided negative controls are present in the input table."
+        )
 
     # Category columns = group_cols excluding rank+taxid (for per-tool/mode totals)
     category_cols = [c for c in group_cols if c not in ["rank", "taxid"]]
@@ -114,10 +120,9 @@ def apply_negative_background_filter(
         category_cols = ["_cat"]
 
     # neg_B per category: sum unique negative sample total_reads (avoid duplication across taxa rows)
-    neg_sample_totals = (
-        out.loc[out["is_negative_control"], category_cols + ["sample", total_reads_col]]
-        .drop_duplicates(subset=category_cols + ["sample"])
-    )
+    neg_sample_totals = out.loc[
+        out["is_negative_control"], category_cols + ["sample", total_reads_col]
+    ].drop_duplicates(subset=category_cols + ["sample"])
     B_by_cat = (
         neg_sample_totals.groupby(category_cols, dropna=False)[total_reads_col]
         .sum()
@@ -138,7 +143,9 @@ def apply_negative_background_filter(
     b_by_tax = b_by_tax.merge(B_by_cat, on=category_cols, how="left")
 
     # lambda only defined for taxa seen in negatives (b_by_tax rows)
-    b_by_tax["lambda_bg"] = b_by_tax["neg_b_t"].astype(float) / b_by_tax["neg_B"].astype(float)
+    b_by_tax["lambda_bg"] = b_by_tax["neg_b_t"].astype(float) / b_by_tax[
+        "neg_B"
+    ].astype(float)
 
     # merge taxon-level background params to all rows (taxa absent in negatives -> NaN)
     out = out.merge(
@@ -164,13 +171,17 @@ def apply_negative_background_filter(
 
     # observed counts (integer)
     obs = out.loc[eval_mask, count_col].fillna(0).astype(float).round().astype(int)
-    mu = (out.loc[eval_mask, "lambda_bg"].astype(float) * out.loc[eval_mask, total_reads_col].astype(float))
+    mu = out.loc[eval_mask, "lambda_bg"].astype(float) * out.loc[
+        eval_mask, total_reads_col
+    ].astype(float)
 
     out.loc[eval_mask, "mu_bg"] = mu
 
     pvals = [poisson_sf(int(k), float(m)) for k, m in zip(obs.tolist(), mu.tolist())]
     out.loc[eval_mask, "p_bg"] = pvals
-    out.loc[eval_mask, "neg_pass"] = (pd.Series(pvals, index=out.index[eval_mask]) < float(p_threshold))
+    out.loc[eval_mask, "neg_pass"] = pd.Series(
+        pvals, index=out.index[eval_mask]
+    ) < float(p_threshold)
 
     out["neg_controls_used"] = len(neg_samples_present)
     out["p_threshold"] = float(p_threshold)
@@ -186,12 +197,36 @@ def run_cli():
     ap = argparse.ArgumentParser(
         description="Apply negative-control Poisson background filter (skip taxa absent from negatives)."
     )
-    ap.add_argument("--in", dest="inp", required=True, help="Input TSV (must include sample,taxid,total_reads).")
-    ap.add_argument("--out", required=True, help="Output TSV with background columns added.")
-    ap.add_argument("--negatives", required=True, help="Comma-separated negative control sample IDs.")
-    ap.add_argument("--count-col", required=True, help="Numerator column (e.g. count or mapped_reads).")
-    ap.add_argument("--total-reads-col", default="total_reads", help="Denominator column (default: total_reads).")
-    ap.add_argument("--p-threshold", type=float, default=0.01, help="Pass if p_bg < this value (default: 0.01).")
+    ap.add_argument(
+        "--in",
+        dest="inp",
+        required=True,
+        help="Input TSV (must include sample,taxid,total_reads).",
+    )
+    ap.add_argument(
+        "--out", required=True, help="Output TSV with background columns added."
+    )
+    ap.add_argument(
+        "--negatives",
+        required=True,
+        help="Comma-separated negative control sample IDs.",
+    )
+    ap.add_argument(
+        "--count-col",
+        required=True,
+        help="Numerator column (e.g. count or mapped_reads).",
+    )
+    ap.add_argument(
+        "--total-reads-col",
+        default="total_reads",
+        help="Denominator column (default: total_reads).",
+    )
+    ap.add_argument(
+        "--p-threshold",
+        type=float,
+        default=0.01,
+        help="Pass if p_bg < this value (default: 0.01).",
+    )
     ap.add_argument(
         "--group-cols",
         default=None,
@@ -222,15 +257,21 @@ def run_snakemake():
 
     negatives = getattr(snakemake.params, "negatives", None)
     if negatives is None:
-        raise ValueError("snakemake.params must include 'negatives' (list or comma-separated string).")
+        raise ValueError(
+            "snakemake.params must include 'negatives' (list or comma-separated string)."
+        )
     if isinstance(negatives, str):
         negatives = [x.strip() for x in negatives.split(",") if x.strip()]
     if not isinstance(negatives, list):
-        raise ValueError("snakemake.params.negatives must be a list or comma-separated string.")
+        raise ValueError(
+            "snakemake.params.negatives must be a list or comma-separated string."
+        )
 
     count_col = getattr(snakemake.params, "count_col", None)
     if count_col is None:
-        raise ValueError("snakemake.params must include 'count_col' (e.g., 'count' or 'mapped_reads').")
+        raise ValueError(
+            "snakemake.params must include 'count_col' (e.g., 'count' or 'mapped_reads')."
+        )
 
     total_reads_col = getattr(snakemake.params, "total_reads_col", "total_reads")
     p_threshold = float(getattr(snakemake.params, "p_threshold", 0.01))
@@ -240,7 +281,9 @@ def run_snakemake():
         if isinstance(group_cols, str):
             group_cols = [c.strip() for c in group_cols.split(",") if c.strip()]
         elif not isinstance(group_cols, list):
-            raise ValueError("snakemake.params.group_cols must be a list or comma-separated string.")
+            raise ValueError(
+                "snakemake.params.group_cols must be a list or comma-separated string."
+            )
 
     df = pd.read_csv(inp, sep="\t")
     out = apply_negative_background_filter(

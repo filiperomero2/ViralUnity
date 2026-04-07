@@ -7,8 +7,8 @@ import re
 
 
 def rename_sequences(input, output):
-    sample_name = re.sub(".+/","",input)
-    sample_name = re.sub(".consensus.fasta","",sample_name)
+    sample_name = re.sub(".+/", "", input)
+    sample_name = re.sub(".consensus.fasta", "", sample_name)
     with open(input) as f:
         lines = f.readlines()
 
@@ -20,9 +20,10 @@ def rename_sequences(input, output):
         else:
             sequence = sequence + line
 
-    with open(output, 'w') as f:
+    with open(output, "w") as f:
         renamed_sequence = ">" + sample_name + "\n" + sequence
         f.write(renamed_sequence)
+
 
 if __name__ == "__main__":
     print("Running rename_sequences.py")

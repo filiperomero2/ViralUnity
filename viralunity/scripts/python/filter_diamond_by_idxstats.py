@@ -123,7 +123,7 @@ def main() -> None:
         f"    • unique contigs in original : {total_bases}\n"
         f"    • contigs retained          : {kept_contigs}\n"
         f"    • DIAMOND rows retained     : {kept_rows}\n"
-        f"    → {output_path}\n"
+        f"    -> {output_path}\n"
     )
 
 

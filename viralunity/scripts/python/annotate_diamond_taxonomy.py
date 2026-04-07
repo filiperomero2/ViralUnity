@@ -14,16 +14,25 @@ def open_maybe_gzip(path, mode="rt"):
     return open(path, mode)
 
 
-def load_assembly_taxid(assembly_summary_path):
+def load_assembly_taxid(taxid_map_path):
+    """Load genome accession -> TaxID mapping from protein2taxid.tsv.
+
+    The file is produced by 'viralunity get-databases diamond' and has two
+    tab-separated columns (no header):
+        genome_accession  TAB  taxid
+
+    Lines beginning with '#' are treated as comments and skipped.
+    """
     acc2taxid = {}
-    with open_maybe_gzip(assembly_summary_path, "rt") as f:
+    with open_maybe_gzip(taxid_map_path, "rt") as f:
         for line in f:
-            if line.startswith("#"):
+            line = line.strip()
+            if not line or line.startswith("#"):
                 continue
-            cols = line.rstrip("\n").split("\t")
-            if len(cols) > 5:
+            cols = line.split("\t")
+            if len(cols) >= 2:
                 acc = cols[0].strip()
-                taxid = cols[5].strip()
+                taxid = cols[1].strip()
                 if acc and taxid:
                     acc2taxid[acc] = taxid
     return acc2taxid
@@ -42,8 +51,8 @@ def load_taxid_names(taxdump_dir):
     return taxid2name
 
 
-def run(diamond_tsv, assembly_summary, taxdump_dir, output_path):
-    acc2taxid = load_assembly_taxid(assembly_summary)
+def run(diamond_tsv, taxids, taxdump_dir, output_path):
+    acc2taxid = load_assembly_taxid(taxids)
     taxid2name = load_taxid_names(taxdump_dir)
 
     with open(diamond_tsv) as inp, open(output_path, "w") as out:
@@ -66,12 +75,13 @@ if __name__ == "__main__":
     if "snakemake" in globals():
         run(
             diamond_tsv=snakemake.input.diamond,
-            assembly_summary=snakemake.input.assembly,
+            taxids=snakemake.input.assembly,
             taxdump_dir=snakemake.params.taxdump,
             output_path=snakemake.output.annotated,
         )
     else:
         import argparse
+
         p = argparse.ArgumentParser()
         p.add_argument("--diamond", required=True)
         p.add_argument("--assembly", required=True)

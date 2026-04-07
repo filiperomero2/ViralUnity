@@ -46,8 +46,7 @@ if keep_columns is not None:
 if df.empty:
     open(output_file, "w").close()
     print(
-        f"[filter_taxids] No rows after column selection. "
-        f"Created empty output.",
+        f"[filter_taxids] No rows after column selection. " f"Created empty output.",
         file=sys.stderr,
     )
     sys.exit(0)

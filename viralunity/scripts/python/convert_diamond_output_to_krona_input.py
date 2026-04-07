@@ -14,19 +14,28 @@ def open_maybe_gzip(path, mode="rt"):
     return open(path, mode)
 
 
-def load_assembly_taxid_map(assembly_summary_path):
-    assembly2taxid = {}
-    with open_maybe_gzip(assembly_summary_path, "rt") as f:
+def load_assembly_taxid_map(taxid_map_path):
+    """Load genome accession -> TaxID mapping from protein2taxid.tsv.
+
+    The file is produced by 'viralunity get-databases diamond' and has two
+    tab-separated columns (no header):
+        genome_accession  TAB  taxid
+
+    Lines beginning with '#' are treated as comments and skipped.
+    """
+    acc2taxid = {}
+    with open_maybe_gzip(taxid_map_path, "rt") as f:
         for line in f:
-            if line.startswith("#"):
+            line = line.strip()
+            if not line or line.startswith("#"):
                 continue
-            cols = line.rstrip("\n").split("\t")
-            if len(cols) > 5:
-                assembly_acc = cols[0].strip()
-                taxid = cols[5].strip()
-                if assembly_acc and taxid:
-                    assembly2taxid[assembly_acc] = taxid
-    return assembly2taxid
+            cols = line.split("\t")
+            if len(cols) >= 2:
+                acc = cols[0].strip()
+                taxid = cols[1].strip()
+                if acc and taxid:
+                    acc2taxid[acc] = taxid
+    return acc2taxid
 
 
 def parse_diamond_results(diamond_output_path, assembly2taxid):
@@ -96,9 +105,9 @@ def write_krona_input(output_path, ids, read2taxid):
 def main(input_files, output_file, data_format):
     diamond_output = input_files[0]
     sequences = input_files[1]
-    assembly_summary = input_files[2]
+    taxids = input_files[2]
 
-    assembly2taxid = load_assembly_taxid_map(assembly_summary)
+    assembly2taxid = load_assembly_taxid_map(taxids)
     read2taxid = parse_diamond_results(diamond_output, assembly2taxid)
     ids = extract_ids_from_sequences(sequences, data_format)
     write_krona_input(output_file, ids, read2taxid)
@@ -117,16 +126,19 @@ if __name__ == "__main__":
         main(input_files, output_file, data_format)
     else:
         import sys
+
         # CLI usage
         parser = argparse.ArgumentParser()
         parser.add_argument("--diamond", required=True)
         parser.add_argument("--sequences", required=True)
-        parser.add_argument("--assembly-summary", required=True)
+        parser.add_argument("--taxids", required=True)
         parser.add_argument("--output", required=True)
-        parser.add_argument("--data-format", choices=["fastq", "fasta"], default="fastq")
+        parser.add_argument(
+            "--data-format", choices=["fastq", "fasta"], default="fastq"
+        )
         args = parser.parse_args()
         main(
-            [args.diamond, args.sequences, args.assembly_summary],
+            [args.diamond, args.sequences, args.taxids],
             args.output,
             args.data_format,
         )

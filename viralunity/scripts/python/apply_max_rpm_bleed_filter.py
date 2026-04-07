@@ -5,7 +5,9 @@ import pandas as pd
 from typing import List, Optional
 
 
-def infer_group_cols(df: pd.DataFrame, extra_group_cols: Optional[List[str]] = None) -> List[str]:
+def infer_group_cols(
+    df: pd.DataFrame, extra_group_cols: Optional[List[str]] = None
+) -> List[str]:
     """
     Decide what defines a 'taxon' for max-RPM purposes.
 
@@ -31,7 +33,9 @@ def infer_group_cols(df: pd.DataFrame, extra_group_cols: Optional[List[str]] = N
     if extra_group_cols:
         for c in extra_group_cols:
             if c not in df.columns:
-                raise ValueError(f"Requested group column '{c}' not found in input columns.")
+                raise ValueError(
+                    f"Requested group column '{c}' not found in input columns."
+                )
             group_cols.append(c)
 
     return group_cols
@@ -55,14 +59,21 @@ def apply_bleed_filter(
     if "sample" not in df.columns:
         raise ValueError("Input must contain 'sample' column.")
     if rpm_col not in df.columns:
-        raise ValueError(f"Input missing RPM column '{rpm_col}'. Did you run add_RPM_to_summary first?")
+        raise ValueError(
+            f"Input missing RPM column '{rpm_col}'. Did you run add_RPM_to_summary first?"
+        )
 
     out = df.copy()
     if group_cols is None:
         group_cols = infer_group_cols(out)
 
     # Compute max rpm per taxon group
-    max_rpm = out.groupby(group_cols, dropna=False)[rpm_col].max().reset_index().rename(columns={rpm_col: "max_rpm"})
+    max_rpm = (
+        out.groupby(group_cols, dropna=False)[rpm_col]
+        .max()
+        .reset_index()
+        .rename(columns={rpm_col: "max_rpm"})
+    )
     out = out.merge(max_rpm, on=group_cols, how="left")
 
     # Determine threshold and pass/fail
@@ -71,11 +82,15 @@ def apply_bleed_filter(
     # Default threshold is 0 (so everything passes) when not applied; but keep explicit threshold column too
     out["bleed_threshold"] = 0.0
     mask = out["bleed_applied"]
-    out.loc[mask, "bleed_threshold"] = out.loc[mask, "max_rpm"].astype(float) * float(fraction)
+    out.loc[mask, "bleed_threshold"] = out.loc[mask, "max_rpm"].astype(float) * float(
+        fraction
+    )
 
     # Pass if above threshold, OR if not applied (max_rpm below floor)
     out["bleed_pass"] = True
-    out.loc[mask, "bleed_pass"] = out.loc[mask, rpm_col].astype(float) >= out.loc[mask, "bleed_threshold"].astype(float)
+    out.loc[mask, "bleed_pass"] = out.loc[mask, rpm_col].astype(float) >= out.loc[
+        mask, "bleed_threshold"
+    ].astype(float)
 
     return out
 
@@ -84,10 +99,24 @@ def run_cli():
     ap = argparse.ArgumentParser(
         description="Apply max-RPM bleed-through filter to an RPM-augmented taxa summary TSV."
     )
-    ap.add_argument("--in", dest="inp", required=True, help="Input TSV (must include sample,taxid,rpm).")
-    ap.add_argument("--out", required=True, help="Output TSV with bleed filter columns added.")
-    ap.add_argument("--rpm-col", default="rpm", help="Name of RPM column (default: rpm).")
-    ap.add_argument("--fraction", type=float, default=0.005, help="Threshold fraction of max_rpm (default: 0.005).")
+    ap.add_argument(
+        "--in",
+        dest="inp",
+        required=True,
+        help="Input TSV (must include sample,taxid,rpm).",
+    )
+    ap.add_argument(
+        "--out", required=True, help="Output TSV with bleed filter columns added."
+    )
+    ap.add_argument(
+        "--rpm-col", default="rpm", help="Name of RPM column (default: rpm)."
+    )
+    ap.add_argument(
+        "--fraction",
+        type=float,
+        default=0.005,
+        help="Threshold fraction of max_rpm (default: 0.005).",
+    )
     ap.add_argument(
         "--rpm-floor",
         type=float,
@@ -131,7 +160,9 @@ def run_snakemake():
         if isinstance(group_cols, str):
             group_cols = [c.strip() for c in group_cols.split(",") if c.strip()]
         elif not isinstance(group_cols, list):
-            raise ValueError("snakemake.params.group_cols must be a list or comma-separated string.")
+            raise ValueError(
+                "snakemake.params.group_cols must be a list or comma-separated string."
+            )
 
     df = pd.read_csv(inp, sep="\t")
     out = apply_bleed_filter(

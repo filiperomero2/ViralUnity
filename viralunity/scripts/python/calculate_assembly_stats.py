@@ -3,13 +3,14 @@
 import pandas as pd
 import subprocess
 
+
 def get_number_of_reads(fastq):
     if fastq.endswith(".gz"):
-        command = "gunzip -c " + fastq + ' | grep -cE "^\+$"'
+        command = "gunzip -c " + fastq + r' | grep -cE "^\+$"'
     else:
-        command = 'grep -cE "^\+$" ' + fastq
+        command = r'grep -cE "^\+$" ' + fastq
     proc = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
-    (out, err) = proc.communicate()
+    out, err = proc.communicate()
     number_of_reads = int(out)
     return number_of_reads
 
@@ -17,7 +18,7 @@ def get_number_of_reads(fastq):
 def get_number_of_mapped_reads(bam):
     command = "samtools view -c -F 260 " + bam
     proc = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
-    (out, err) = proc.communicate()
+    out, err = proc.communicate()
     number_of_mapped_reads = int(out)
     return number_of_mapped_reads
 
@@ -42,7 +43,9 @@ def get_coverage_info(table_cov, minimum_depth):
     )
 
 
-def generate_output(fastq, trim_fastq, bam, table_cov, sample_name, minimum_depth, output):
+def generate_output(
+    fastq, trim_fastq, bam, table_cov, sample_name, minimum_depth, output, segment=None
+):
     number_of_reads = get_number_of_reads(fastq)
     number_of_trim_reads = get_number_of_reads(trim_fastq)
     number_of_mapped_reads = get_number_of_mapped_reads(bam)
@@ -53,21 +56,27 @@ def generate_output(fastq, trim_fastq, bam, table_cov, sample_name, minimum_dept
         percentage_of_sites_above_1000x,
         percentage_of_sites_above_specified_threshold,
     ) = get_coverage_info(table_cov, minimum_depth)
-    data = [
-        sample_name,
-        number_of_reads,
-        number_of_trim_reads,
-        number_of_mapped_reads,
-        average_depth,
-        percentage_of_sites_above_10x,
-        percentage_of_sites_above_100x,
-        percentage_of_sites_above_1000x,
-        percentage_of_sites_above_specified_threshold,
-    ]
+    data = [sample_name]
+    if segment is not None:
+        data.append(segment)
+
+    data.extend(
+        [
+            number_of_reads,
+            number_of_trim_reads,
+            number_of_mapped_reads,
+            average_depth,
+            percentage_of_sites_above_10x,
+            percentage_of_sites_above_100x,
+            percentage_of_sites_above_1000x,
+            percentage_of_sites_above_specified_threshold,
+        ]
+    )
     return pd.DataFrame(data).T
 
 
-def main(input, output, minimum_depth):
+def main(input, output, minimum_depth, segment=None):
+    # keep fist read and ignore paired in illumina scenario
     fastq = input[0]
     trim_fastq = input[2]
     bam = input[3]
@@ -76,8 +85,10 @@ def main(input, output, minimum_depth):
     sample_name = bam.replace(".sorted.bam", "")
     sample_name = sample_name.split("/")[-1]
 
-    df_out = generate_output(fastq, trim_fastq, bam, table_cov, sample_name, minimum_depth, output)
-    
+    df_out = generate_output(
+        fastq, trim_fastq, bam, table_cov, sample_name, minimum_depth, output, segment
+    )
+
     df_out.to_csv(output, header=False, index=False)
 
 
@@ -85,7 +96,8 @@ if __name__ == "__main__":
     input = snakemake.input
     output = snakemake.output[0]
     minimum_depth = snakemake.params[0]
+    segment = getattr(snakemake.wildcards, "segment", None)
 
-    main(input, output, minimum_depth)
+    main(input, output, minimum_depth, segment)
 
     exit()

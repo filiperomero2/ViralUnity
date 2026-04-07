@@ -3,9 +3,10 @@
 
 class DataType:
     """Sequencing data types supported by ViralUnity."""
+
     ILLUMINA = "illumina"
     NANOPORE = "nanopore"
-    
+
     @classmethod
     def is_valid(cls, value: str) -> bool:
         """Check if a value is a valid data type."""
@@ -14,6 +15,7 @@ class DataType:
 
 class ConfigKeys:
     """Keys used in configuration files."""
+
     SAMPLES = "samples"
     DATA = "data"
     OUTPUT = "output"
@@ -25,7 +27,6 @@ class ConfigKeys:
     ADAPTERS = "adapters"
     MINIMUM_LENGTH = "minimum_length"
     MINIMUM_DEPTH = "minimum_depth"
-    TRIM = "trim"
     TRIM_HEAD = "trim_head"
     TRIM_TAIL = "trim_tail"
     CUT_FRONT_MEAN_QUALITY = "cut_front_mean_quality"
@@ -43,7 +44,7 @@ class ConfigKeys:
     RUN_KRAKEN2_CONTIGS = "run_kraken2_contigs"
     RUN_DIAMOND_READS = "run_diamond_reads"
     RUN_DIAMOND_CONTIGS = "run_diamond_contigs"
-    ASSEMBLY_SUMMARY = "assembly_summary"
+    TAXIDS = "taxids"
     DIAMOND_DATABASE = "diamond_database"
     DIAMOND_SENSITIVITY = "diamond_sensitivity"
     EVALUE = "evalue"
@@ -56,16 +57,28 @@ class ConfigKeys:
     RUN_POLISH_MEDAKA = "run_polish_medaka"
     MEDAKA_MODEL = "medaka_model"
 
+    AF_THRESHOLD = "af_threshold"
+    AF_ISNV_THRESHOLD = "af_isnv_threshold"
+    REMOVE_HUMAN_READS = "remove_human_reads"
+    REMOVE_UNCLASSIFIED_READS = "remove_unclassified_reads"
+    CHUNK_SIZE = "chunk_size"
+    CLAIR3_MODEL = "clair3_model"
+    VARIANT_QUALITY = "variant_quality"
+    VARIANT_DEPTH = "variant_depth"
+    MINIMUM_MAP_QUALITY = "minimum_map_quality"
+    RUN_ISNV = "run_isnv"
+
 
 class SampleSheetPattern:
     """Patterns for identifying sample files."""
+
     R1 = "R1"
     BARCODE = "barcode"
 
 
 class SampleSheetSeparator:
     """Separators for parsing sample names."""
+
     UNDERSCORE = "_"
     HYPHEN = "-"
     DOT = "."
-

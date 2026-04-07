@@ -9,13 +9,14 @@ Filipe Moreira - 2024/09/21
 import os
 import logging
 from typing import Dict, Any
+from pathlib import Path
 from snakemake import snakemake
 
 from viralunity.validators import (
     get_samples_from_args,
     validate_illumina_requirements,
     validate_nanopore_requirements,
-    validate_metagenomics_requirements
+    validate_metagenomics_requirements,
 )
 from viralunity.config_generator import ConfigGenerator
 from viralunity.exceptions import ValidationError
@@ -27,61 +28,61 @@ logger = logging.getLogger(__name__)
 
 def validate_args(args: Dict[str, Any]) -> Dict[str, list]:
     """Validate all pipeline arguments.
-    
+
     Args:
         args: Dictionary of pipeline arguments
-        
+
     Returns:
         Dictionary mapping sample names to file paths
-        
+
     Raises:
         ValidationError: If validation fails
     """
     logger.info("Validating pipeline arguments")
-    
+
     # Get and validate samples
     samples = get_samples_from_args(args)
-    
+
     logger.info(f"Found {len(samples)} samples")
-    
+
     # Validate metagenomics-specific requirements
     validate_metagenomics_requirements(args)
-    
+
     # Validate data-type specific requirements
     data_type = args.get("data_type")
     if data_type == DataType.ILLUMINA:
         validate_illumina_requirements(args)
     elif data_type == DataType.NANOPORE:
         validate_nanopore_requirements(args)
-    
+
     logger.info("All arguments validated successfully")
     return samples
 
 
 def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None:
     """Generate configuration file for the pipeline.
-    
+
     Args:
         samples: Dictionary mapping sample names to file paths
         args: Dictionary of pipeline arguments
-        
+
     Raises:
         ValidationError: If config generation fails
     """
     logger.info("Generating configuration file")
-    
+
     data_type = args["data_type"]
     run_name = args["run_name"]
-    
+
     generator = ConfigGenerator(args["config_file"])
-    
+
     # Add samples
     generator.add_samples(samples, data_type)
-    
+
     # Add common settings
     generator.add_output(args["output"], run_name)
     generator.add_threads(args["threads"])
-    
+
     # Add metagenomics-specific settings
     negative = args.get("negative_controls")
     if isinstance(negative, str):
@@ -89,9 +90,16 @@ def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None
     elif negative is None:
         negative = []
 
+    # Normalize Krona database path: if it points to a dir containing 'taxonomy', append it.
+    krona_db = args.get("krona_database", "NA")
+    if krona_db and krona_db != "NA":
+        kp = Path(krona_db)
+        if (kp / "taxonomy").is_dir() and kp.name != "taxonomy":
+            krona_db = str(kp / "taxonomy")
+
     generator.add_metagenomics_settings(
         kraken2_database=args["kraken2_database"],
-        krona_database=args["krona_database"],
+        krona_database=krona_db,
         remove_human_reads=args.get("remove_human_reads", False),
         remove_unclassified_reads=args.get("remove_unclassified_reads", False),
         host_reference=args.get("host_reference", "NA"),
@@ -102,7 +110,7 @@ def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None
         run_kraken2_contigs=args.get("run_kraken2_contigs", True),
         run_diamond_reads=args.get("run_diamond_reads", False),
         run_diamond_contigs=args.get("run_diamond_contigs", False),
-        assembly_summary=args.get("assembly_summary", "NA"),
+        taxids=args.get("taxids", "NA"),
         diamond_database=args.get("diamond_database", "NA"),
         diamond_sensitivity=args.get("diamond_sensitivity", "sensitive"),
         evalue=args.get("evalue", 0.001),
@@ -111,105 +119,91 @@ def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None
         negative_p_threshold=args.get("negative_p_threshold", 0.01),
         minimum_hit_group=args.get("minimum_hit_group", 4),
     )
-    
-    # Add Illumina-specific settings if needed (fastp)
+
     if data_type == DataType.ILLUMINA:
         generator.add_illumina_settings(
             adapters=args.get("adapters") or "NA",
             minimum_read_length=args.get("minimum_read_length", 50),
-            trim=args.get("trim", 0),
-            trim_head=args.get("trim_head"),
-            trim_tail=args.get("trim_tail"),
-            cut_front_mean_quality=args.get("cut_front_mean_quality", 20),
-            cut_tail_mean_quality=args.get("cut_tail_mean_quality", 20),
-            cut_right_window_size=args.get("cut_right_window_size", 4),
-            cut_right_mean_quality=args.get("cut_right_mean_quality", 20),
+            trim_head=args.get("trim_head", 0),
+            trim_tail=args.get("trim_tail", 0),
         )
-    elif data_type == DataType.NANOPORE:
-        generator.add_nanopore_settings(
-            run_polish_racon=args.get("run_polish_racon", False),
-            run_polish_medaka=args.get("run_polish_medaka", False),
-            medaka_model=args.get("medaka_model"),
-        )
-    
+
     # Save config file
     generator.save()
-    
+
     logger.info(f"Configuration file generated: {args['config_file']}")
 
 
 def run_snakemake_workflow(args: Dict[str, Any]) -> bool:
     """Run the Snakemake workflow.
-    
+
     Args:
         args: Dictionary of pipeline arguments
-        
+
     Returns:
         True if workflow completed successfully, False otherwise
     """
     logger.info("Starting Snakemake workflow")
-    
+
     thisdir = os.path.abspath(os.path.dirname(__file__))
     workflow_path = os.path.join(
-        thisdir,
-        'scripts',
-        f"metagenomics_{args['data_type']}.smk"
+        thisdir, "scripts", f"metagenomics_{args['data_type']}.smk"
     )
-    
+
     if not os.path.isfile(workflow_path):
         raise ValidationError(f"Workflow file not found: {workflow_path}")
-    
+
     successful = snakemake(
         workflow_path,
         configfiles=[args["config_file"]],
         cores=args["threads_total"],
+        use_conda=True,
         targets=["all"],
         forceall=True,
         lock=False,
         workdir=os.path.dirname(args["config_file"]),
     )
-    
+
     if successful:
         logger.info("Snakemake workflow completed successfully")
     else:
         logger.error("Snakemake workflow failed")
-    
+
     return successful
 
 
 def main(args: Dict[str, Any]) -> int:
     """Main entry point for the metagenomics pipeline.
-    
+
     Args:
         args: Dictionary of pipeline arguments
-        
+
     Returns:
         Exit code (0 for success, 1 for failure)
     """
     try:
         # Validate arguments
         samples = validate_args(args)
-        
-        if(samples is None or len(samples) == 0):
+
+        if samples is None or len(samples) == 0:
             print("No samples were provided.")
             return 0
-        
+
         # Generate config file
         generate_config_file(samples, args)
-        
+
         # If only creating config, exit early
         if args.get("create_config_only", False):
             logger.info("Config file created. Exiting without running workflow.")
             return 0
-        
+
         # Run workflow
         successful = run_snakemake_workflow(args)
         return 0 if successful else 1
-        
+
     except ValidationError as e:
         logger.error(f"Validation error: {e}")
         return 1
     except Exception as e:
         logger.exception(f"Unexpected error: {e}")
         return 1
-

@@ -1,39 +1,17 @@
-import argparse
+"""Tests for viralunity meta CLI (click-based)."""
+
 import unittest
-import os
-from viralunity.viralunity_meta_cli import fill_arg_parser_meta
+from unittest.mock import patch
+from click.testing import CliRunner
+from viralunity.viralunity_meta_cli import meta
 
-print(os.environ.get("PATH"))
 
+class Test_MetaIlluminaCommand(unittest.TestCase):
+    """Tests for `viralunity meta illumina`."""
 
-class Test_FillArgParserMeta(unittest.TestCase):
-    def test_required_args_fail_when_only_optional_set(self):
-        args = [
-            "meta",
-            "--run-name",
-            "run_name",
-            "--remove-human-reads",
-            "--remove-unclassified-reads",
-            "--adapters",
-            "adapters.fasta",
-            "--minimum-read-length",
-            "50",
-            "--trim",
-            "0",
-            "--create-config-only",
-            "--threads",
-            "1",
-        ]
-        with self.assertRaises(SystemExit):
-            parser = argparse.ArgumentParser()
-            subparsers = parser.add_subparsers()
-            fill_arg_parser_meta(subparsers)
-            parser.parse_args(args)
-
-    def test_required_args_success_when_only_required_set(self):
-        args = [
-            "meta",
-            "--data-type",
+    def setUp(self):
+        self.runner = CliRunner()
+        self._required = [
             "illumina",
             "--sample-sheet",
             "sample_sheet.csv",
@@ -46,27 +24,59 @@ class Test_FillArgParserMeta(unittest.TestCase):
             "--krona-database",
             "krona_db",
         ]
-        parser = argparse.ArgumentParser()
-        subparsers = parser.add_subparsers()
-        fill_arg_parser_meta(subparsers)
-        readArgs = vars(parser.parse_args(args))
-        self.assertDictContainsSubset(
-            {
-                "data_type": "illumina",
-                "sample_sheet": "sample_sheet.csv",
-                "config_file": "config_file.yaml",
-                "output": "output_dir",
-                "kraken2_database": "kraken2_db",
-                "krona_database": "krona_db",
-            },
-            readArgs,
-        )
+
+    def _invoke(self, extra_args=None):
+        args = self._required + (extra_args or [])
+        with patch("viralunity.viralunity_meta_cli.meta_main", return_value=0):
+            return self.runner.invoke(meta, args, catch_exceptions=False)
+
+    def test_required_args_missing_causes_error(self):
+        """Missing required args should exit with non-zero code."""
+        result = self.runner.invoke(meta, ["illumina"])
+        self.assertNotEqual(result.exit_code, 0)
+
+    def test_required_args_success(self):
+        result = self._invoke()
+        self.assertEqual(result.exit_code, 0, result.output)
 
     def test_default_values_optional_args(self):
-        args = [
-            "meta",
-            "--data-type",
-            "illumina",
+        """Check that all optional Illumina meta args have correct defaults."""
+        with patch(
+            "viralunity.viralunity_meta_cli.meta_main", return_value=0
+        ) as mock_main:
+            result = self.runner.invoke(meta, self._required, catch_exceptions=False)
+        self.assertEqual(result.exit_code, 0, result.output)
+        args = mock_main.call_args[0][0]
+        self.assertEqual(args["data_type"], "illumina")
+        self.assertEqual(args["run_name"], "undefined")
+        self.assertEqual(args["adapters"], "NA")
+        self.assertEqual(args["minimum_read_length"], 50)
+        self.assertIsNone(args["trim_head"])
+        self.assertIsNone(args["trim_tail"])
+        self.assertFalse(args["remove_human_reads"])
+        self.assertFalse(args["remove_unclassified_reads"])
+        self.assertEqual(args["threads"], 1)
+        self.assertEqual(args["threads_total"], 1)
+        self.assertFalse(args["create_config_only"])
+
+    def test_remove_human_reads_flag(self):
+        with patch(
+            "viralunity.viralunity_meta_cli.meta_main", return_value=0
+        ) as mock_main:
+            result = self.runner.invoke(
+                meta, self._required + ["--remove-human-reads"], catch_exceptions=False
+            )
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertTrue(mock_main.call_args[0][0]["remove_human_reads"])
+
+
+class Test_MetaNanoporeCommand(unittest.TestCase):
+    """Tests for `viralunity meta nanopore`."""
+
+    def setUp(self):
+        self.runner = CliRunner()
+        self._required = [
+            "nanopore",
             "--sample-sheet",
             "sample_sheet.csv",
             "--config-file",
@@ -78,35 +88,36 @@ class Test_FillArgParserMeta(unittest.TestCase):
             "--krona-database",
             "krona_db",
         ]
-        parser = argparse.ArgumentParser()
-        subparsers = parser.add_subparsers()
-        fill_arg_parser_meta(subparsers)
-        readArgs = vars(parser.parse_args(args))
-        
-        self.assertIn("func", readArgs)
-        self.assertIsNotNone(readArgs["func"])
-        readArgs.pop("func")  # Remove 'func' before comparison
-        
-        self.assertDictEqual(
-            readArgs,
-            {
-                "adapters": None,
-                "config_file": "config_file.yaml",
-                "create_config_only": False,
-                "data_type": "illumina",
-                "kraken2_database": "kraken2_db",
-                "krona_database": "krona_db",
-                "minimum_read_length": 50,
-                "output": "output_dir",
-                "remove_human_reads": False,
-                "remove_unclassified_reads": False,
-                "run_name": "undefined",
-                "sample_sheet": "sample_sheet.csv",
-                "threads": 1,
-                "threads_total": 1,
-                "trim": 0,
-            },
-        )
+
+    def test_required_args_success(self):
+        with patch("viralunity.viralunity_meta_cli.meta_main", return_value=0):
+            result = self.runner.invoke(meta, self._required, catch_exceptions=False)
+        self.assertEqual(result.exit_code, 0, result.output)
+
+    def test_default_values_optional_args(self):
+        """Check nanopore-specific defaults for the meta command."""
+        with patch(
+            "viralunity.viralunity_meta_cli.meta_main", return_value=0
+        ) as mock_main:
+            result = self.runner.invoke(meta, self._required, catch_exceptions=False)
+        self.assertEqual(result.exit_code, 0, result.output)
+        args = mock_main.call_args[0][0]
+        self.assertEqual(args["data_type"], "nanopore")
+        self.assertFalse(args["run_polish_racon"])
+        self.assertFalse(args["run_polish_medaka"])
+        self.assertIsNone(args["medaka_model"])
+
+    def test_kraken2_flags(self):
+        """Test --no-kraken2-reads disables reads classification."""
+        with patch(
+            "viralunity.viralunity_meta_cli.meta_main", return_value=0
+        ) as mock_main:
+            result = self.runner.invoke(
+                meta, self._required + ["--no-kraken2-reads"], catch_exceptions=False
+            )
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertFalse(mock_main.call_args[0][0]["run_kraken2_reads"])
+
 
 if __name__ == "__main__":
     unittest.main()

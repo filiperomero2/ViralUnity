@@ -2,7 +2,7 @@ import unittest
 import subprocess
 import pandas as pd
 from unittest.mock import patch
-from viralunity.scripts.calculate_assembly_stats import (
+from viralunity.scripts.python.calculate_assembly_stats import (
     get_number_of_reads,
     get_number_of_mapped_reads,
     get_coverage_info,
@@ -19,7 +19,7 @@ class TestGetNumberOfReads(unittest.TestCase):
         fastq = "sample.fastq.gz"
         result = get_number_of_reads(fastq)
         mock_popen.assert_called_with(
-            'gunzip -c sample.fastq.gz | grep -cE "^\+$"',
+            r'gunzip -c sample.fastq.gz | grep -cE "^\+$"',
             stdout=subprocess.PIPE,
             shell=True,
         )
@@ -31,7 +31,7 @@ class TestGetNumberOfReads(unittest.TestCase):
         fastq = "sample.fastq"
         result = get_number_of_reads(fastq)
         mock_popen.assert_called_with(
-            'grep -cE "^\+$" sample.fastq', stdout=subprocess.PIPE, shell=True
+            r'grep -cE "^\+$" sample.fastq', stdout=subprocess.PIPE, shell=True
         )
         self.assertEqual(result, 4)
 
@@ -81,9 +81,11 @@ class TestGetCoverageInfo(unittest.TestCase):
 
 class TestWriteOutput(unittest.TestCase):
 
-    @patch("viralunity.scripts.calculate_assembly_stats.get_number_of_reads")
-    @patch("viralunity.scripts.calculate_assembly_stats.get_number_of_mapped_reads")
-    @patch("viralunity.scripts.calculate_assembly_stats.get_coverage_info")
+    @patch("viralunity.scripts.python.calculate_assembly_stats.get_number_of_reads")
+    @patch(
+        "viralunity.scripts.python.calculate_assembly_stats.get_number_of_mapped_reads"
+    )
+    @patch("viralunity.scripts.python.calculate_assembly_stats.get_coverage_info")
     @patch("pandas.DataFrame.to_csv")
     def test_write_output(
         self,
@@ -130,10 +132,16 @@ class TestWriteOutput(unittest.TestCase):
 
 class TestMainFunction(unittest.TestCase):
 
-    @patch("viralunity.scripts.calculate_assembly_stats.generate_output")
+    @patch("viralunity.scripts.python.calculate_assembly_stats.generate_output")
     @patch("pandas.DataFrame.to_csv")
     def test_main(self, mock_to_csv, mock_generate_output):
-        inputs = ["sample.fastq", "", "sample_trim.fastq", "my/dir/sample.sorted.bam", "coverage.txt"]
+        inputs = [
+            "sample.fastq",
+            "",
+            "sample_trim.fastq",
+            "my/dir/sample.sorted.bam",
+            "coverage.txt",
+        ]
         output = "output.csv"
         minimum_depth = 20
 
@@ -151,6 +159,7 @@ class TestMainFunction(unittest.TestCase):
             "sample",
             minimum_depth,
             output,
+            None,
         )
         mock_to_csv.assert_called_once_with(output, header=False, index=False)
 
