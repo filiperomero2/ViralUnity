@@ -78,14 +78,35 @@ rule generate_vcf_consensus:
     shell:
         """
         out_prefix=$(echo {output.vcf} | sed 's/.vcf.gz//')
-        GSAlign \
-            -r {input.reference} \
-            -q {input.consensus} \
-            -o $out_prefix \
-            -fmt 1 \
-            -sen
+        
+        # Check if the consensus FASTA has sequence content (excluding header)
+        # to avoid GSAlign error
+        seq_count=$(grep -v "^>" {input.consensus} | tr -d '\n\r ' | wc -c)
 
-        bgzip $out_prefix.vcf
-        tabix {output.vcf}
-        rm $out_prefix.maf
+        if [ "$seq_count" -eq 0 ]; then
+            echo "Warning: Consensus sequence for {wildcards.sample} is empty. Creating a mock VCF." >&2
+            echo "##fileformat=VCFv4.2" > $out_prefix.vcf
+            echo -e "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO" >> $out_prefix.vcf
+            bgzip -f $out_prefix.vcf
+            tabix -p vcf {output.vcf}
+        else
+            GSAlign \
+                -r {input.reference} \
+                -q {input.consensus} \
+                -o $out_prefix \
+                -fmt 1 \
+                -sen
+
+            if [ -f "$out_prefix.vcf" ]; then
+                bgzip -f $out_prefix.vcf
+                tabix -p vcf {output.vcf}
+                rm -f $out_prefix.maf
+            else
+                # Fallback if GSAlign succeeded but didn't create a VCF
+                echo "##fileformat=VCFv4.2" > $out_prefix.vcf
+                echo -e "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO" >> $out_prefix.vcf
+                bgzip -f $out_prefix.vcf
+                tabix -p vcf {output.vcf}
+            fi
+        fi
         """
