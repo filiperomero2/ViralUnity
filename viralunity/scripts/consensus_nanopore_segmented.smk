@@ -160,6 +160,7 @@ rule organize_files:
             ln -sf $PWD/$_file.bai {params.outdir}samples/$sample/$segment/trimmed_mapped_reads.bam.bai;
         done
 
+        # Benchmark aggregation
         echo -e "sample\\tsegment\\ttask\\tseconds\\th:m:s\\tmax_rss\\tmax_vms\\tmax_uss\\tmax_pss\\tio_in\\tio_out\\tmean_load\\tcpu_time" > {output}
         find {params.outdir} -name "*.benchmark.txt" | while read -r file; do
             task=$(basename $(dirname $file))

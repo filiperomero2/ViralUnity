@@ -207,6 +207,26 @@ rule organize_files:
             ln -sf $PWD/$_file {params.outdir}samples/$sample/host_filtered_reads.fastq.gz;
         done
 
-        # Benchmark
-        scripts/python/generate_benchmark.py {params.outdir} > {output.benchmark}
+        # Benchmark aggregation
+        echo -e "sample\\ttask\\tseconds\\th:m:s\\tmax_rss\\tmax_vms\\tmax_uss\\tmax_pss\\tio_in\\tio_out\\tmean_load\\tcpu_time" > {output}
+        find {params.outdir} -name "*.benchmark.txt" | while read -r file; do
+            task=$(basename $(dirname $file))
+            sample=$(basename "$file" .benchmark.txt)
+            
+            matched=false
+            for s in {params.samples}; do
+                if [[ "$sample" == "$s" ]]; then
+                    matched=true
+                    break
+                fi
+            done
+            
+            if [[ "$matched" == "false" ]]; then
+                sample="All"
+            else
+                sample=$(echo "$sample" | sed 's/sample-//')
+            fi
+
+            tail -n +2 "$file" | awk -v sample="$sample" -v task="$task" '{{print sample"\\t"task"\\t"$0}}' >> {output}
+        done
         """

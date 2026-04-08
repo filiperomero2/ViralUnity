@@ -135,7 +135,7 @@ if run_denovo and run_diamond_contigs:
                     echo "No viral contigs for {wildcards.sample}; skipping remap." >> {log}
                     touch {output.bam} {output.bai} {output.idxstats}
                 else
-                    minimap2 -t {threads} -x map-ont {input.index} {input.reads} | \
+                    minimap2 -t {threads} -ax map-ont {input.index} {input.reads} | \
                         samtools sort -@ {threads} -o {output.bam} -
                     samtools index -@ {threads} {output.bam}
                     samtools idxstats {output.bam} > {output.idxstats}
