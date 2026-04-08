@@ -61,7 +61,7 @@ if run_denovo and run_diamond_contigs:
             index = config["output"] + "denovo_assembly/viral_contigs/{sample}.viral_contigs.mmi"
         threads: config["threads"]
         conda:
-            "../envs/utils.yaml"
+            "../envs/alignment.yaml"
         shell:
             """
             if [ -s {input.fasta} ]; then
