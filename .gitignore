@@ -76,3 +76,6 @@ samplesheet.csv
 
 # Local test assets
 test/dryrun_output/
+# Documentation builds
+docs/_build/
+docs-pt/_build/
