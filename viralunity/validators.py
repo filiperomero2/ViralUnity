@@ -162,23 +162,26 @@ def validate_consensus_requirements(args: Dict[str, Any]) -> None:
         )
 
     if segmented_reference:
-        parsed_segments = {}
-        for entry in segmented_reference:
-            if "=" not in entry:
-                raise ValidationError(
-                    f"Invalid segmented reference format: '{entry}'. "
-                    f"Expected SEGMENT=PATH (e.g. S=/path/to/S.fasta)"
-                )
-            segment_name, segment_path = entry.split("=", 1)
-            segment_name = segment_name.strip()
-            segment_path = segment_path.strip()
-            if not segment_name or not segment_path:
-                raise ValidationError(
-                    f"Invalid segmented reference format: '{entry}'. "
-                    f"Both segment name and path are required."
-                )
-            parsed_segments[segment_name] = segment_path
-        
+        if isinstance(segmented_reference, dict):
+            parsed_segments = segmented_reference
+        else:
+            parsed_segments = {}
+            for entry in segmented_reference:
+                if "=" not in entry:
+                    raise ValidationError(
+                        f"Invalid segmented reference format: '{entry}'. "
+                        f"Expected SEGMENT=PATH (e.g. S=/path/to/S.fasta)"
+                    )
+                segment_name, segment_path = entry.split("=", 1)
+                segment_name = segment_name.strip()
+                segment_path = segment_path.strip()
+                if not segment_name or not segment_path:
+                    raise ValidationError(
+                        f"Invalid segmented reference format: '{entry}'. "
+                        f"Both segment name and path are required."
+                    )
+                parsed_segments[segment_name] = segment_path
+
         args["reference"] = parsed_segments
         args["segmented_reference"] = None
         reference = parsed_segments

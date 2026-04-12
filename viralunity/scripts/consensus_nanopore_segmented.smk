@@ -18,7 +18,7 @@ rule sanitize_reference:
     shell:
         """
         mkdir -p $(dirname {output.fasta})
-        sed '/^>/s/[\\\/|,~ ]/_/g' {input} > {output.fasta}
+        sed '/^>/s/[\\/|,~ ]/_/g' {input} > {output.fasta}
         samtools faidx {output.fasta}
         """
 
@@ -37,6 +37,8 @@ rule calculate_assembly_statistics:
     conda:
         "envs/utils.yaml"
     input:
+        get_map_input_fastqs,
+        get_map_input_fastqs,
         get_map_input_fastqs,
         rules.trim_primer_sequences.output.bam,
         rules.calculate_coverage_basewise.output.table_cov,

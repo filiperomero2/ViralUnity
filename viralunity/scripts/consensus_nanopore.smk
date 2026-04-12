@@ -9,7 +9,7 @@ rule sanitize_reference:
     shell:
         """
         mkdir -p $(dirname {output.fasta})
-        sed '/^>/s/[\\\/|,~ ]/_/g' {input} > {output.fasta}
+        sed '/^>/s/[\\/|,~ ]/_/g' {input} > {output.fasta}
         samtools faidx {output.fasta}
         """
 
