@@ -8,14 +8,23 @@ rule all:
         ),
         config['output'] + "benchmark.tsv"
 
+rule sanitize_reference:
+    input: lambda wildcards: SEGMENTS[wildcards.segment]
+    output:
+        fasta = config["output"] + "reference/{segment}.sanitized.fasta",
+        fai = config["output"] + "reference/{segment}.sanitized.fasta.fai"
+    shell:
+        """
+        mkdir -p $(dirname {output.fasta})
+        sed '/^>/s/[/|~ ]/_/g' {input} > {output.fasta}
+        samtools faidx {output.fasta}
+        """
+
 def get_map_input_fastqs(wildcards):
     reads = config["samples"][wildcards.sample].split()
     return(reads)
 
-def get_segment_reference(wildcards):
-    return SEGMENTS[wildcards.segment]
-
-REFERENCE = get_segment_reference
+REFERENCE = rules.sanitize_reference.output.fasta
 SEGMENT_WILDCARD = "{segment}/"
 
 include: "rules/alignment_nanopore.smk"
@@ -68,12 +77,12 @@ rule align_consensus_to_reference_genome:
         aln_consensus = config['output'] + "assembly/{segment}/consensus/final_consensus/samples_alignment.fasta"
     params:
         path_consensus = config['output'] + "assembly/{segment}/consensus/final_consensus/",
-        reference = get_segment_reference
+        reference = REFERENCE
     shell:
         """
-        cat {params.reference} {params.path_consensus}/*.renamed.fasta > {params.path_consensus}/consensus.fasta; 
-        minimap2 -a --sam-hit-only --secondary=no --score-N=0 {params.reference} {params.path_consensus}/consensus.fasta -o {params.path_consensus}/aln.consensus.sam; 
-        gofasta sam toMultiAlign --pad -s {params.path_consensus}/aln.consensus.sam -o {output.aln_consensus}; 
+        cat {params.reference} {params.path_consensus}/*.renamed.fasta > {params.path_consensus}/consensus.fasta;
+        minimap2 -a --sam-hit-only --secondary=no --score-N=0 {params.reference} {params.path_consensus}/consensus.fasta -o {params.path_consensus}/aln.consensus.sam;
+        gofasta sam toMultiAlign --pad -s {params.path_consensus}/aln.consensus.sam -o {output.aln_consensus};
         sed '/^>/ ! s/-/N/g' {output.aln_consensus} > {params.path_consensus}/aln.consensus.indelsMasked.fasta
         """
 

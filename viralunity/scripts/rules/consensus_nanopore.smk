@@ -33,8 +33,6 @@ rule infer_consensus_sequence:
     threads: config["threads"] 
     shell:
         """
-        samtools faidx {input.reference}
-
         run_clair3.sh \
             --bam_fn={input.bam} \
             --ref_fn={input.reference} \

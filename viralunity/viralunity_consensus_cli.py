@@ -5,6 +5,37 @@ from typing import Optional, Tuple
 from viralunity.viralunity_consensus import main as consensus_main
 
 
+def _parse_segmented_reference(segmented_reference: Tuple[str, ...]) -> Optional[dict]:
+    """Parse SEGMENT=PATH strings into a dictionary.
+
+    Args:
+        segmented_reference: Tuple of strings in SEGMENT=PATH format
+
+    Returns:
+        Dictionary mapping segment names to paths, or None if empty
+    """
+    if not segmented_reference:
+        return None
+
+    parsed = {}
+    for entry in segmented_reference:
+        if "=" not in entry:
+            raise click.BadParameter(
+                f"Invalid segmented reference format: '{entry}'. "
+                "Expected SEGMENT=PATH (e.g. S=/path/to/S.fasta)"
+            )
+        name, path = entry.split("=", 1)
+        name = name.strip()
+        path = path.strip()
+        if not name or not path:
+            raise click.BadParameter(
+                f"Invalid segmented reference format: '{entry}'. "
+                "Both segment name and path are required."
+            )
+        parsed[name] = path
+    return parsed
+
+
 # Common options (applied to both illumina and nanopore subcommands)
 _COMMON_OPTIONS = [
     click.option(
@@ -189,7 +220,7 @@ def consensus_illumina(
         output=output,
         run_name=run_name,
         reference=reference,
-        segmented_reference=segmented_reference,
+        segmented_reference=_parse_segmented_reference(segmented_reference),
         primer_scheme=primer_scheme,
         minimum_coverage=minimum_coverage,
         minimum_read_length=minimum_read_length,
@@ -281,7 +312,7 @@ def consensus_nanopore(
         output=output,
         run_name=run_name,
         reference=reference,
-        segmented_reference=segmented_reference,
+        segmented_reference=_parse_segmented_reference(segmented_reference),
         primer_scheme=primer_scheme,
         minimum_coverage=minimum_coverage,
         minimum_read_length=minimum_read_length,

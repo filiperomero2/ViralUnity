@@ -1,5 +1,17 @@
 SEGMENT_WILDCARD = ""
-REFERENCE = config["reference"]
+rule sanitize_reference:
+    input: config["reference"]
+    output: 
+        fasta = config["output"] + "reference/reference.sanitized.fasta",
+        fai = config["output"] + "reference/reference.sanitized.fasta.fai"
+    shell:
+        """
+        mkdir -p $(dirname {output.fasta})
+        sed '/^>/s/[/|~ ]/_/g' {input} > {output.fasta}
+        samtools faidx {output.fasta}
+        """
+
+REFERENCE = rules.sanitize_reference.output.fasta
 
 rule all:
     input:
