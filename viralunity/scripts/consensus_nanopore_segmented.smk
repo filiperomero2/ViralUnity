@@ -9,6 +9,8 @@ rule all:
         config['output'] + "benchmark.tsv"
 
 rule sanitize_reference:
+    conda:
+        "envs/clair3.yaml"
     input: lambda wildcards: SEGMENTS[wildcards.segment]
     output:
         fasta = config["output"] + "reference/{segment}.sanitized.fasta",

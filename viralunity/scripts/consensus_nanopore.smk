@@ -1,5 +1,7 @@
 SEGMENT_WILDCARD = ""
 rule sanitize_reference:
+    conda:
+        "envs/clair3.yaml"
     input: config["reference"]
     output: 
         fasta = config["output"] + "reference/reference.sanitized.fasta",
