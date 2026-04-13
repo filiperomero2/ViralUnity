@@ -6,7 +6,9 @@ if run_denovo:
             filtered_R2 = rules.remove_host_reads.output.filtered_R2,
         output:
             contigs = config["output"] + "denovo_assembly/megahit/{sample}/final.contigs.fa"
-        threads: config["threads"]
+        threads: config.get("run_megahit_cpus", 2)
+        resources:
+            mem_mb = config.get("run_megahit_ram", 4) * 1024
         log:
             config["output"] + "logs/megahit/{sample}.log"
         benchmark:

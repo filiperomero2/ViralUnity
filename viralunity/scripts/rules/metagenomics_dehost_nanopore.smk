@@ -6,7 +6,9 @@ if dehost_with_deacon:
         output:
             filtered = config["output"] + "host_filtered/{sample}.filtered.fastq.gz",
             summary = config["output"] + "logs/remove_host/{sample}.deacon_summary.json",
-        threads: config["threads"]
+        threads: config.get("remove_host_reads_cpus", 2)
+        resources:
+            mem_mb = config.get("remove_host_reads_ram", 4) * 1024
         log:
             config["output"] + "logs/remove_host/{sample}.log"
         benchmark:
@@ -26,7 +28,9 @@ elif host_filtering_enabled:
             fasta = config["host_reference"]
         output:
             index = config["host_reference"] + ".mmi"
-        threads: config["threads"]
+        threads: config.get("index_host_genome_cpus", 2)
+        resources:
+            mem_mb = config.get("index_host_genome_ram", 4) * 1024
         log:
             config["output"] + "logs/remove_host/host_genome_indexing.log"
         benchmark:
@@ -45,7 +49,9 @@ elif host_filtering_enabled:
             index = config["host_reference"] + ".mmi"
         output:
             filtered = config["output"] + "host_filtered/{sample}.filtered.fastq.gz"
-        threads: config["threads"]
+        threads: config.get("remove_host_reads_cpus", 2)
+        resources:
+            mem_mb = config.get("remove_host_reads_ram", 4) * 1024
         log:
             config["output"] + "logs/remove_host/{sample}.log"
         benchmark:

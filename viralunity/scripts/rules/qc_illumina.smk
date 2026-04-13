@@ -27,7 +27,9 @@ rule perform_qc:
         cut_right_window_size = config["cut_right_window_size"],
         cut_right_mean_quality = config["cut_right_mean_quality"],
         adapter_args = get_fastp_adapter_args
-    threads: config["threads"]
+    threads: config.get("perform_qc_cpus", 2)
+    resources:
+        mem_mb = config.get("perform_qc_ram", 4) * 1024
     log:
         config['output'] + "logs/fastp/{sample}.log"
     benchmark:

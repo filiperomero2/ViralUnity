@@ -5,7 +5,9 @@ if run_denovo and run_k2_contigs:
         output:
             report = config["output"] + "metagenomics/taxonomic_assignments/kraken2_contigs/results/{sample}.report.txt",
             outfile = config["output"] + "metagenomics/taxonomic_assignments/kraken2_contigs/results/{sample}.output.txt",
-        threads: config["threads"]
+        threads: config.get("run_kraken2_contigs_cpus", 2)
+        resources:
+            mem_mb = config.get("run_kraken2_contigs_ram", 4) * 1024
         params:
             database = config["kraken2_database"],
             minimum_hit_group = config.get("minimum_hit_group", 4)

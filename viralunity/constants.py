@@ -82,3 +82,53 @@ class SampleSheetSeparator:
     UNDERSCORE = "_"
     HYPHEN = "-"
     DOT = "."
+
+
+class ResourceDefaults:
+    """Default resource allocation for computational Snakemake rules.
+
+    Each rule gets <rule>_cpus and <rule>_ram (GB) in the config YAML.
+    """
+
+    DEFAULT_CPUS = 2
+    DEFAULT_RAM = 4  # GB
+
+    # Consensus pipeline — Illumina computational rules
+    CONSENSUS_ILLUMINA_RULES = [
+        "perform_qc",
+        "map_reads",
+        "trim_primer_sequences",
+        "detect_isnv",
+    ]
+
+    # Consensus pipeline — Nanopore computational rules
+    CONSENSUS_NANOPORE_RULES = [
+        "map_reads",
+        "trim_primer_sequences",
+        "infer_consensus_sequence",
+    ]
+
+    # Metagenomics pipeline — shared computational rules
+    META_SHARED_RULES = [
+        "remove_host_reads",
+        "index_host_genome",
+        "run_megahit",
+        "run_kraken2_reads",
+        "run_kraken2_contigs",
+        "run_diamond_reads",
+        "run_diamond_contigs",
+        "index_viral_contigs",
+        "remap_reads_to_viral_contigs",
+        "bam_sort_index_idxstats_from_medaka",
+    ]
+
+    # Metagenomics pipeline — Illumina-specific computational rules
+    META_ILLUMINA_RULES = [
+        "perform_qc",
+    ]
+
+    # Metagenomics pipeline — Nanopore-specific computational rules
+    META_NANOPORE_RULES = [
+        "run_racon",
+        "run_medaka",
+    ]

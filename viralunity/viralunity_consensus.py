@@ -19,7 +19,7 @@ from viralunity.validators import (
 )
 from viralunity.config_generator import ConfigGenerator
 from viralunity.exceptions import ValidationError
-from viralunity.constants import DataType
+from viralunity.constants import DataType, ResourceDefaults
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -122,6 +122,12 @@ def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None
             af_isnv_threshold=args.get("af_isnv_threshold", 0),
             run_isnv=args.get("run_isnv", False),
         )
+
+    # Add resource settings
+    if data_type == DataType.ILLUMINA:
+        generator.add_resource_settings(args, ResourceDefaults.CONSENSUS_ILLUMINA_RULES)
+    else:
+        generator.add_resource_settings(args, ResourceDefaults.CONSENSUS_NANOPORE_RULES)
 
     # Save config file
     generator.save()

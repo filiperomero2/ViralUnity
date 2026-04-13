@@ -23,7 +23,9 @@ rule detect_isnv:
         config['output'] + "assembly/" + SEGMENT_WILDCARD + "logs/lofreq/{sample}.log"
     benchmark:
         config['output'] + "assembly/" + SEGMENT_WILDCARD + "logs/lofreq/{sample}.benchmark.txt"
-    threads: config["threads"]
+    threads: config.get("detect_isnv_cpus", 2)
+    resources:
+        mem_mb = config.get("detect_isnv_ram", 4) * 1024
     shell:
         """
         lofreq indelqual \

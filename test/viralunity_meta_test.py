@@ -173,10 +173,12 @@ class Test_GenerateConfigFile(unittest.TestCase):
         # config_file.yaml has no directory component, so makedirs should NOT be called
         mock_makedirs.assert_not_called()
         mock_open.assert_called_once_with("config_file.yaml", "w")
-        # Check that yaml.dump was called with correct config structure
-        self.assertEqual(mock_yaml_dump.call_count, 1)
-        call_args = mock_yaml_dump.call_args
-        config_dict = call_args[0][0]  # First positional argument
+        # Check that yaml.dump was called (once per section)
+        self.assertGreaterEqual(mock_yaml_dump.call_count, 1)
+        # Aggregate all dumped sections into one dict
+        config_dict = {}
+        for call in mock_yaml_dump.call_args_list:
+            config_dict.update(call[0][0])
         self.assertIn("samples", config_dict)
         self.assertEqual(config_dict["data"], "illumina")
         self.assertEqual(config_dict["kraken2_database"], "kraken2_db")
@@ -205,10 +207,12 @@ class Test_GenerateConfigFile(unittest.TestCase):
         # config_file.yaml has no directory component, so makedirs should NOT be called
         mock_makedirs.assert_not_called()
         mock_open.assert_called_once_with("config_file.yaml", "w")
-        # Check that yaml.dump was called with correct config structure
-        self.assertEqual(mock_yaml_dump.call_count, 1)
-        call_args = mock_yaml_dump.call_args
-        config_dict = call_args[0][0]  # First positional argument
+        # Check that yaml.dump was called (once per section)
+        self.assertGreaterEqual(mock_yaml_dump.call_count, 1)
+        # Aggregate all dumped sections into one dict
+        config_dict = {}
+        for call in mock_yaml_dump.call_args_list:
+            config_dict.update(call[0][0])
         self.assertIn("samples", config_dict)
         self.assertEqual(config_dict["data"], "nanopore")
         self.assertEqual(config_dict["kraken2_database"], "kraken2_db")

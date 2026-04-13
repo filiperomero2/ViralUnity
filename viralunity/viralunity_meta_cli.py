@@ -2,6 +2,7 @@
 
 import click
 from viralunity.viralunity_meta import main as meta_main
+from viralunity.constants import ResourceDefaults
 
 # Common options (applied to both illumina and nanopore subcommands)
 _COMMON_META_OPTIONS = [
@@ -179,6 +180,36 @@ def _add_common_meta_options(func):
     return func
 
 
+def _generate_resource_options(rules: list) -> list:
+    """Generate click options for CPUs and RAM for a list of rules."""
+    options = []
+    for rule in rules:
+        cmd_rule = rule.replace('_', '-')
+        options.append(click.option(
+            f"--{cmd_rule}-cpus",
+            default=ResourceDefaults.DEFAULT_CPUS,
+            show_default=True,
+            type=int,
+            help=f"Threads for {rule} rule.",
+        ))
+        options.append(click.option(
+            f"--{cmd_rule}-ram",
+            default=ResourceDefaults.DEFAULT_RAM,
+            show_default=True,
+            type=int,
+            help=f"RAM (GB) for {rule} rule.",
+        ))
+    return options
+
+def _add_resource_options(rules: list):
+    """Decorator to add resource options to a click command."""
+    def decorator(func):
+        for option in reversed(_generate_resource_options(rules)):
+            func = option(func)
+        return func
+    return decorator
+
+
 def _build_meta_args(data_type, **kwargs) -> dict:
     """Build args dict for meta_main, normalising negative_controls."""
     negative = kwargs.get("negative_controls", "")
@@ -197,6 +228,7 @@ def meta():
 
 @meta.command("illumina")
 @_add_common_meta_options
+@_add_resource_options(ResourceDefaults.META_SHARED_RULES + ResourceDefaults.META_ILLUMINA_RULES)
 @click.option(
     "--adapters",
     default="NA",
@@ -245,87 +277,16 @@ def meta():
     type=int,
     help="cut_right mean quality threshold [fastp].",
 )
-def meta_illumina(
-    sample_sheet,
-    config_file,
-    output,
-    run_name,
-    kraken2_database,
-    krona_database,
-    remove_human_reads,
-    remove_unclassified_reads,
-    host_reference,
-    deacon_index,
-    taxdump,
-    run_denovo_assembly,
-    run_kraken2_reads,
-    run_kraken2_contigs,
-    run_diamond_reads,
-    run_diamond_contigs,
-    taxids,
-    diamond_database,
-    diamond_sensitivity,
-    evalue,
-    bleed_fraction,
-    negative_controls,
-    negative_p_threshold,
-    minimum_hit_group,
-    threads,
-    threads_total,
-    create_config_only,
-    adapters,
-    minimum_read_length,
-    trim_head,
-    trim_tail,
-    cut_front_mean_quality,
-    cut_tail_mean_quality,
-    cut_right_window_size,
-    cut_right_mean_quality,
-):
+def meta_illumina(**kwargs):
     """Run metagenomics pipeline for Illumina data."""
-    args = _build_meta_args(
-        data_type="illumina",
-        sample_sheet=sample_sheet,
-        config_file=config_file,
-        output=output,
-        run_name=run_name,
-        kraken2_database=kraken2_database,
-        krona_database=krona_database,
-        remove_human_reads=remove_human_reads,
-        remove_unclassified_reads=remove_unclassified_reads,
-        host_reference=host_reference,
-        deacon_index=deacon_index,
-        taxdump=taxdump,
-        run_denovo_assembly=run_denovo_assembly,
-        run_kraken2_reads=run_kraken2_reads,
-        run_kraken2_contigs=run_kraken2_contigs,
-        run_diamond_reads=run_diamond_reads,
-        run_diamond_contigs=run_diamond_contigs,
-        taxids=taxids,
-        diamond_database=diamond_database,
-        diamond_sensitivity=diamond_sensitivity,
-        evalue=evalue,
-        bleed_fraction=bleed_fraction,
-        negative_controls=negative_controls,
-        negative_p_threshold=negative_p_threshold,
-        minimum_hit_group=minimum_hit_group,
-        threads=threads,
-        threads_total=threads_total,
-        create_config_only=create_config_only,
-        adapters=adapters,
-        minimum_read_length=minimum_read_length,
-        trim_head=trim_head,
-        trim_tail=trim_tail,
-        cut_front_mean_quality=cut_front_mean_quality,
-        cut_tail_mean_quality=cut_tail_mean_quality,
-        cut_right_window_size=cut_right_window_size,
-        cut_right_mean_quality=cut_right_mean_quality,
-    )
+    args = _build_meta_args(data_type="illumina", **kwargs)
+    args.update({k: v for k, v in kwargs.items() if k not in args})
     raise SystemExit(meta_main(args))
 
 
 @meta.command("nanopore")
 @_add_common_meta_options
+@_add_resource_options(ResourceDefaults.META_SHARED_RULES + ResourceDefaults.META_NANOPORE_RULES)
 @click.option(
     "--run-polish-racon/--no-polish-racon",
     default=False,
@@ -343,70 +304,8 @@ def meta_illumina(
     default=None,
     help="Medaka model name (e.g. r941_min_high_g360). Uses Medaka default if omitted.",
 )
-def meta_nanopore(
-    sample_sheet,
-    config_file,
-    output,
-    run_name,
-    kraken2_database,
-    krona_database,
-    remove_human_reads,
-    remove_unclassified_reads,
-    host_reference,
-    deacon_index,
-    taxdump,
-    run_denovo_assembly,
-    run_kraken2_reads,
-    run_kraken2_contigs,
-    run_diamond_reads,
-    run_diamond_contigs,
-    taxids,
-    diamond_database,
-    diamond_sensitivity,
-    evalue,
-    bleed_fraction,
-    negative_controls,
-    negative_p_threshold,
-    minimum_hit_group,
-    threads,
-    threads_total,
-    create_config_only,
-    run_polish_racon,
-    run_polish_medaka,
-    medaka_model,
-):
+def meta_nanopore(**kwargs):
     """Run metagenomics pipeline for Nanopore data."""
-    args = _build_meta_args(
-        data_type="nanopore",
-        sample_sheet=sample_sheet,
-        config_file=config_file,
-        output=output,
-        run_name=run_name,
-        kraken2_database=kraken2_database,
-        krona_database=krona_database,
-        remove_human_reads=remove_human_reads,
-        remove_unclassified_reads=remove_unclassified_reads,
-        host_reference=host_reference,
-        deacon_index=deacon_index,
-        taxdump=taxdump,
-        run_denovo_assembly=run_denovo_assembly,
-        run_kraken2_reads=run_kraken2_reads,
-        run_kraken2_contigs=run_kraken2_contigs,
-        run_diamond_reads=run_diamond_reads,
-        run_diamond_contigs=run_diamond_contigs,
-        taxids=taxids,
-        diamond_database=diamond_database,
-        diamond_sensitivity=diamond_sensitivity,
-        evalue=evalue,
-        bleed_fraction=bleed_fraction,
-        negative_controls=negative_controls,
-        negative_p_threshold=negative_p_threshold,
-        minimum_hit_group=minimum_hit_group,
-        threads=threads,
-        threads_total=threads_total,
-        create_config_only=create_config_only,
-        run_polish_racon=run_polish_racon,
-        run_polish_medaka=run_polish_medaka,
-        medaka_model=medaka_model,
-    )
+    args = _build_meta_args(data_type="nanopore", **kwargs)
+    args.update({k: v for k, v in kwargs.items() if k not in args})
     raise SystemExit(meta_main(args))

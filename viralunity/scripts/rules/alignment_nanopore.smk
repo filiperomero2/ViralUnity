@@ -19,7 +19,9 @@ rule map_reads:
         config['output'] + "assembly/" + SEGMENT_WILDCARD + "logs/minimap2/{sample}.log"
     benchmark:
         config['output'] + "assembly/" + SEGMENT_WILDCARD + "logs/minimap2/{sample}.benchmark.txt"
-    threads: config["threads"] 
+    threads: config.get("map_reads_cpus", 2)
+    resources:
+        mem_mb = config.get("map_reads_ram", 4) * 1024
     shell:
         """
         minimap2 -a -t {threads} -x map-ont {input.reference} {input.fastq} |

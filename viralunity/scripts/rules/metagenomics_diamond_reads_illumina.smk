@@ -5,7 +5,9 @@ if run_diamond_reads:
             db = diamond_db_file
         output:
             tsv = config["output"] + "metagenomics/taxonomic_assignments/diamond_reads/results/{sample}.diamond.tsv"
-        threads: config["threads"]
+        threads: config.get("run_diamond_reads_cpus", 2)
+        resources:
+            mem_mb = config.get("run_diamond_reads_ram", 4) * 1024
         log:
             config["output"] + "logs/diamond_reads/{sample}.log"
         benchmark:

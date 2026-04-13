@@ -5,7 +5,9 @@ if run_denovo:
             reads = rules.remove_host_reads.output.filtered
         output:
             contigs = config["output"] + "denovo_assembly/megahit/{sample}/final.contigs.fa"
-        threads: config["threads"]
+        threads: config.get("run_megahit_cpus", 2)
+        resources:
+            mem_mb = config.get("run_megahit_ram", 4) * 1024
         log:
             config["output"] + "logs/megahit/{sample}.log"
         benchmark:
@@ -40,7 +42,9 @@ if run_denovo:
                 reads = rules.remove_host_reads.output.filtered
             output:
                 racon_fasta = config["output"] + "denovo_assembly/megahit/{sample}/racon.fasta"
-            threads: config["threads"]
+            threads: config.get("run_racon_cpus", 2)
+            resources:
+                mem_mb = config.get("run_racon_ram", 4) * 1024
             log:
                 config["output"] + "logs/racon/{sample}.log"
             benchmark:
@@ -71,7 +75,9 @@ if run_denovo:
             output:
                 polished = config["output"] + "denovo_assembly/megahit/{sample}/polished.fasta",
                 bam = config["output"] + "medaka_work/{sample}/calls_to_draft.bam"
-            threads: config["threads"]
+            threads: config.get("run_medaka_cpus", 2)
+            resources:
+                mem_mb = config.get("run_medaka_ram", 4) * 1024
             log:
                 config["output"] + "logs/medaka/{sample}.log"
             benchmark:

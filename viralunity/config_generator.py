@@ -4,12 +4,17 @@ import os
 from typing import Dict, List, Any, Optional, Union
 import yaml
 
-from viralunity.constants import ConfigKeys, DataType
+from viralunity.constants import ConfigKeys, DataType, ResourceDefaults
 from viralunity.exceptions import ConfigurationError
 
 
 class ConfigGenerator:
     """Generates YAML configuration files for Snakemake workflows."""
+
+    # Section names used as comment headers in the output YAML
+    SECTION_PARAMETERS = "parameters"
+    SECTION_DATABASES = "databases"
+    SECTION_RESOURCES = "resources"
 
     def __init__(self, config_path: str):
         """Initialize config generator.
@@ -19,6 +24,19 @@ class ConfigGenerator:
         """
         self.config_path = config_path
         self.config: Dict[str, Any] = {}
+        # Track which section each key belongs to
+        self._sections: Dict[str, str] = {}
+
+    def _set(self, key: str, value: Any, section: str) -> None:
+        """Set a config key and tag it to a section.
+
+        Args:
+            key: Configuration key name
+            value: Configuration value
+            section: Section name (parameters, databases, resources)
+        """
+        self.config[key] = value
+        self._sections[key] = section
 
     def add_samples(self, samples: Dict[str, List[str]], data_type: str) -> None:
         """Add samples to configuration.
@@ -45,8 +63,8 @@ class ConfigGenerator:
                     )
                 formatted_samples[key] = file_paths[0]
 
-        self.config[ConfigKeys.SAMPLES] = formatted_samples
-        self.config[ConfigKeys.DATA] = data_type
+        self._set(ConfigKeys.SAMPLES, formatted_samples, self.SECTION_PARAMETERS)
+        self._set(ConfigKeys.DATA, data_type, self.SECTION_PARAMETERS)
 
     def add_output(self, output_dir: str, run_name: str) -> None:
         """Add output directory to configuration.
@@ -55,7 +73,7 @@ class ConfigGenerator:
             output_dir: Base output directory
             run_name: Name of the run
         """
-        self.config[ConfigKeys.OUTPUT] = os.path.join(output_dir, run_name, "")
+        self._set(ConfigKeys.OUTPUT, os.path.join(output_dir, run_name, ""), self.SECTION_PARAMETERS)
 
     def add_threads(self, threads: int) -> None:
         """Add thread count to configuration.
@@ -63,7 +81,7 @@ class ConfigGenerator:
         Args:
             threads: Number of threads
         """
-        self.config[ConfigKeys.THREADS] = threads
+        self._set(ConfigKeys.THREADS, threads, self.SECTION_PARAMETERS)
 
     def add_consensus_nanopore_settings(
         self,
@@ -86,13 +104,14 @@ class ConfigGenerator:
             variant_depth: Minimum alt allele depth to call a variant into consensus [clair3]
             minimum_map_quality: Minimum map quality to call a variant into consensus [clair3]
         """
-        self.config[ConfigKeys.MINIMUM_LENGTH] = minimum_read_length
-        self.config[ConfigKeys.AF_THRESHOLD] = af_threshold
-        self.config[ConfigKeys.CHUNK_SIZE] = chunk_size
-        self.config[ConfigKeys.CLAIR3_MODEL] = clair3_model
-        self.config[ConfigKeys.VARIANT_QUALITY] = variant_quality
-        self.config[ConfigKeys.VARIANT_DEPTH] = variant_depth
-        self.config[ConfigKeys.MINIMUM_MAP_QUALITY] = minimum_map_quality
+        P = self.SECTION_PARAMETERS
+        self._set(ConfigKeys.MINIMUM_LENGTH, minimum_read_length, P)
+        self._set(ConfigKeys.AF_THRESHOLD, af_threshold, P)
+        self._set(ConfigKeys.CHUNK_SIZE, chunk_size, P)
+        self._set(ConfigKeys.CLAIR3_MODEL, clair3_model, P)
+        self._set(ConfigKeys.VARIANT_QUALITY, variant_quality, P)
+        self._set(ConfigKeys.VARIANT_DEPTH, variant_depth, P)
+        self._set(ConfigKeys.MINIMUM_MAP_QUALITY, minimum_map_quality, P)
 
     def add_illumina_settings(
         self,
@@ -123,17 +142,18 @@ class ConfigGenerator:
             af_isnv_threshold: Minimum allele frequency threshold to call a variant into iSNV analysis
             run_isnv: Whether to run iSNV analysis
         """
-        self.config[ConfigKeys.ADAPTERS] = adapters
-        self.config[ConfigKeys.MINIMUM_LENGTH] = minimum_read_length
-        self.config[ConfigKeys.TRIM_HEAD] = trim_head if trim_head is not None else 0
-        self.config[ConfigKeys.TRIM_TAIL] = trim_tail if trim_tail is not None else 0
-        self.config[ConfigKeys.CUT_FRONT_MEAN_QUALITY] = cut_front_mean_quality
-        self.config[ConfigKeys.CUT_TAIL_MEAN_QUALITY] = cut_tail_mean_quality
-        self.config[ConfigKeys.CUT_RIGHT_WINDOW_SIZE] = cut_right_window_size
-        self.config[ConfigKeys.CUT_RIGHT_MEAN_QUALITY] = cut_right_mean_quality
-        self.config[ConfigKeys.AF_THRESHOLD] = af_threshold
-        self.config[ConfigKeys.AF_ISNV_THRESHOLD] = af_isnv_threshold
-        self.config[ConfigKeys.RUN_ISNV] = run_isnv
+        P = self.SECTION_PARAMETERS
+        self._set(ConfigKeys.ADAPTERS, adapters, P)
+        self._set(ConfigKeys.MINIMUM_LENGTH, minimum_read_length, P)
+        self._set(ConfigKeys.TRIM_HEAD, trim_head if trim_head is not None else 0, P)
+        self._set(ConfigKeys.TRIM_TAIL, trim_tail if trim_tail is not None else 0, P)
+        self._set(ConfigKeys.CUT_FRONT_MEAN_QUALITY, cut_front_mean_quality, P)
+        self._set(ConfigKeys.CUT_TAIL_MEAN_QUALITY, cut_tail_mean_quality, P)
+        self._set(ConfigKeys.CUT_RIGHT_WINDOW_SIZE, cut_right_window_size, P)
+        self._set(ConfigKeys.CUT_RIGHT_MEAN_QUALITY, cut_right_mean_quality, P)
+        self._set(ConfigKeys.AF_THRESHOLD, af_threshold, P)
+        self._set(ConfigKeys.AF_ISNV_THRESHOLD, af_isnv_threshold, P)
+        self._set(ConfigKeys.RUN_ISNV, run_isnv, P)
 
     def add_consensus_settings(
         self,
@@ -149,9 +169,10 @@ class ConfigGenerator:
             primer_scheme: Path to primer scheme file or "NA"
             minimum_coverage: Minimum coverage for consensus
         """
-        self.config[ConfigKeys.REFERENCE] = reference
-        self.config[ConfigKeys.SCHEME] = primer_scheme
-        self.config[ConfigKeys.MINIMUM_DEPTH] = minimum_coverage
+        P = self.SECTION_PARAMETERS
+        self._set(ConfigKeys.REFERENCE, reference, P)
+        self._set(ConfigKeys.SCHEME, primer_scheme, P)
+        self._set(ConfigKeys.MINIMUM_DEPTH, minimum_coverage, P)
 
     def add_metagenomics_settings(
         self,
@@ -200,26 +221,30 @@ class ConfigGenerator:
             negative_p_threshold: p-value threshold for negative filter
             minimum_hit_group: Kraken2 --minimum-hit-group (default: 4)
         """
-        self.config[ConfigKeys.KRAKEN2_DATABASE] = kraken2_database
-        self.config[ConfigKeys.KRONA_DATABASE] = krona_database
-        self.config[ConfigKeys.REMOVE_HUMAN_READS] = remove_human_reads
-        self.config[ConfigKeys.REMOVE_UNCLASSIFIED_READS] = remove_unclassified_reads
-        self.config[ConfigKeys.HOST_REFERENCE] = host_reference
-        self.config[ConfigKeys.DEACON_INDEX] = deacon_index
-        self.config[ConfigKeys.TAXDUMP] = taxdump
-        self.config[ConfigKeys.RUN_DENOVO_ASSEMBLY] = run_denovo_assembly
-        self.config[ConfigKeys.RUN_KRAKEN2_READS] = run_kraken2_reads
-        self.config[ConfigKeys.RUN_KRAKEN2_CONTIGS] = run_kraken2_contigs
-        self.config[ConfigKeys.RUN_DIAMOND_READS] = run_diamond_reads
-        self.config[ConfigKeys.RUN_DIAMOND_CONTIGS] = run_diamond_contigs
-        self.config[ConfigKeys.TAXIDS] = taxids
-        self.config[ConfigKeys.DIAMOND_DATABASE] = diamond_database
-        self.config[ConfigKeys.DIAMOND_SENSITIVITY] = diamond_sensitivity
-        self.config[ConfigKeys.EVALUE] = evalue
-        self.config[ConfigKeys.BLEED_FRACTION] = bleed_fraction
-        self.config[ConfigKeys.NEGATIVE_CONTROLS] = negative_controls or []
-        self.config[ConfigKeys.NEGATIVE_P_THRESHOLD] = negative_p_threshold
-        self.config[ConfigKeys.MINIMUM_HIT_GROUP] = minimum_hit_group
+        P = self.SECTION_PARAMETERS
+        D = self.SECTION_DATABASES
+        # Database paths
+        self._set(ConfigKeys.KRAKEN2_DATABASE, kraken2_database, D)
+        self._set(ConfigKeys.KRONA_DATABASE, krona_database, D)
+        self._set(ConfigKeys.HOST_REFERENCE, host_reference, D)
+        self._set(ConfigKeys.DEACON_INDEX, deacon_index, D)
+        self._set(ConfigKeys.TAXDUMP, taxdump, D)
+        self._set(ConfigKeys.TAXIDS, taxids, D)
+        self._set(ConfigKeys.DIAMOND_DATABASE, diamond_database, D)
+        # Pipeline parameters
+        self._set(ConfigKeys.REMOVE_HUMAN_READS, remove_human_reads, P)
+        self._set(ConfigKeys.REMOVE_UNCLASSIFIED_READS, remove_unclassified_reads, P)
+        self._set(ConfigKeys.RUN_DENOVO_ASSEMBLY, run_denovo_assembly, P)
+        self._set(ConfigKeys.RUN_KRAKEN2_READS, run_kraken2_reads, P)
+        self._set(ConfigKeys.RUN_KRAKEN2_CONTIGS, run_kraken2_contigs, P)
+        self._set(ConfigKeys.RUN_DIAMOND_READS, run_diamond_reads, P)
+        self._set(ConfigKeys.RUN_DIAMOND_CONTIGS, run_diamond_contigs, P)
+        self._set(ConfigKeys.DIAMOND_SENSITIVITY, diamond_sensitivity, P)
+        self._set(ConfigKeys.EVALUE, evalue, P)
+        self._set(ConfigKeys.BLEED_FRACTION, bleed_fraction, P)
+        self._set(ConfigKeys.NEGATIVE_CONTROLS, negative_controls or [], P)
+        self._set(ConfigKeys.NEGATIVE_P_THRESHOLD, negative_p_threshold, P)
+        self._set(ConfigKeys.MINIMUM_HIT_GROUP, minimum_hit_group, P)
 
     def add_nanopore_settings(
         self,
@@ -234,10 +259,11 @@ class ConfigGenerator:
             run_polish_medaka: Whether to run Medaka polishing (after Racon if both enabled).
             medaka_model: Medaka model name (e.g. r941_min_high_g360). Optional; Medaka uses default if not set.
         """
-        self.config[ConfigKeys.RUN_POLISH_RACON] = run_polish_racon
-        self.config[ConfigKeys.RUN_POLISH_MEDAKA] = run_polish_medaka
+        P = self.SECTION_PARAMETERS
+        self._set(ConfigKeys.RUN_POLISH_RACON, run_polish_racon, P)
+        self._set(ConfigKeys.RUN_POLISH_MEDAKA, run_polish_medaka, P)
         if medaka_model is not None:
-            self.config[ConfigKeys.MEDAKA_MODEL] = medaka_model
+            self._set(ConfigKeys.MEDAKA_MODEL, medaka_model, P)
 
     def add_workflow_path(self, workflow_path: str) -> None:
         """Add workflow path to configuration.
@@ -245,10 +271,35 @@ class ConfigGenerator:
         Args:
             workflow_path: Path to the workflow directory
         """
-        self.config["workflow_path"] = workflow_path
+        self._set("workflow_path", workflow_path, self.SECTION_PARAMETERS)
+
+    def add_resource_settings(self, args: Dict[str, Any], rule_names: list) -> None:
+        """Add per-rule resource settings (CPUs and RAM) to configuration.
+
+        For each rule name in rule_names, writes ``<rule>_cpus`` and
+        ``<rule>_ram`` keys to the config dict.  Values are taken from
+        *args* if present; otherwise the defaults from
+        ``ResourceDefaults`` are used.
+
+        Args:
+            args: Dictionary of pipeline arguments (from the CLI).
+            rule_names: List of Snakemake rule name strings that should
+                receive resource entries.
+        """
+        R = self.SECTION_RESOURCES
+        for rule in rule_names:
+            cpus_key = f"{rule}_cpus"
+            ram_key = f"{rule}_ram"
+            self._set(cpus_key, args.get(cpus_key, ResourceDefaults.DEFAULT_CPUS), R)
+            self._set(ram_key, args.get(ram_key, ResourceDefaults.DEFAULT_RAM), R)
+
 
     def save(self) -> None:
-        """Save configuration to YAML file.
+        """Save configuration to YAML file with section comment headers.
+
+        Keys are grouped into sections (# parameters, # databases,
+        # resources) based on the tags assigned by ``_set()``.  Within
+        each section the insertion order of keys is preserved.
 
         Raises:
             ConfigurationError: If config directory cannot be created
@@ -257,9 +308,34 @@ class ConfigGenerator:
         if config_dir:  # Only create directory if path contains a directory component
             os.makedirs(config_dir, exist_ok=True)
 
+        # Group keys by section, preserving insertion order
+        section_order = [
+            self.SECTION_PARAMETERS,
+            self.SECTION_DATABASES,
+            self.SECTION_RESOURCES,
+        ]
+        grouped: Dict[str, Dict[str, Any]] = {s: {} for s in section_order}
+
+        for key, value in self.config.items():
+            section = self._sections.get(key, self.SECTION_PARAMETERS)
+            grouped[section][key] = value
+
         try:
             with open(self.config_path, "w") as f:
-                yaml.dump(self.config, f, default_flow_style=False, sort_keys=False)
+                first = True
+                for section in section_order:
+                    items = grouped[section]
+                    if not items:
+                        continue
+                    if not first:
+                        f.write("\n")
+                    f.write(f"# {section}\n")
+                    yaml.dump(
+                        items, f,
+                        default_flow_style=False,
+                        sort_keys=False,
+                    )
+                    first = False
         except (OSError, IOError) as e:
             raise ConfigurationError(
                 f"Failed to write config file to {self.config_path}: {e}"

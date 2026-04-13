@@ -5,7 +5,9 @@ if run_denovo and run_diamond_contigs:
             db = diamond_db_file
         output:
             tsv = config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/results/{sample}.diamond.tsv"
-        threads: config["threads"]
+        threads: config.get("run_diamond_contigs_cpus", 2)
+        resources:
+            mem_mb = config.get("run_diamond_contigs_ram", 4) * 1024
         log:
             config["output"] + "logs/diamond_contigs/{sample}.log"
         benchmark:
@@ -59,7 +61,9 @@ if run_denovo and run_diamond_contigs:
             fasta = config["output"] + "denovo_assembly/viral_contigs/{sample}.viral_contigs.fa"
         output:
             index = config["output"] + "denovo_assembly/viral_contigs/{sample}.viral_contigs.mmi"
-        threads: config["threads"]
+        threads: config.get("index_viral_contigs_cpus", 2)
+        resources:
+            mem_mb = config.get("index_viral_contigs_ram", 4) * 1024
         conda:
             "../envs/alignment.yaml"
         shell:
@@ -81,7 +85,9 @@ if run_denovo and run_diamond_contigs:
             bam = config["output"] + "mapping/viral/{sample}.viral.bam",
             bai = config["output"] + "mapping/viral/{sample}.viral.bam.bai",
             idxstats = config["output"] + "mapping/viral/{sample}.viral.idxstats.txt"
-        threads: config["threads"]
+        threads: config.get("remap_reads_to_viral_contigs_cpus", 2)
+        resources:
+            mem_mb = config.get("remap_reads_to_viral_contigs_ram", 4) * 1024
         log:
             config["output"] + "logs/remap_viral/{sample}.log"
         benchmark:
