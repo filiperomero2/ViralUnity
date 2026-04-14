@@ -26,6 +26,19 @@ run_kraken2_contigs: true
 run_diamond_reads: false
 run_diamond_contigs: false
 
+run_reference_assembly: true
+ref_assembly_method: kraken2
+ref_assembly_source: reads
+ref_assembly_reads_count: 100
+ref_assembly_contigs_count: 1
+ref_assembly_families:
+  - Coronaviridae
+ref_selection_strategy: taxid
+ref_blast_qcov: 80
+ref_blast_pident: 80
+viral_genomes: databases/virus_genomes/viral.genomes.fasta
+viral_taxids: databases/virus_genomes/genome2taxid.tsv
+
 # Advanced parameters
 taxids: NA
 diamond_sensitivity: sensitive

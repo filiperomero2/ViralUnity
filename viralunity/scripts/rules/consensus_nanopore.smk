@@ -21,13 +21,13 @@ rule infer_consensus_sequence:
         consensus = temp(config['output'] + "assembly/" + SEGMENT_WILDCARD + "consensus/final_consensus/{sample}.consensus.fasta")
     params:
         output_prefix_dir = config['output'] + "assembly/" + SEGMENT_WILDCARD + "clair3/{sample}",
-        minimum_depth = config["minimum_depth"],
-        af_threshold = config["af_threshold"],
-        chunk_size = config["chunk_size"],
-        clair3_model = config["clair3_model"],
-        variant_quality = config["variant_quality"],
-        minimum_map_quality = config["minimum_map_quality"],
-        variant_depth = config["variant_depth"]
+        minimum_depth = config.get("minimum_depth", 10),
+        af_threshold = config.get("af_threshold", 0.7),
+        chunk_size = config.get("chunk_size", 50000),
+        clair3_model = config.get("clair3_model", "r1041_e82_400bps_sup_v420"),
+        variant_quality = config.get("variant_quality", 20),
+        minimum_map_quality = config.get("minimum_map_quality", 20),
+        variant_depth = config.get("variant_depth", 5)
     benchmark:
         config['output'] + "assembly/" + SEGMENT_WILDCARD + "logs/consensus/{sample}.benchmark.txt"
     threads: config.get("infer_consensus_sequence_cpus", 2)

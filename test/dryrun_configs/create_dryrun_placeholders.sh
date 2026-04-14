@@ -34,3 +34,7 @@ touch databases/diamond/nr.dmnd
 
 echo "Placeholder files created successfully in data/, databases/, etc."
 echo "You can now run 'snakemake -n' for any of the dry-run configs."
+
+mkdir -p databases/virus_genomes
+touch databases/virus_genomes/viral.genomes.fasta
+touch databases/virus_genomes/genome2taxid.tsv

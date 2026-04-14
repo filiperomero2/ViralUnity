@@ -96,7 +96,7 @@ def get_meta_reference(wildcards):
 REFERENCE = get_meta_reference
 SEGMENT_WILDCARD = "{segment}/"
 
-if config["data_type"] == "illumina":
+if config.get("data") == "illumina":
     include: "alignment_illumina.smk"
     include: "consensus_illumina.smk"
 else:

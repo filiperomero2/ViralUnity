@@ -41,7 +41,7 @@ rule trim_primer_sequences:
         bam_index = config['output'] + "assembly/" + SEGMENT_WILDCARD + "mapped_reads/trimmed/{sample}.sorted.bam.bai",
         trimmed_info = config['output'] + "assembly/" + SEGMENT_WILDCARD + "mapped_reads/trimmed/{sample}.trimmed.txt"
     params:
-        bed = config["scheme"],
+        bed = config.get("scheme", "NA"),
         minimum_length = config["minimum_length"],
         path = config['output'] + "assembly/" + SEGMENT_WILDCARD + "mapped_reads/raw/"
     log:

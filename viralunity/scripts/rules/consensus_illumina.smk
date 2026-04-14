@@ -18,7 +18,7 @@ rule detect_isnv:
         vcf = config['output'] + "assembly/" + SEGMENT_WILDCARD + "isnvs/{sample}.isnvs.vcf.gz",
         vcf_index = config['output'] + "assembly/" + SEGMENT_WILDCARD + "isnvs/{sample}.isnvs.vcf.gz.tbi"
     params:
-        af_min_threshold = config["af_isnv_threshold"]
+        af_min_threshold = config.get("af_isnv_threshold", 0.05)
     log:
         config['output'] + "assembly/" + SEGMENT_WILDCARD + "logs/lofreq/{sample}.log"
     benchmark:
@@ -55,8 +55,8 @@ rule infer_consensus_sequence:
     output:
         consensus = config['output'] + "assembly/" + SEGMENT_WILDCARD + "consensus/final_consensus/{sample}.consensus.fasta"
     params:
-        minimum_depth = config["minimum_depth"],
-        af_threshold = config["af_threshold"]
+        minimum_depth = config.get("minimum_depth", 10),
+        af_threshold = config.get("af_threshold", 0.5)
     benchmark:
         config['output'] + "assembly/" + SEGMENT_WILDCARD + "logs/samtools/consensus/{sample}.benchmark.txt"
     log:
