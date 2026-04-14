@@ -153,14 +153,16 @@ def main():
             sys.exit(1)
 
         for sample in valid_samples:
-            contig_file = os.path.join(args.contigs_dir, f"{sample}.contigs.fasta")
+            contig_file = os.path.join(args.contigs_dir, f"sample-{sample}.viral_contigs.fa")
             if not os.path.exists(contig_file):
-                contig_file = glob.glob(
-                    os.path.join(args.contigs_dir, sample, "*.contigs.fa*")
-                )
-                if not contig_file:
-                    continue
-                contig_file = contig_file[0]
+                contig_file_alt = os.path.join(args.contigs_dir, f"{sample}.viral_contigs.fa")
+                if os.path.exists(contig_file_alt):
+                    contig_file = contig_file_alt
+                else:
+                    contig_globs = glob.glob(os.path.join(args.contigs_dir, sample, "*.contigs.fa*"))
+                    if not contig_globs:
+                        continue
+                    contig_file = contig_globs[0]
 
             blast_cmd = [
                 "blastn",

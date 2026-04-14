@@ -21,17 +21,17 @@ checkpoint select_references_meta:
         "../envs/genome_selection.yaml"
     params:
         summary_dir = config["output"] + "metagenomics/taxonomic_assignments/",
-        method = config.get("reference assembly", {}).get("ref_assembly_method", "kraken2"),
-        source = config.get("reference assembly", {}).get("ref_assembly_source", "reads"),
-        reads_count = config.get("reference assembly", {}).get("ref_assembly_reads_count", 100),
-        contigs_count = config.get("reference assembly", {}).get("ref_assembly_contigs_count", 1),
-        families = ",".join(config.get("reference assembly", {}).get("ref_assembly_families", ["Coronaviridae"])),
-        strategy = config.get("reference assembly", {}).get("ref_selection_strategy", "taxid"),
-        genome2taxid = config.get("databases", {}).get("viral_taxids", "databases/virus_genomes/genome2taxid.tsv"),
-        blast_db = config.get("databases", {}).get("viral_genomes", "databases/virus_genomes/viral.genomes.fasta"),
-        blast_qcov = config.get("reference assembly", {}).get("ref_blast_qcov", 80),
-        blast_pident = config.get("reference assembly", {}).get("ref_blast_pident", 80),
-        contigs_dir = config["output"] + "denovo_assembly/megahit/"
+        method = config.get("ref_assembly_method", "kraken2"),
+        source = config.get("ref_assembly_source", "reads"),
+        reads_count = config.get("ref_assembly_reads_count", 100),
+        contigs_count = config.get("ref_assembly_contigs_count", 1),
+        families = ",".join(config.get("ref_assembly_families", ["Coronaviridae"])),
+        strategy = config.get("ref_selection_strategy", "taxid"),
+        genome2taxid = config.get("viral_taxids", "databases/virus_genomes/genome2taxid.tsv"),
+        blast_db = config.get("viral_genomes", "databases/virus_genomes/viral.genomes.fasta"),
+        blast_qcov = config.get("ref_blast_qcov", 80),
+        blast_pident = config.get("ref_blast_pident", 80),
+        contigs_dir = config["output"] + "denovo_assembly/viral_contigs/"
     shell:
         """
         python scripts/python/select_reference_genomes.py \
@@ -75,7 +75,7 @@ rule extract_reference_fasta:
     output:
         fasta = config["output"] + "assembly/{segment}/references/{sample}.fasta"
     params:
-        db = config.get("databases", {}).get("viral_genomes", "databases/virus_genomes/viral.genomes.fasta")
+        db = config.get("viral_genomes", "databases/virus_genomes/viral.genomes.fasta")
     conda:
         "../envs/utils.yaml"
     shell:
