@@ -37,7 +37,7 @@ checkpoint select_references_meta:
 
 def get_reference_assembly_targets(wildcards):
     f = checkpoints.select_references_meta.get().output.tsv
-    df = pd.read_csv(f, sep="\\t")
+    df = pd.read_csv(f, sep="\t")
     targets = []
     for i, row in df.iterrows():
         sample = row["sample"]

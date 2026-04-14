@@ -51,13 +51,13 @@ def main(args=None):
         if args.source in ["reads", "both"]:
             summary_files.extend(
                 glob.glob(
-                    os.path.join(args.summary_dir, "kraken2_reads_taxa_summary.tsv")
+                    os.path.join(args.summary_dir, "kraken2_reads", "kraken2_reads_taxa_summary.tsv")
                 )
             )
         if args.source in ["contigs", "both"]:
             summary_files.extend(
                 glob.glob(
-                    os.path.join(args.summary_dir, "kraken2_contigs_taxa_summary.tsv")
+                    os.path.join(args.summary_dir, "kraken2_contigs", "kraken2_contigs_taxa_summary.tsv")
                 )
             )
 
@@ -65,13 +65,13 @@ def main(args=None):
         if args.source in ["reads", "both"]:
             summary_files.extend(
                 glob.glob(
-                    os.path.join(args.summary_dir, "diamond_reads_taxa_summary.tsv")
+                    os.path.join(args.summary_dir, "diamond_reads", "diamond_reads_taxa_summary.tsv")
                 )
             )
         if args.source in ["contigs", "both"]:
             summary_files.extend(
                 glob.glob(
-                    os.path.join(args.summary_dir, "diamond_contigs_taxa_summary.tsv")
+                    os.path.join(args.summary_dir, "diamond_contigs", "diamond_contigs_taxa_summary.tsv")
                 )
             )
 
