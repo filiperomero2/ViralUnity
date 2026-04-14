@@ -61,6 +61,9 @@ def _all_inputs():
             targets.append(config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary_RPM.bleed.neg.tsv")
         else:
             targets.append(config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary_RPM.bleed.tsv")
+            
+    if config.get("reference assembly", {}).get("run_reference_assembly", False):
+        targets.append(config["output"] + "assembly/reference_assemblies_done.txt")
     return targets
 
 rule all:
@@ -94,6 +97,8 @@ include: "rules/metagenomics_assembly_illumina.smk"
 include: "rules/metagenomics_kraken2_contigs_illumina.smk"
 include: "rules/metagenomics_diamond_contigs_illumina.smk"
 include: "rules/metagenomics_multiqc_illumina.smk"
+if config.get("reference assembly", {}).get("run_reference_assembly", False):
+    include: "rules/metagenomics_reference_assembly.smk"
 
 rule organize_files:
     conda:

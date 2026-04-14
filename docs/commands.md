@@ -178,6 +178,7 @@ The metagenomics pipeline takes raw reads to taxonomic classifications and visua
 4. **Optional de novo assembly** — [MEGAHIT](https://github.com/voutcn/megahit) on host-filtered pairs.
 5. **Contig classification** — Kraken2 and/or Diamond on contigs (when assembly is run).
 6. **Summaries and filters** — Per-sample taxa tables, RPM normalization, optional max-RPM bleed filter and negative-control background filter. [Krona](https://github.com/marbl/Krona) plots and [MultiQC](https://multiqc.info) reports.
+7. **Optional dynamic reference assembly** — Automatic reference sequence selection from taxonomic hits and subsequent consensus assembly.
 
 ### Pipeline overview (Nanopore)
 
@@ -187,6 +188,7 @@ The metagenomics pipeline takes raw reads to taxonomic classifications and visua
 4. **Optional polishing** — [Racon](https://github.com/lbcb-sci/racon) and/or [Medaka](https://github.com/nanoporetech/medaka) on MEGAHIT contigs.
 5. **Contig classification** — Kraken2 and/or Diamond on contigs.
 6. **Summaries and filters** — Same as Illumina.
+7. **Optional dynamic reference assembly** — Same as Illumina.
 
 ### Options — shared (both data types)
 
@@ -216,6 +218,17 @@ The metagenomics pipeline takes raw reads to taxonomic classifications and visua
 | `--negative-controls` | (empty) | Comma-separated sample IDs used as negative controls. |
 | `--negative-p-threshold` | `0.01` | p-value threshold for negative-control filter. |
 | `--minimum-hit-group` | `4` | Kraken2 minimum-hit-group parameter. |
+| `--run-reference-assembly`/`--no-run-reference-assembly` | off | Enable reference assembly from filtered taxonomic hits. |
+| `--method` | `undefined` | Method used for reference assembly (`kraken2`, `diamond`, `both`). |
+| `--source` | `undefined` | Source of taxonomy data for reference assembly (`reads`, `contigs`, `both`). |
+| `--reads-count` | `100` | Minimum reads assigned to a viral family to trigger reference assembly. |
+| `--contigs-count` | `1` | Minimum contigs assigned to a viral family to trigger reference assembly. |
+| `--families` | `Coronaviridae,...` | Comma-separated list of targeted viral families for reference assembly. |
+| `--reference-selection-strategy` | `taxid` | Strategy to associate a reference genome (`taxid` or `similarity`). |
+| `--blast-qcov` | `80` | Minimum query coverage for similarity strategy. |
+| `--blast-pident` | `80` | Minimum percent identity for similarity strategy. |
+| `--viral-genomes` | `NA` | FASTA of viral genomes for reference assembly database. |
+| `--viral-taxids` | `NA` | TSV of genome to TaxID mapping for reference assembly. |
 | `--threads` | `1` | Threads per task. |
 | `--threads-total` | `1` | Total threads for the workflow. |
 | `--create-config-only` | off | Only generate the config; do not run the workflow. |
@@ -382,6 +395,24 @@ viralunity get-databases diamond --path /data/dbs --threads 4
 # /data/dbs/diamond/protein2taxid.tsv
 # use: --diamond-database /data/dbs/diamond/viral.dmnd
 #      --taxids /data/dbs/diamond/protein2taxid.tsv
+```
+
+### `virus-genome` — Viral genomes database
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--path` | `databases` | Parent directory; creates `{path}/virus_genomes/`. |
+| `--taxon` | Viruses | NCBI taxon name to download (e.g. `Viruses`, `coronaviridae`). |
+| `--refseq`/`--no-refseq` | `on` | Limit to RefSeq genomes only. |
+
+Requires the NCBI Datasets CLI.
+
+```bash
+viralunity get-databases virus-genome --taxon Viruses
+# FASTA at databases/virus_genomes/viral.genomes.fasta
+# taxids at databases/virus_genomes/genome2taxid.tsv
+# use: --viral-genomes databases/virus_genomes/viral.genomes.fasta
+#      --viral-taxids databases/virus_genomes/genome2taxid.tsv
 ```
 
 ### `host-genome` — Host genome download

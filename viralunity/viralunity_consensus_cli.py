@@ -121,29 +121,36 @@ def _generate_resource_options(rules: list) -> list:
     """Generate click options for CPUs and RAM for a list of rules."""
     options = []
     for rule in rules:
-        cmd_rule = rule.replace('_', '-')
-        options.append(click.option(
-            f"--{cmd_rule}-cpus",
-            default=ResourceDefaults.DEFAULT_CPUS,
-            show_default=True,
-            type=int,
-            help=f"Threads for {rule} rule.",
-        ))
-        options.append(click.option(
-            f"--{cmd_rule}-ram",
-            default=ResourceDefaults.DEFAULT_RAM,
-            show_default=True,
-            type=int,
-            help=f"RAM (GB) for {rule} rule.",
-        ))
+        cmd_rule = rule.replace("_", "-")
+        options.append(
+            click.option(
+                f"--{cmd_rule}-cpus",
+                default=ResourceDefaults.DEFAULT_CPUS,
+                show_default=True,
+                type=int,
+                help=f"Threads for {rule} rule.",
+            )
+        )
+        options.append(
+            click.option(
+                f"--{cmd_rule}-ram",
+                default=ResourceDefaults.DEFAULT_RAM,
+                show_default=True,
+                type=int,
+                help=f"RAM (GB) for {rule} rule.",
+            )
+        )
     return options
+
 
 def _add_resource_options(rules: list):
     """Decorator to add resource options to a click command."""
+
     def decorator(func):
         for option in reversed(_generate_resource_options(rules)):
             func = option(func)
         return func
+
     return decorator
 
 
@@ -243,7 +250,7 @@ def consensus_illumina(
     af_threshold,
     af_isnv_threshold,
     run_isnv,
-    **kwargs
+    **kwargs,
 ):
     """Run consensus pipeline for Illumina data."""
     args = dict(
@@ -338,7 +345,7 @@ def consensus_nanopore(
     variant_quality,
     variant_depth,
     minimum_map_quality,
-    **kwargs
+    **kwargs,
 ):
     """Run consensus pipeline for Nanopore data."""
     args = dict(

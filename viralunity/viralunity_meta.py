@@ -120,6 +120,23 @@ def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None
         minimum_hit_group=args.get("minimum_hit_group", 4),
     )
 
+    generator.add_reference_assembly_settings(
+        run_reference_assembly=args.get("run_reference_assembly", False),
+        method=args.get("method", "kraken2"),
+        source=args.get("source", "reads"),
+        reads_count=args.get("reads_count", 100),
+        contigs_count=args.get("contigs_count", 1),
+        families=args.get(
+            "families",
+            "Coronaviridae,Orthomyxoviridae,Flaviviridae,Herpesviridae,Papillomaviridae,Paramyxoviridae,Adenoviridae",
+        ),
+        reference_selection_strategy=args.get("reference_selection_strategy", "taxid"),
+        blast_qcov=args.get("blast_qcov", 80),
+        blast_pident=args.get("blast_pident", 80),
+        viral_genomes=args.get("viral_genomes", "databases/virus_genomes/viral.genomes.fasta"),
+        viral_taxids=args.get("viral_taxids", "databases/virus_genomes/genome2taxid.tsv"),
+    )
+
     if data_type == DataType.ILLUMINA:
         generator.add_illumina_settings(
             adapters=args.get("adapters") or "NA",
@@ -131,9 +148,13 @@ def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None
     # Add resource settings
     shared_rules = ResourceDefaults.META_SHARED_RULES
     if data_type == DataType.ILLUMINA:
-        generator.add_resource_settings(args, shared_rules + ResourceDefaults.META_ILLUMINA_RULES)
+        generator.add_resource_settings(
+            args, shared_rules + ResourceDefaults.META_ILLUMINA_RULES
+        )
     else:
-        generator.add_resource_settings(args, shared_rules + ResourceDefaults.META_NANOPORE_RULES)
+        generator.add_resource_settings(
+            args, shared_rules + ResourceDefaults.META_NANOPORE_RULES
+        )
 
     # Save config file
     generator.save()

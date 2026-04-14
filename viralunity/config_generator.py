@@ -15,6 +15,7 @@ class ConfigGenerator:
     SECTION_PARAMETERS = "parameters"
     SECTION_DATABASES = "databases"
     SECTION_RESOURCES = "resources"
+    SECTION_REFERENCE_ASSEMBLY = "reference assembly"
 
     def __init__(self, config_path: str):
         """Initialize config generator.
@@ -73,7 +74,11 @@ class ConfigGenerator:
             output_dir: Base output directory
             run_name: Name of the run
         """
-        self._set(ConfigKeys.OUTPUT, os.path.join(output_dir, run_name, ""), self.SECTION_PARAMETERS)
+        self._set(
+            ConfigKeys.OUTPUT,
+            os.path.join(output_dir, run_name, ""),
+            self.SECTION_PARAMETERS,
+        )
 
     def add_threads(self, threads: int) -> None:
         """Add thread count to configuration.
@@ -246,6 +251,42 @@ class ConfigGenerator:
         self._set(ConfigKeys.NEGATIVE_P_THRESHOLD, negative_p_threshold, P)
         self._set(ConfigKeys.MINIMUM_HIT_GROUP, minimum_hit_group, P)
 
+    def add_reference_assembly_settings(
+        self,
+        run_reference_assembly: bool = False,
+        method: Optional[str] = None,
+        source: Optional[str] = None,
+        reads_count: int = 100,
+        contigs_count: int = 1,
+        families: str = "Coronaviridae,Orthomyxoviridae,Flaviviridae,Herpesviridae,Papillomaviridae,Paramyxoviridae,Adenoviridae",
+        reference_selection_strategy: str = "taxid",
+        blast_qcov: int = 80,
+        blast_pident: int = 80,
+        viral_genomes: str = "databases/virus_genomes/viral.genomes.fasta",
+        viral_taxids: str = "databases/virus_genomes/genome2taxid.tsv",
+    ) -> None:
+        """Add settings for reference assembly on metagenomics hits."""
+        section = self.SECTION_REFERENCE_ASSEMBLY
+        self._set(ConfigKeys.RUN_REFERENCE_ASSEMBLY, run_reference_assembly, section)
+        self._set(ConfigKeys.REF_ASSEMBLY_METHOD, method, section)
+        self._set(ConfigKeys.REF_ASSEMBLY_SOURCE, source, section)
+        self._set(ConfigKeys.REF_ASSEMBLY_READS_COUNT, reads_count, section)
+        self._set(ConfigKeys.REF_ASSEMBLY_CONTIGS_COUNT, contigs_count, section)
+        self._set(
+            ConfigKeys.REF_ASSEMBLY_FAMILIES,
+            [f.strip() for f in families.split(",")],
+            section,
+        )
+        self._set(
+            ConfigKeys.REF_SELECTION_STRATEGY, reference_selection_strategy, section
+        )
+        self._set(ConfigKeys.REF_BLAST_QCOV, blast_qcov, section)
+        self._set(ConfigKeys.REF_BLAST_PIDENT, blast_pident, section)
+        
+        db_section = self.SECTION_DATABASES
+        self._set(ConfigKeys.VIRAL_GENOMES, viral_genomes, db_section)
+        self._set(ConfigKeys.VIRAL_TAXIDS, viral_taxids, db_section)
+
     def add_nanopore_settings(
         self,
         run_polish_racon: bool = False,
@@ -293,7 +334,6 @@ class ConfigGenerator:
             self._set(cpus_key, args.get(cpus_key, ResourceDefaults.DEFAULT_CPUS), R)
             self._set(ram_key, args.get(ram_key, ResourceDefaults.DEFAULT_RAM), R)
 
-
     def save(self) -> None:
         """Save configuration to YAML file with section comment headers.
 
@@ -311,6 +351,7 @@ class ConfigGenerator:
         # Group keys by section, preserving insertion order
         section_order = [
             self.SECTION_PARAMETERS,
+            self.SECTION_REFERENCE_ASSEMBLY,
             self.SECTION_DATABASES,
             self.SECTION_RESOURCES,
         ]
@@ -331,7 +372,8 @@ class ConfigGenerator:
                         f.write("\n")
                     f.write(f"# {section}\n")
                     yaml.dump(
-                        items, f,
+                        items,
+                        f,
                         default_flow_style=False,
                         sort_keys=False,
                     )

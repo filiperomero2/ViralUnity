@@ -144,7 +144,7 @@ viralunity consensus nanopore \
 
 ## `viralunity meta`
 
-O pipeline de metagenômica leva reads brutas até classificações taxonômicas e visualizações. Você pode usar **somente Kraken2**, **somente Diamond** ou **ambos**. Cada ferramenta pode ser executada em **reads** e, quando a montagem está habilitada, em **contigs**.
+O pipeline de metagenômica tem como objetivo gerar classificações taxonômicas e visualizações com krona. Você pode usar **somente Kraken2**, **somente Diamond** ou **ambos**. Cada ferramenta pode ser executada em **reads** e, quando a montagem está habilitada, em **contigs**. No final da análise, é possível realizar montagem de consenso baseada em genomas de referência baixados sob demanda com base nos resultados das classificações ("dynamic reference assembly").
 
 ### Opções — compartilhadas (ambos os tipos de dados)
 
@@ -162,10 +162,21 @@ O pipeline de metagenômica leva reads brutas até classificações taxonômicas
 | `--run-denovo-assembly` | off | Executar montagem de novo com MEGAHIT. |
 | `--run-kraken2-reads/--no-kraken2-reads` | on | Kraken2 nas reads. |
 | `--run-kraken2-contigs/--no-kraken2-contigs` | on | Kraken2 nos contigs. |
-| `--run-diamond-reads/--no-diamond-reads` | off | Diamond nas reads. |
-| `--run-diamond-contigs/--no-diamond-contigs` | off | Diamond nos contigs. |
+| `--run-diamond-reads`/`--no-diamond-reads` | off | Diamond nas reads. |
+| `--run-diamond-contigs`/`--no-diamond-contigs` | off | Diamond nos contigs. |
 | `--diamond-database` | `NA` | FASTA de proteínas para Diamond. |
 | `--taxids` | `NA` | Mapeamento de taxid NCBI para taxonomia Diamond. |
+| `--run-reference-assembly`/`--no-run-reference-assembly` | off | Habilitar montagem de genoma baseada em referência ("dynamic reference assembly"). |
+| `--method` | `undefined` | Método alvo para classificar a família viral (`kraken2`, `diamond`, `both`). |
+| `--source` | `undefined` | Tipo de origem contendo a taxonomia da família (`reads`, `contigs`, `both`). |
+| `--reads-count` | `100` | Mínimo de reads mapeadas da família-alvo. |
+| `--contigs-count` | `1` | Mínimo de contigs pertencentes a família-alvo. |
+| `--families` | `Coronaviridae,...` | Famílias alvo por default, ex: `Coronaviridae,Orthomyxoviridae` |
+| `--reference-selection-strategy` | `taxid` | Abordagem para selecionar genoma referência (`taxid` ou `similarity`). |
+| `--blast-qcov` | `80` | Cobertura mínima (`--similarity`). |
+| `--blast-pident` | `80` | Similaridade mínima (`--similarity`). |
+| `--viral-genomes` | `NA` | Caminho do arquivo viral.genomes.fasta. |
+| `--viral-taxids` | `NA` | Caminho para mapeamento accession para ID NCBI. |
 | `--threads` | `1` | Threads por tarefa. |
 | `--threads-total` | `1` | Total de threads para o workflow. |
 | `--create-config-only` | off | Apenas gerar o config; não executar o workflow. |
@@ -207,13 +218,120 @@ viralunity meta nanopore \
 
 ## `viralunity get-databases`
 
-O comando `get-databases` baixa e configura os bancos de dados de referência necessários pelo pipeline meta.
+O comando `get-databases` baixa e configura os bancos de dados de referência necessários pelo pipeline meta. Cada subcomando recebe um argumento opcional `--path` (padrão: `databases` no diretório atual), dentro do qual um subdiretório nomeado é criado.
+
+```bash
+viralunity get-databases --help
+viralunity get-databases kraken2 --help
+```
+
+### `kraken2` — Índice pré-construído do Kraken2
+
+| Opção | Padrão | Descrição |
+|-------|--------|-----------|
+| `--path` | `databases` | Diretório pai; cria `{path}/kraken2/`. |
+| `--url` | k2_viral_20240112 | URL do arquivo do índice pré-construído. Verifique os [índices disponíveis](https://benlangmead.github.io/aws-indexes/k2). |
 
 ```bash
 viralunity get-databases kraken2 --path /dados/dbs
+# banco de dados em /dados/dbs/kraken2/
+# uso: --kraken2-database /dados/dbs/kraken2
+```
+
+### `krona` — Taxonomia do Krona
+
+Requer que o ambiente conda viralunity esteja ativo (`CONDA_PREFIX` deve estar definido).
+
+| Opção | Padrão | Descrição |
+|-------|--------|-----------|
+| `--path` | `databases` | Diretório pai; cria `{path}/krona/taxonomy/`. |
+
+```bash
+conda activate viralunity
 viralunity get-databases krona --path /dados/dbs
+# taxonomia em /dados/dbs/krona/taxonomy/
+# uso: --krona-database /dados/dbs/krona/taxonomy
+```
+
+### `taxdump` — Taxdump NCBI
+
+| Opção | Padrão | Descrição |
+|-------|--------|-----------|
+| `--path` | `databases` | Diretório pai; cria `{path}/taxdump/`. |
+| `--url` | NCBI taxdump | URL do arquivo taxdump. |
+
+```bash
 viralunity get-databases taxdump --path /dados/dbs
+# nodes.dmp, names.dmp, etc. em /dados/dbs/taxdump/
+# uso: --taxdump /dados/dbs/taxdump
+```
+
+### `diamond` — Banco de dados de proteínas Diamond
+
+| Opção | Padrão | Descrição |
+|-------|--------|-----------|
+| `--path` | `databases` | Diretório pai; cria `{path}/diamond/`. |
+| `--taxon` | Viruses | Nome do táxon NCBI para baixar (ex. `Viruses`, `coronaviridae`). |
+| `--refseq`/`--no-refseq` | `on` | Limitar apenas a genomas RefSeq. |
+| `--threads` | `1` | Threads para `diamond makedb`. |
+| `--skip-makedb` | off | Apenas baixar e reformatar arquivos; não executar `diamond makedb`. |
+
+Requer a CLI NCBI Datasets (`conda install -c conda-forge ncbi-datasets-cli`).
+
+```bash
 viralunity get-databases diamond --path /dados/dbs --threads 4
+# /dados/dbs/diamond/viral.dmnd
+# /dados/dbs/diamond/protein2taxid.tsv
+# uso: --diamond-database /dados/dbs/diamond/viral.dmnd
+#      --taxids /dados/dbs/diamond/protein2taxid.tsv
+```
+
+### `virus-genome` — Banco de dados de genomas virais
+
+| Opção | Padrão | Descrição |
+|-------|--------|-----------|
+| `--path` | `databases` | Diretório pai; cria `{path}/virus_genomes/`. |
+| `--taxon` | Viruses | Nome do táxon NCBI para baixar (ex. `Viruses`, `coronaviridae`). |
+| `--refseq`/`--no-refseq` | `on` | Limitar apenas a genomas RefSeq. |
+
+Requer a CLI NCBI Datasets.
+
+```bash
+viralunity get-databases virus-genome --taxon Viruses --path /dados/dbs
+# FASTA em /dados/dbs/virus_genomes/viral.genomes.fasta
+# taxids em /dados/dbs/virus_genomes/genome2taxid.tsv
+# uso: --viral-genomes /dados/dbs/virus_genomes/viral.genomes.fasta
+#      --viral-taxids /dados/dbs/virus_genomes/genome2taxid.tsv
+```
+
+### `host-genome` — Download de genoma do hospedeiro
+
+| Opção | Padrão | Descrição |
+|-------|--------|-----------|
+| `--path` | `databases` | Diretório pai; cria `{path}/host_genomes/`. |
+| `--accession` | *(obrigatório)* | ID de acesso NCBI do genoma (ex. `GCA_000001405.29`). |
+
+```bash
+viralunity get-databases host-genome --accession GCA_000001405.29
+# fasta em databases/host_genomes/GCA_000001405.29.fasta
+```
+
+### `deacon-index` — Índice pre-construído do Deacon
+
+| Opção | Padrão | Descrição |
+|-------|--------|-----------|
+| `--path` | `databases` | Diretório pai; cria `{path}/deacon_indexes/`. |
+| `--index-name` | `panhuman-1` | Nome do índice pré-construído (`panhuman-1` ou `panmouse-1`). |
+
+```bash
+viralunity get-databases deacon-index --index-name panhuman-1
+# index em databases/deacon_indexes/panhuman-1.idx
+# uso: --deacon-index databases/deacon_indexes/panhuman-1.idx
+```
+
+### Baixar todos os bancos de dados de uma vez
+
+```bash
 viralunity get-databases all --threads 4
 ```
 
@@ -222,6 +340,12 @@ viralunity get-databases all --threads 4
 ## `viralunity build-deacon-index`
 
 Criar um índice Deacon a partir de um FASTA de genoma do hospedeiro.
+
+| Opção | Padrão | Descrição |
+|-------|--------|-----------|
+| `--path` | `databases` | Diretório pai; cria `{path}/deacon_indexes/`. |
+| `--input` | *(obrigatório)* | Arquivo FASTA de entrada para criar o índice. |
+| `--threads` | `8` | Número de threads a utilizar. |
 
 ```bash
 viralunity build-deacon-index \

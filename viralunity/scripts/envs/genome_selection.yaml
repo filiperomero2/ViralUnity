@@ -1,0 +1,9 @@
+name: genome_selection
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - python>=3.9
+  - pandas
+  - blast>=2.17

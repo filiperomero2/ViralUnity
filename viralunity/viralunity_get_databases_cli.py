@@ -348,6 +348,159 @@ def get_diamond(path, taxon, refseq, threads, skip_makedb):
         )
 
 
+def _parse_genome_data_report(report_path: Path) -> dict:
+    """Parse data_report.jsonl and return accession -> taxid mapping.
+
+    Each JSONL record is expected to have an 'accession' field and a
+    'virus'/'organism' block containing 'taxId'.
+    """
+    acc2taxid = {}
+    with open(report_path) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            accession = record.get("accession", "")
+            org_data = record.get("virus", record.get("organism", {}))
+            taxid = str(org_data.get("taxId", ""))
+            if accession and taxid:
+                acc2taxid[accession] = taxid
+    return acc2taxid
+
+
+def _reformat_genome_fasta(
+    genome_files: list,
+    output_fasta: Path,
+    acc2taxid: dict,
+) -> dict:
+    """Reformat genome FASTA to use accession-only headers.
+
+    Returns a mapping of accession -> taxid for all sequences written.
+    """
+    taxid_map = {}
+    written = 0
+
+    with open(output_fasta, "w") as out_handle:
+        for genome_file in genome_files:
+            for record in SeqIO.parse(genome_file, "fasta"):
+                # The accession is the first token in the header (e.g. NC_045512.2)
+                accession = record.id
+                taxid = acc2taxid.get(accession, "0")
+                taxid_map[accession] = taxid
+                record.id = accession
+                record.description = ""
+                SeqIO.write(record, out_handle, "fasta")
+                written += 1
+
+    click.echo(f"  Processed {written} genome sequences.")
+    return taxid_map
+
+
+@get_databases.command("virus-genome")
+@click.option(
+    "--path",
+    default="databases",
+    show_default=True,
+    help="Parent directory where the virus_genomes/ subdirectory will be created.",
+)
+@click.option(
+    "--taxon",
+    default="Viruses",
+    show_default=True,
+    help="NCBI taxon name to download (e.g. 'Viruses', 'coronaviridae').",
+)
+@click.option(
+    "--refseq/--no-refseq",
+    default=True,
+    show_default=True,
+    help="Limit to RefSeq genomes only.",
+)
+def get_virus_genome(path, taxon, refseq):
+    """Download viral genomes via NCBI Datasets.
+
+    Uses 'datasets download virus genome' with --include genome to fetch
+    viral genome sequences.  The downloaded genomes are reformatted so
+    that each FASTA header becomes:
+
+        >accession
+
+    A two-column genome2taxid.tsv mapping file (accession -> TaxID) is
+    derived from the bundled data_report.jsonl and saved alongside the
+    FASTA file.
+    """
+    db_dir = _make_db_dir(path, "virus_genomes")
+    raw_dir = db_dir / "_ncbi_download"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    zip_path = raw_dir / "ncbi_dataset.zip"
+
+    cmd = [
+        "datasets",
+        "download",
+        "virus",
+        "genome",
+        "taxon",
+        taxon,
+        "--include",
+        "genome",
+        "--filename",
+        str(zip_path),
+    ]
+    if refseq:
+        cmd.append("--refseq")
+
+    click.echo(f"Downloading viral genomes for taxon '{taxon}' from NCBI Datasets...")
+    _run(cmd)
+
+    click.echo("Extracting archive...")
+    with zipfile.ZipFile(zip_path, "r") as zf:
+        zf.extractall(raw_dir)
+
+    # Parse taxonomy metadata
+    report_candidates = list(raw_dir.rglob("data_report.jsonl"))
+    if not report_candidates:
+        raise click.ClickException(
+            "data_report.jsonl not found in downloaded package. "
+            "The NCBI Datasets package structure may have changed."
+        )
+    report_path = report_candidates[0]
+    click.echo(f"Parsing taxonomy metadata from: {report_path}")
+    acc2taxid = _parse_genome_data_report(report_path)
+    click.echo(f"  Found {len(acc2taxid)} genome accessions with TaxIDs.")
+
+    # Find genome FASTA files
+    genome_files = list(raw_dir.rglob("*.fna"))
+    if not genome_files:
+        raise click.ClickException(
+            "No genome FASTA files (.fna) found in downloaded package."
+        )
+    click.echo(f"Found {len(genome_files)} genome file(s).")
+
+    # Reformat FASTA
+    reformatted_fasta = db_dir / "viral.genomes.fasta"
+    click.echo(f"Reformatting headers -> {reformatted_fasta}")
+    taxid_map = _reformat_genome_fasta(genome_files, reformatted_fasta, acc2taxid)
+
+    # Write genome2taxid.tsv
+    taxid_map_path = db_dir / "genome2taxid.tsv"
+    with open(taxid_map_path, "w") as f:
+        for acc, taxid in sorted(taxid_map.items()):
+            f.write(f"{acc}\t{taxid}\n")
+    click.echo(f"Taxonomy mapping written to: {taxid_map_path}")
+    click.echo(f"  {len(taxid_map)} genome accessions mapped.")
+
+    # Clean up
+    shutil.rmtree(raw_dir)
+    click.echo("Cleaned up temporary download files.")
+
+    click.echo(f"\nViral genome database ready.")
+    click.echo(f"  FASTA:       {reformatted_fasta}")
+    click.echo(f"  Taxid map:   {taxid_map_path}")
+
+
 @get_databases.command("host-genome")
 @click.option(
     "--path",

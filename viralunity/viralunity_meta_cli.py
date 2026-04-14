@@ -170,6 +170,77 @@ _COMMON_META_OPTIONS = [
         default=False,
         help="Only create the config file; do not run the workflow.",
     ),
+    click.option(
+        "--run-reference-assembly/--no-run-reference-assembly",
+        default=False,
+        show_default=True,
+        help="Enable/disable reference assembly from filtered taxonomic hits.",
+    ),
+    click.option(
+        "--viral-genomes",
+        default="NA",
+        show_default=True,
+        help="Path to the viral genomes FASTA file for reference assembly BLAST database/sequences.",
+    ),
+    click.option(
+        "--viral-taxids",
+        default="NA",
+        show_default=True,
+        help="Path to the genome2taxid mapping TSV file for reference assembly.",
+    ),
+    click.option(
+        "--method",
+        type=click.Choice(["kraken2", "diamond", "both"]),
+        default=None,
+        help="Method to use for identifying potential reference genomes.",
+    ),
+    click.option(
+        "--source",
+        type=click.Choice(["reads", "contigs", "both"]),
+        default=None,
+        help="Source of taxonomy data to use for identifying reference genomes.",
+    ),
+    click.option(
+        "--reads-count",
+        default=100,
+        show_default=True,
+        type=int,
+        help="Minimum number of reads assigned to a viral family to trigger reference assembly.",
+    ),
+    click.option(
+        "--contigs-count",
+        default=1,
+        show_default=True,
+        type=int,
+        help="Minimum number of contigs assigned to a viral family to trigger reference assembly.",
+    ),
+    click.option(
+        "--families",
+        default="Coronaviridae,Orthomyxoviridae,Flaviviridae,Herpesviridae,Papillomaviridae,Paramyxoviridae,Adenoviridae",
+        show_default=True,
+        help="Comma-separated list of viral families to perform reference assembly.",
+    ),
+    click.option(
+        "--reference-selection-strategy",
+        type=click.Choice(["taxid", "similarity"]),
+        default="taxid",
+        show_default=True,
+        help="Strategy to associate a reference genome to a taxonomic assignment.",
+    ),
+    click.option(
+        "--blast-qcov",
+        default=80,
+        show_default=True,
+        type=int,
+        help="Minimum query coverage for BLAST similarity reference selection.",
+    ),
+    click.option(
+        "--blast-pident",
+        default=80,
+        show_default=True,
+        type=int,
+        help="Minimum percent identity for BLAST similarity reference selection.",
+    ),
 ]
 
 
@@ -184,29 +255,36 @@ def _generate_resource_options(rules: list) -> list:
     """Generate click options for CPUs and RAM for a list of rules."""
     options = []
     for rule in rules:
-        cmd_rule = rule.replace('_', '-')
-        options.append(click.option(
-            f"--{cmd_rule}-cpus",
-            default=ResourceDefaults.DEFAULT_CPUS,
-            show_default=True,
-            type=int,
-            help=f"Threads for {rule} rule.",
-        ))
-        options.append(click.option(
-            f"--{cmd_rule}-ram",
-            default=ResourceDefaults.DEFAULT_RAM,
-            show_default=True,
-            type=int,
-            help=f"RAM (GB) for {rule} rule.",
-        ))
+        cmd_rule = rule.replace("_", "-")
+        options.append(
+            click.option(
+                f"--{cmd_rule}-cpus",
+                default=ResourceDefaults.DEFAULT_CPUS,
+                show_default=True,
+                type=int,
+                help=f"Threads for {rule} rule.",
+            )
+        )
+        options.append(
+            click.option(
+                f"--{cmd_rule}-ram",
+                default=ResourceDefaults.DEFAULT_RAM,
+                show_default=True,
+                type=int,
+                help=f"RAM (GB) for {rule} rule.",
+            )
+        )
     return options
+
 
 def _add_resource_options(rules: list):
     """Decorator to add resource options to a click command."""
+
     def decorator(func):
         for option in reversed(_generate_resource_options(rules)):
             func = option(func)
         return func
+
     return decorator
 
 
@@ -228,7 +306,9 @@ def meta():
 
 @meta.command("illumina")
 @_add_common_meta_options
-@_add_resource_options(ResourceDefaults.META_SHARED_RULES + ResourceDefaults.META_ILLUMINA_RULES)
+@_add_resource_options(
+    ResourceDefaults.META_SHARED_RULES + ResourceDefaults.META_ILLUMINA_RULES
+)
 @click.option(
     "--adapters",
     default="NA",
@@ -286,7 +366,9 @@ def meta_illumina(**kwargs):
 
 @meta.command("nanopore")
 @_add_common_meta_options
-@_add_resource_options(ResourceDefaults.META_SHARED_RULES + ResourceDefaults.META_NANOPORE_RULES)
+@_add_resource_options(
+    ResourceDefaults.META_SHARED_RULES + ResourceDefaults.META_NANOPORE_RULES
+)
 @click.option(
     "--run-polish-racon/--no-polish-racon",
     default=False,

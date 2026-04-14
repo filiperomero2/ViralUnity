@@ -215,11 +215,22 @@ def validate_metagenomics_requirements(args: Dict[str, Any]) -> None:
     the user has enabled (run_kraken2_reads, run_kraken2_contigs, run_diamond_reads,
     run_diamond_contigs).
     """
+    run_denovo = args.get("run_denovo_assembly", True)
     run_k2_reads = args.get("run_kraken2_reads", True)
-    run_denovo = args.get("run_denovo_assembly", False)
-    run_k2_contigs = args.get("run_kraken2_contigs", True) and run_denovo
+    run_k2_contigs = args.get("run_kraken2_contigs", True)
     run_diamond_reads = args.get("run_diamond_reads", False)
-    run_diamond_contigs = args.get("run_diamond_contigs", False) and run_denovo
+    run_diamond_contigs = args.get("run_diamond_contigs", False)
+    
+    if not run_denovo:
+        if run_k2_contigs:
+            raise ValidationError(
+                "Cannot run kraken2 on contigs (--run-kraken2-contigs) when denovo assembly is disabled (--no-denovo-assembly)."
+            )
+        if run_diamond_contigs:
+            raise ValidationError(
+                "Cannot run diamond on contigs (--run-diamond-contigs) when denovo assembly is disabled (--no-denovo-assembly)."
+            )
+
     any_kraken2 = run_k2_reads or run_k2_contigs
     any_diamond = run_diamond_reads or run_diamond_contigs
     any_classification = any_kraken2 or any_diamond
@@ -301,6 +312,76 @@ def validate_metagenomics_requirements(args: Dict[str, Any]) -> None:
             validate_file_exists(deacon_idx, "Deacon index file")
         except FileNotFoundError as e:
             raise FileNotFoundError(f"Deacon index file does not exist: {e}")
+
+    validate_reference_assembly_requirements(args)
+
+
+def validate_reference_assembly_requirements(args: Dict[str, Any]) -> None:
+    """Validate cross-dependencies for Reference Assembly in metagenomics workflows."""
+    if not args.get("run_reference_assembly"):
+        return
+
+    method = args.get("method")
+    source = args.get("source")
+    strategy = args.get("reference_selection_strategy")
+
+    # If --similarity is used, it must be on contigs, and the respective classification tool must run on contigs
+    if strategy == "similarity":
+        run_denovo = args.get("run_denovo_assembly", False)
+        if not run_denovo:
+            raise ValidationError(
+                "Reference selection strategy 'similarity' requires --run-denovo-assembly."
+            )
+        if source == "reads":
+            raise ValidationError(
+                "Reference selection strategy 'similarity' can only be used if --source includes 'contigs'."
+            )
+
+        # Check if the chosen method actually runs on contigs
+        if method == "kraken2" and not args.get("run_kraken2_contigs", True):
+            raise ValidationError(
+                "Strategy 'similarity' with method 'kraken2' requires --run-kraken2-contigs."
+            )
+        if method == "diamond" and not args.get("run_diamond_contigs", False):
+            raise ValidationError(
+                "Strategy 'similarity' with method 'diamond' requires --run-diamond-contigs."
+            )
+        if method == "both" and not (
+            args.get("run_kraken2_contigs", True)
+            or args.get("run_diamond_contigs", False)
+        ):
+            raise ValidationError(
+                "Strategy 'similarity' with method 'both' requires at least one mapping tool on contigs."
+            )
+
+    if method in ["kraken2", "both"]:
+        if source in ["reads", "both"] and not args.get("run_kraken2_reads", True):
+            raise ValidationError(
+                "Method includes 'kraken2' on 'reads' but --no-kraken2-reads was passed."
+            )
+        if source in ["contigs", "both"] and not args.get("run_kraken2_contigs", True):
+            raise ValidationError(
+                "Method includes 'kraken2' on 'contigs' but --no-kraken2-contigs was passed."
+            )
+
+    if method in ["diamond", "both"]:
+        if source in ["reads", "both"] and not args.get("run_diamond_reads", False):
+            raise ValidationError(
+                "Method includes 'diamond' on 'reads' but --run-diamond-reads is not enabled."
+            )
+        if source in ["contigs", "both"] and not args.get("run_diamond_contigs", False):
+            raise ValidationError(
+                "Method includes 'diamond' on 'contigs' but --run-diamond-contigs is not enabled."
+            )
+
+    viral_genomes = args.get("viral_genomes")
+    if viral_genomes and not os.path.isfile(viral_genomes):
+        raise FileNotFoundError(f"Viral genomes file does not exist: {viral_genomes}")
+
+    if strategy == "taxid":
+        viral_taxids = args.get("viral_taxids")
+        if viral_taxids and not os.path.isfile(viral_taxids):
+            raise FileNotFoundError(f"Viral taxids file does not exist: {viral_taxids}")
 
 
 def get_samples_from_args(args: Dict[str, Any]) -> Dict[str, List[str]]:
