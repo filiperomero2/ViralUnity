@@ -32,23 +32,8 @@ checkpoint select_references_meta:
         blast_qcov = config.get("ref_blast_qcov", 80),
         blast_pident = config.get("ref_blast_pident", 80),
         contigs_dir = config["output"] + "denovo_assembly/viral_contigs/"
-    shell:
-        """
-        python scripts/python/select_reference_genomes.py \
-            --summary-dir {params.summary_dir} \
-            --method {params.method} \
-            --source {params.source} \
-            --reads-count {params.reads_count} \
-            --contigs-count {params.contigs_count} \
-            --families '{params.families}' \
-            --strategy {params.strategy} \
-            --genome2taxid {params.genome2taxid} \
-            --blast-db {params.blast_db} \
-            --blast-qcov {params.blast_qcov} \
-            --blast-pident {params.blast_pident} \
-            --contigs-dir {params.contigs_dir} \
-            --out-tsv {output.tsv}
-        """
+    script:
+        "../python/select_reference_genomes.py"
 
 def get_reference_assembly_targets(wildcards):
     f = checkpoints.select_references_meta.get().output.tsv

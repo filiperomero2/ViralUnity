@@ -40,8 +40,9 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
-    args = parse_args()
+def main(args=None):
+    if args is None:
+        args = parse_args()
     families = [f.strip() for f in args.families.split(",")]
 
     # Parse summary TSVs
@@ -208,5 +209,25 @@ def main():
     out_df.to_csv(args.out_tsv, sep="\t", index=False)
 
 
-if __name__ == "__main__":
+if "snakemake" in globals():
+    class SnakemakeArgs:
+        pass
+    
+    args = SnakemakeArgs()
+    args.summary_dir = snakemake.params.summary_dir
+    args.method = snakemake.params.method
+    args.source = snakemake.params.source
+    args.reads_count = snakemake.params.reads_count
+    args.contigs_count = snakemake.params.contigs_count
+    args.families = snakemake.params.families
+    args.strategy = snakemake.params.strategy
+    args.genome2taxid = snakemake.params.genome2taxid
+    args.blast_db = snakemake.params.blast_db
+    args.blast_qcov = snakemake.params.blast_qcov
+    args.blast_pident = snakemake.params.blast_pident
+    args.contigs_dir = snakemake.params.contigs_dir
+    args.out_tsv = snakemake.output.tsv
+    
+    main(args)
+elif __name__ == "__main__":
     main()
