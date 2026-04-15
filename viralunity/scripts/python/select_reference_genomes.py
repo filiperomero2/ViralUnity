@@ -123,8 +123,9 @@ def main(args=None):
         )
         g2t["taxid"] = g2t["taxid"].astype(str)
 
-        # Only use taxids from the target-family rows that passed the count filter
-        taxid_candidates = family_hits[family_hits["sample"].isin(valid_samples)]
+        # Use all ranks (species/genus/family) for valid samples so species-level
+        # taxids can match against genome2taxid (which holds species/strain taxids)
+        taxid_candidates = filtered_df[filtered_df["sample"].isin(valid_samples)]
         taxid_candidates["taxid_str"] = taxid_candidates["taxid"].astype(str)
 
         merged = pd.merge(
