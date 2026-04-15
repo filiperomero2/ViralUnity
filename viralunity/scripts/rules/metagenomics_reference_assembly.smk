@@ -89,7 +89,10 @@ def get_all_reference_assemblies(wildcards):
     tsv_path = config["output"] + "reference_targets.tsv"
     if not os.path.exists(tsv_path):
         return []
-    df = pd.read_csv(tsv_path, sep="\t")
+    try:
+        df = pd.read_csv(tsv_path, sep="\t")
+    except pd.errors.EmptyDataError:
+        return []
     if df.empty:
         return []
     targets = []

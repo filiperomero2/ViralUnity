@@ -196,9 +196,10 @@ def main(args=None):
                 print(f"Error running BLAST for {sample}: {e}")
 
     # Deduplicate and save
-    out_df = pd.DataFrame(out_records)
-    if not out_df.empty:
-        out_df = out_df.drop_duplicates()
+    if out_records:
+        out_df = pd.DataFrame(out_records).drop_duplicates()
+    else:
+        out_df = pd.DataFrame(columns=["sample", "ref_key", "reference_genome"])
 
     out_df.to_csv(args.out_tsv, sep="\t", index=False)
 
