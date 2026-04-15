@@ -157,6 +157,7 @@ def main(args=None):
                 else:
                     contig_globs = glob.glob(os.path.join(args.contigs_dir, sample, "*.contigs.fa*"))
                     if not contig_globs:
+                        print(f"Warning: no contig file found for sample {sample} in {args.contigs_dir}, skipping.")
                         continue
                     contig_file = contig_globs[0]
 
@@ -172,27 +173,33 @@ def main(args=None):
                 "10",
             ]
 
+            print(f"Running BLAST for {sample}: {' '.join(blast_cmd)}")
             try:
                 res = subprocess.run(blast_cmd, capture_output=True, text=True)
-                if res.returncode == 0 and res.stdout:
-                    for line in res.stdout.strip().split("\\n"):
-                        parts = line.split("\\t")
-                        if len(parts) >= 4:
-                            sseqid = parts[1]
-                            pident = float(parts[2])
-                            qcov = float(parts[3])
-                            if pident >= args.blast_pident and qcov >= args.blast_qcov:
-                                fams = "_".join(sorted(samples_families[sample])).replace(
-                                    " ", "_"
-                                )
-                                ref_key = f"{fams}_{sseqid}"
-                                out_records.append(
-                                    {
-                                        "sample": sample,
-                                        "ref_key": ref_key,
-                                        "reference_genome": sseqid,
-                                    }
-                                )
+                if res.returncode != 0:
+                    print(f"BLAST failed for {sample} (exit {res.returncode}):\n{res.stderr}")
+                    continue
+                if not res.stdout.strip():
+                    print(f"BLAST produced no hits for {sample}.")
+                    continue
+                for line in res.stdout.strip().split("\n"):
+                    parts = line.split("\t")
+                    if len(parts) >= 4:
+                        sseqid = parts[1]
+                        pident = float(parts[2])
+                        qcov = float(parts[3])
+                        if pident >= args.blast_pident and qcov >= args.blast_qcov:
+                            fams = "_".join(sorted(samples_families[sample])).replace(
+                                " ", "_"
+                            )
+                            ref_key = f"{fams}_{sseqid}"
+                            out_records.append(
+                                {
+                                    "sample": sample,
+                                    "ref_key": ref_key,
+                                    "reference_genome": sseqid,
+                                }
+                            )
             except Exception as e:
                 print(f"Error running BLAST for {sample}: {e}")
 
