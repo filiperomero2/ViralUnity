@@ -510,7 +510,6 @@ def get_virus_genome(path, taxon, refseq, skip_makeblastdb):
                 "makeblastdb",
                 "-in", str(reformatted_fasta),
                 "-dbtype", "nucl",
-                "-parse_seqids",
             ]
         )
         click.echo("BLAST database index files created alongside the FASTA.")
