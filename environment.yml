@@ -12,6 +12,7 @@ dependencies:
   - krona=2.8
   - biopython=1.81
   - deacon=0.15
+  - python>=3.8.0,<3.12.0
   - conda
   - pip
   - pip:

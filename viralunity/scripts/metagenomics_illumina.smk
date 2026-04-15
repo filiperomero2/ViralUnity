@@ -63,7 +63,7 @@ def _all_inputs():
             targets.append(config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary_RPM.bleed.tsv")
             
     if config.get("run_reference_assembly", False):
-        targets.append(config["output"] + "assembly/reference_assemblies_done.txt")
+        targets.append(config["output"] + "reference_assembly_done.txt")
     return targets
 
 rule all:

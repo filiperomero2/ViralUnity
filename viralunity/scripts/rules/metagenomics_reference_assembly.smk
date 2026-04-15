@@ -1,4 +1,5 @@
 import pandas as pd
+import os
 
 def get_checkpoint_inputs(wildcards):
     targets = []
@@ -35,24 +36,6 @@ checkpoint select_references_meta:
     script:
         "../python/select_reference_genomes.py"
 
-def get_reference_assembly_targets(wildcards):
-    f = checkpoints.select_references_meta.get().output.tsv
-    df = pd.read_csv(f, sep="\t")
-    targets = []
-    for i, row in df.iterrows():
-        sample = row["sample"]
-        segment = row["segment"]
-        targets.append(config["output"] + f"assembly/{segment}/consensus/final_consensus/samples_alignment.fasta")
-    return targets
-
-rule run_reference_assemblies:
-    input:
-        get_reference_assembly_targets
-    output:
-        config["output"] + "assembly/reference_assemblies_done.txt"
-    shell:
-        "echo 'all dynamic reference assemblies complete' > {output}"
-
 # Extract fasta for the given segment (family_accession) from the blast database
 rule extract_reference_fasta:
     input:
@@ -87,4 +70,32 @@ if config.get("data") == "illumina":
 else:
     include: "alignment_nanopore.smk"
     include: "consensus_nanopore.smk"
+
+
+def get_all_reference_assemblies(wildcards):
+    checkpoints.select_references_meta.get()
+    tsv_path = config["output"] + "reference_targets.tsv"
+    if not os.path.exists(tsv_path):
+        return []
+    df = pd.read_csv(tsv_path, sep="\t")
+    if df.empty:
+        return []
+    targets = []
+    for _, row in df.iterrows():
+        sample = row["sample"]
+        segment = row["segment"]
+        targets.append(
+            config["output"]
+            + f"assembly/{segment}/consensus/final_consensus/{sample}.consensus.fasta"
+        )
+    return list(set(targets))
+
+
+rule collect_reference_assemblies:
+    input:
+        get_all_reference_assemblies
+    output:
+        config["output"] + "reference_assembly_done.txt"
+    shell:
+        "touch {output}"
 

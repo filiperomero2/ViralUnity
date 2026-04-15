@@ -18,7 +18,7 @@ rule infer_consensus_sequence:
         vcf = config['output'] + "assembly/" + SEGMENT_WILDCARD + "consensus/final_consensus/{sample}.vcf.gz",
         vcf_index = config['output'] + "assembly/" + SEGMENT_WILDCARD + "consensus/final_consensus/{sample}.vcf.gz.tbi",
         low_cov_bed = config['output'] + "assembly/" + SEGMENT_WILDCARD + "consensus/final_consensus/{sample}.low_cov.bed",
-        consensus = temp(config['output'] + "assembly/" + SEGMENT_WILDCARD + "consensus/final_consensus/{sample}.consensus.fasta")
+        consensus = config['output'] + "assembly/" + SEGMENT_WILDCARD + "consensus/final_consensus/{sample}.consensus.fasta"
     params:
         output_prefix_dir = config['output'] + "assembly/" + SEGMENT_WILDCARD + "clair3/{sample}",
         minimum_depth = config.get("minimum_depth", 10),
