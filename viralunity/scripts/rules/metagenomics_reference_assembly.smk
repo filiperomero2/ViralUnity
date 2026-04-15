@@ -32,7 +32,8 @@ checkpoint select_references_meta:
         blast_db = config.get("viral_genomes", "databases/virus_genomes/viral.genomes.fasta"),
         blast_qcov = config.get("ref_blast_qcov", 80),
         blast_pident = config.get("ref_blast_pident", 80),
-        contigs_dir = config["output"] + "denovo_assembly/viral_contigs/"
+        contigs_dir = config["output"] + "denovo_assembly/viral_contigs/",
+        taxdump = config.get("taxdump", "")
     script:
         "../python/select_reference_genomes.py"
 
