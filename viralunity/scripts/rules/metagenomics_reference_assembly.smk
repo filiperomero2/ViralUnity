@@ -36,33 +36,45 @@ checkpoint select_references_meta:
     script:
         "../python/select_reference_genomes.py"
 
-# Extract fasta for the given segment (family_accession) from the blast database
+# Extract fasta for the given ref_key (family_accession) from the viral genomes database
+# ref_key is a unique assembly target identifier: "{family}_{accession}"
 rule extract_reference_fasta:
     input:
         tsv = rules.select_references_meta.output.tsv
     output:
-        fasta = config["output"] + "assembly/{segment}/references/{sample}.fasta"
+        fasta = config["output"] + "assembly/{ref_key}/references/{sample}.fasta"
     params:
         db = config.get("viral_genomes", "databases/virus_genomes/viral.genomes.fasta")
+    log:
+        config["output"] + "assembly/{ref_key}/logs/extract_reference/{sample}.log"
     conda:
         "../envs/utils.yaml"
     shell:
         """
-        # Parse the TSV to get the accession for the segment/sample
-        acc=$(awk -F'\\t' -v s="{wildcards.sample}" -v seg="{wildcards.segment}" 'NR>1 && $1==s && $2==seg {{print $3}}' {input.tsv} | head -n 1)
-        if [ -n "$acc" ]; then
-            # Extract sequence from fasta
-            awk -v seq="$acc" 'BEGIN {{RS=">"; FS="\\n"}} $1~seq {{print ">"$0}}' {params.db} > {output.fasta}
-        else
-            touch {output.fasta}
+        set -euo pipefail
+        mkdir -p $(dirname {log})
+        # Parse the TSV to get the accession for the ref_key/sample
+        acc=$(awk -F'\\t' -v s="{wildcards.sample}" -v rk="{wildcards.ref_key}" \
+            'NR>1 && $1==s && $2==rk {{print $3}}' {input.tsv} | head -n 1)
+        if [ -z "$acc" ]; then
+            echo "ERROR: no accession found for sample={wildcards.sample} ref_key={wildcards.ref_key}" | tee -a {log} >&2
+            exit 1
         fi
+        # Exact-match on the first whitespace-delimited token of the FASTA header
+        awk -v seq="$acc" 'BEGIN {{RS=">"; FS="\\n"}} ($1==seq || $1~("^"seq" ")) {{print ">"$0}}' \
+            {params.db} > {output.fasta}
+        if [ ! -s {output.fasta} ]; then
+            echo "ERROR: accession $acc not found in {params.db}" | tee -a {log} >&2
+            exit 1
+        fi
+        echo "Extracted reference $acc for {wildcards.sample}/{wildcards.ref_key}" >> {log}
         """
 
 def get_meta_reference(wildcards):
-    return config["output"] + f"assembly/{wildcards.segment}/references/{wildcards.sample}.fasta"
+    return config["output"] + f"assembly/{wildcards.ref_key}/references/{wildcards.sample}.fasta"
 
 REFERENCE = get_meta_reference
-SEGMENT_WILDCARD = "{segment}/"
+SEGMENT_WILDCARD = "{ref_key}/"
 
 if config.get("data") == "illumina":
     include: "alignment_illumina.smk"
@@ -83,10 +95,10 @@ def get_all_reference_assemblies(wildcards):
     targets = []
     for _, row in df.iterrows():
         sample = row["sample"]
-        segment = row["segment"]
+        ref_key = row["ref_key"]
         targets.append(
             config["output"]
-            + f"assembly/{segment}/consensus/final_consensus/{sample}.consensus.fasta"
+            + f"assembly/{ref_key}/consensus/final_consensus/{sample}.consensus.fasta"
         )
     return list(set(targets))
 
@@ -96,6 +108,10 @@ rule collect_reference_assemblies:
         get_all_reference_assemblies
     output:
         config["output"] + "reference_assembly_done.txt"
+    log:
+        config["output"] + "logs/collect_reference_assemblies.log"
+    benchmark:
+        config["output"] + "logs/collect_reference_assemblies.benchmark.txt"
     shell:
-        "touch {output}"
+        "touch {output} && echo 'Reference assembly complete.' > {log}"
 

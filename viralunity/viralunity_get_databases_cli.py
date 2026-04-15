@@ -419,8 +419,14 @@ def _reformat_genome_fasta(
     show_default=True,
     help="Limit to RefSeq genomes only.",
 )
-def get_virus_genome(path, taxon, refseq):
-    """Download viral genomes via NCBI Datasets.
+@click.option(
+    "--skip-makeblastdb",
+    is_flag=True,
+    default=False,
+    help="Download and reformat files only; skip makeblastdb index creation.",
+)
+def get_virus_genome(path, taxon, refseq, skip_makeblastdb):
+    """Download viral genomes via NCBI Datasets and build a BLAST database.
 
     Uses 'datasets download virus genome' with --include genome to fetch
     viral genome sequences.  The downloaded genomes are reformatted so
@@ -430,7 +436,8 @@ def get_virus_genome(path, taxon, refseq):
 
     A two-column genome2taxid.tsv mapping file (accession -> TaxID) is
     derived from the bundled data_report.jsonl and saved alongside the
-    FASTA file.
+    FASTA file.  A nucleotide BLAST database is then built with makeblastdb
+    for use with the reference assembly similarity strategy.
     """
     db_dir = _make_db_dir(path, "virus_genomes")
     raw_dir = db_dir / "_ncbi_download"
@@ -496,9 +503,26 @@ def get_virus_genome(path, taxon, refseq):
     shutil.rmtree(raw_dir)
     click.echo("Cleaned up temporary download files.")
 
+    if not skip_makeblastdb:
+        click.echo("Building nucleotide BLAST database (makeblastdb)...")
+        _run(
+            [
+                "makeblastdb",
+                "-in", str(reformatted_fasta),
+                "-dbtype", "nucl",
+                "-parse_seqids",
+            ]
+        )
+        click.echo("BLAST database index files created alongside the FASTA.")
+
     click.echo(f"\nViral genome database ready.")
     click.echo(f"  FASTA:       {reformatted_fasta}")
     click.echo(f"  Taxid map:   {taxid_map_path}")
+    if not skip_makeblastdb:
+        click.echo(f"  BLAST DB:    {reformatted_fasta} (index files: .nhr/.nin/.nsq/...)")
+    click.echo(f"\nUse in viralunity meta commands:")
+    click.echo(f"  --viral-genomes  {reformatted_fasta}")
+    click.echo(f"  --viral-taxids   {taxid_map_path}")
 
 
 @get_databases.command("host-genome")

@@ -219,8 +219,8 @@ The metagenomics pipeline takes raw reads to taxonomic classifications and visua
 | `--negative-p-threshold` | `0.01` | p-value threshold for negative-control filter. |
 | `--minimum-hit-group` | `4` | Kraken2 minimum-hit-group parameter. |
 | `--run-reference-assembly`/`--no-run-reference-assembly` | off | Enable reference assembly from filtered taxonomic hits. |
-| `--method` | `undefined` | Method used for reference assembly (`kraken2`, `diamond`, `both`). |
-| `--source` | `undefined` | Source of taxonomy data for reference assembly (`reads`, `contigs`, `both`). |
+| `--method` | `kraken2` | Method used for reference assembly (`kraken2`, `diamond`, `both`). Required when `--run-reference-assembly` is set. |
+| `--source` | `reads` | Source of taxonomy data for reference assembly (`reads`, `contigs`, `both`). Required when `--run-reference-assembly` is set. |
 | `--reads-count` | `100` | Minimum reads assigned to a viral family to trigger reference assembly. |
 | `--contigs-count` | `1` | Minimum contigs assigned to a viral family to trigger reference assembly. |
 | `--families` | `Coronaviridae,...` | Comma-separated list of targeted viral families for reference assembly. |
@@ -301,6 +301,26 @@ viralunity meta illumina \
     --taxids /path/to/protein2taxid.tsv \
     --run-denovo-assembly \
     --host-reference /path/to/host.fa \
+    --threads 4 --threads-total 8
+```
+
+**Illumina — with reference assembly (Kraken2 hits drive consensus assembly):**
+
+```bash
+viralunity meta illumina \
+    --sample-sheet samples.csv \
+    --config-file config.yaml \
+    --output /path/to/output \
+    --kraken2-database /path/to/kraken2_db \
+    --krona-database /path/to/krona_taxonomy \
+    --taxdump /path/to/taxdump \
+    --run-reference-assembly \
+    --method kraken2 \
+    --source reads \
+    --families Coronaviridae,Orthomyxoviridae \
+    --reads-count 100 \
+    --viral-genomes databases/virus_genomes/viral.genomes.fasta \
+    --viral-taxids databases/virus_genomes/genome2taxid.tsv \
     --threads 4 --threads-total 8
 ```
 
@@ -404,12 +424,16 @@ viralunity get-databases diamond --path /data/dbs --threads 4
 | `--path` | `databases` | Parent directory; creates `{path}/virus_genomes/`. |
 | `--taxon` | Viruses | NCBI taxon name to download (e.g. `Viruses`, `coronaviridae`). |
 | `--refseq`/`--no-refseq` | `on` | Limit to RefSeq genomes only. |
+| `--skip-makeblastdb` | off | Download and reformat files only; skip `makeblastdb` index creation. |
 
-Requires the NCBI Datasets CLI.
+Requires the NCBI Datasets CLI and BLAST+ (`makeblastdb`).
+
+After downloading and reformatting genome sequences, the command automatically runs `makeblastdb` to build a nucleotide BLAST index alongside the FASTA. This index is required when using the `similarity` reference selection strategy (`--reference-selection-strategy similarity`).
 
 ```bash
 viralunity get-databases virus-genome --taxon Viruses
 # FASTA at databases/virus_genomes/viral.genomes.fasta
+# BLAST DB index files at databases/virus_genomes/viral.genomes.fasta.{nhr,nin,nsq,...}
 # taxids at databases/virus_genomes/genome2taxid.tsv
 # use: --viral-genomes databases/virus_genomes/viral.genomes.fasta
 #      --viral-taxids databases/virus_genomes/genome2taxid.tsv

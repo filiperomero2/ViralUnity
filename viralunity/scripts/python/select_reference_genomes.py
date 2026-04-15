@@ -77,7 +77,7 @@ def main(args=None):
 
     if not summary_files:
         print("Warning: No summary TSVs found for the given method and source.")
-        pd.DataFrame(columns=["sample", "family", "reference_genome"]).to_csv(
+        pd.DataFrame(columns=["sample", "ref_key", "reference_genome"]).to_csv(
             args.out_tsv, sep="\t", index=False
         )
         return
@@ -88,7 +88,7 @@ def main(args=None):
             frames.append(pd.read_csv(f, sep="\t"))
 
     if not frames:
-        pd.DataFrame(columns=["sample", "family", "reference_genome"]).to_csv(
+        pd.DataFrame(columns=["sample", "ref_key", "reference_genome"]).to_csv(
             args.out_tsv, sep="\t", index=False
         )
         return
@@ -96,14 +96,8 @@ def main(args=None):
     df = pd.concat(frames, ignore_index=True)
 
     # Filter by count
-    df_reads = df[
-        df["source"].str.contains("reads", na=False, case=False)
-        | (df["mode"] == "reads")
-    ]
-    df_contigs = df[
-        df["source"].str.contains("contigs", na=False, case=False)
-        | (df["mode"] == "contigs")
-    ]
+    df_reads = df[df["mode"] == "reads"]
+    df_contigs = df[df["mode"] == "contigs"]
 
     df_reads = df_reads[df_reads["count"] >= args.reads_count]
     df_contigs = df_contigs[df_contigs["count"] >= args.contigs_count]
@@ -129,8 +123,8 @@ def main(args=None):
         )
         g2t["taxid"] = g2t["taxid"].astype(str)
 
-        # We look at ALL taxids that passed the count filter for the valid samples
-        taxid_candidates = filtered_df[filtered_df["sample"].isin(valid_samples)]
+        # Only use taxids from the target-family rows that passed the count filter
+        taxid_candidates = family_hits[family_hits["sample"].isin(valid_samples)]
         taxid_candidates["taxid_str"] = taxid_candidates["taxid"].astype(str)
 
         merged = pd.merge(
@@ -140,11 +134,11 @@ def main(args=None):
         for idx, row in merged.iterrows():
             sample = row["sample"]
             acc = row["accession"]
-            # To ensure uniqueness, we use family_accession
-            fams = "_".join(samples_families[sample]).replace(" ", "_")
-            segment = f"{fams}_{acc}"
+            # ref_key uniquely identifies this assembly target: family_accession (sorted for determinism)
+            fams = "_".join(sorted(samples_families[sample])).replace(" ", "_")
+            ref_key = f"{fams}_{acc}"
             out_records.append(
-                {"sample": sample, "segment": segment, "reference_genome": acc}
+                {"sample": sample, "ref_key": ref_key, "reference_genome": acc}
             )
 
     elif args.strategy == "similarity":
@@ -169,7 +163,7 @@ def main(args=None):
                 "blastn",
                 "-query",
                 contig_file,
-                "-subject",
+                "-db",
                 args.blast_db,
                 "-outfmt",
                 "6 qseqid sseqid pident qcovhsp",
@@ -187,14 +181,14 @@ def main(args=None):
                             pident = float(parts[2])
                             qcov = float(parts[3])
                             if pident >= args.blast_pident and qcov >= args.blast_qcov:
-                                fams = "_".join(samples_families[sample]).replace(
+                                fams = "_".join(sorted(samples_families[sample])).replace(
                                     " ", "_"
                                 )
-                                segment = f"{fams}_{sseqid}"
+                                ref_key = f"{fams}_{sseqid}"
                                 out_records.append(
                                     {
                                         "sample": sample,
-                                        "segment": segment,
+                                        "ref_key": ref_key,
                                         "reference_genome": sseqid,
                                     }
                                 )

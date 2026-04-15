@@ -7,6 +7,7 @@ dependencies:
   - snakemake=7.32
   - pyyaml=6.0
   - wget
+  - blast>=2.16
   - ncbi-datasets-cli=18.23
   - diamond=2.1
   - krona=2.8

@@ -166,9 +166,15 @@ O pipeline de metagenômica tem como objetivo gerar classificações taxonômica
 | `--run-diamond-contigs`/`--no-diamond-contigs` | off | Diamond nos contigs. |
 | `--diamond-database` | `NA` | FASTA de proteínas para Diamond. |
 | `--taxids` | `NA` | Mapeamento de taxid NCBI para taxonomia Diamond. |
+| `--diamond-sensitivity` | `sensitive` | Modo de sensibilidade do Diamond (`sensitive` / `mid-sensitive` / `more-sensitive` / `ultra-sensitive`). |
+| `--evalue` | `0.001` | Limiar de E-value do Diamond. |
+| `--bleed-fraction` | `0.005` | Fração do filtro de bleed (max-RPM). |
+| `--negative-controls` | (vazio) | IDs de amostras separados por vírgula usados como controles negativos. |
+| `--negative-p-threshold` | `0.01` | Limiar de p-valor para filtro de controle negativo. |
+| `--minimum-hit-group` | `4` | Parâmetro minimum-hit-group do Kraken2. |
 | `--run-reference-assembly`/`--no-run-reference-assembly` | off | Habilitar montagem de genoma baseada em referência ("dynamic reference assembly"). |
-| `--method` | `undefined` | Método alvo para classificar a família viral (`kraken2`, `diamond`, `both`). |
-| `--source` | `undefined` | Tipo de origem contendo a taxonomia da família (`reads`, `contigs`, `both`). |
+| `--method` | `kraken2` | Método alvo para classificar a família viral (`kraken2`, `diamond`, `both`). Obrigatório quando `--run-reference-assembly` está ativo. |
+| `--source` | `reads` | Tipo de origem contendo a taxonomia da família (`reads`, `contigs`, `both`). Obrigatório quando `--run-reference-assembly` está ativo. |
 | `--reads-count` | `100` | Mínimo de reads mapeadas da família-alvo. |
 | `--contigs-count` | `1` | Mínimo de contigs pertencentes a família-alvo. |
 | `--families` | `Coronaviridae,...` | Famílias alvo por default, ex: `Coronaviridae,Orthomyxoviridae` |
@@ -196,6 +202,59 @@ viralunity meta illumina \
     --taxdump /caminho/taxdump \
     --threads 2 \
     --threads-total 4
+```
+
+**Illumina — com adaptadores e remoção do hospedeiro:**
+
+```bash
+viralunity meta illumina \
+    --sample-sheet amostras.csv \
+    --config-file config.yaml \
+    --output /caminho/saida \
+    --kraken2-database /caminho/kraken2_db \
+    --krona-database /caminho/krona_taxonomy \
+    --taxdump /caminho/taxdump \
+    --adapters /caminho/adaptadores.fa \
+    --host-reference /caminho/genoma_hospedeiro.fa \
+    --threads 4 --threads-total 8
+```
+
+**Illumina — pipeline completo (montagem + Kraken2 + Diamond, reads e contigs):**
+
+```bash
+viralunity meta illumina \
+    --sample-sheet amostras.csv \
+    --config-file config.yaml \
+    --output /caminho/saida \
+    --kraken2-database /caminho/kraken2_db \
+    --krona-database /caminho/krona_taxonomy \
+    --taxdump /caminho/taxdump \
+    --run-diamond-reads --run-diamond-contigs \
+    --diamond-database /caminho/proteinas.faa \
+    --taxids /caminho/protein2taxid.tsv \
+    --run-denovo-assembly \
+    --host-reference /caminho/hospedeiro.fa \
+    --threads 4 --threads-total 8
+```
+
+**Illumina — com montagem de referência dinâmica:**
+
+```bash
+viralunity meta illumina \
+    --sample-sheet amostras.csv \
+    --config-file config.yaml \
+    --output /caminho/saida \
+    --kraken2-database /caminho/kraken2_db \
+    --krona-database /caminho/krona_taxonomy \
+    --taxdump /caminho/taxdump \
+    --run-reference-assembly \
+    --method kraken2 \
+    --source reads \
+    --families Coronaviridae,Orthomyxoviridae \
+    --reads-count 100 \
+    --viral-genomes databases/virus_genomes/viral.genomes.fasta \
+    --viral-taxids databases/virus_genomes/genome2taxid.tsv \
+    --threads 4 --threads-total 8
 ```
 
 **Nanopore — pipeline completo:**
@@ -293,12 +352,16 @@ viralunity get-databases diamond --path /dados/dbs --threads 4
 | `--path` | `databases` | Diretório pai; cria `{path}/virus_genomes/`. |
 | `--taxon` | Viruses | Nome do táxon NCBI para baixar (ex. `Viruses`, `coronaviridae`). |
 | `--refseq`/`--no-refseq` | `on` | Limitar apenas a genomas RefSeq. |
+| `--skip-makeblastdb` | off | Apenas baixar e reformatar arquivos; não executar `makeblastdb`. |
 
-Requer a CLI NCBI Datasets.
+Requer a CLI NCBI Datasets e BLAST+ (`makeblastdb`).
+
+Após baixar e reformatar as sequências, o comando executa automaticamente `makeblastdb` para criar um índice BLAST nucleotídico ao lado do arquivo FASTA. Esse índice é necessário quando a estratégia de seleção de referência por similaridade (`--reference-selection-strategy similarity`) for utilizada.
 
 ```bash
 viralunity get-databases virus-genome --taxon Viruses --path /dados/dbs
 # FASTA em /dados/dbs/virus_genomes/viral.genomes.fasta
+# Índice BLAST em /dados/dbs/virus_genomes/viral.genomes.fasta.{nhr,nin,nsq,...}
 # taxids em /dados/dbs/virus_genomes/genome2taxid.tsv
 # uso: --viral-genomes /dados/dbs/virus_genomes/viral.genomes.fasta
 #      --viral-taxids /dados/dbs/virus_genomes/genome2taxid.tsv
