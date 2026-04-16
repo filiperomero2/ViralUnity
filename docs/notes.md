@@ -39,13 +39,18 @@ When `--run-reference-assembly` is enabled, the metagenomics pipeline adds a pos
 
 #### `--reference-selection-strategy taxid` (default)
 
-The taxid assigned to each read or contig by the classifier (Kraken2 or Diamond) is looked up in `--viral-taxids` (`genome2taxid.tsv`) to find all genome accessions that share that taxid. Every matching accession generates a separate reference assembly for that sample.
+For each sample that has classification hits to a target family, every taxid from the summary (Kraken2 or Diamond) is looked up in `--viral-taxids` (`genome2taxid.tsv`). The lookup is performed in two steps:
+
+1. **Exact match** — the taxid value from the summary row is searched directly in `genome2taxid.tsv`. If one or more accessions are found, all of them are used as reference targets.
+2. **Species-level fallback** — if the exact taxid is absent (e.g. the classifier assigned a strain or subspecies taxid that is below species in the NCBI taxonomy), the species-level ancestor is resolved via `--taxdump` and retried against `genome2taxid.tsv`.
+
+`--taxdump` is used only to (a) validate that the matched taxid belongs to a target family and (b) build the reference key label — it is not used to normalise the rank of the lookup itself. A warning is emitted once per family if no accession could be found for that family in the sample.
 
 **When to use:** when your classifier database and your `--viral-genomes` database were both built from the same RefSeq release. The taxid linkage is direct and requires no sequence comparison. Fast and deterministic.
 
-**Limitation:** a taxid match does not guarantee the reference is the closest relative in the database — it only guarantees taxonomic identity. For highly diverse families (e.g. Flaviviridae), multiple accessions may match the same taxid, each generating its own assembly.
+**Limitation:** a taxid match does not guarantee the reference is the closest relative in the database — it only guarantees taxonomic identity. If you need the closest possible reference rather than any representative of the species, use `similarity` instead.
 
-**Required databases:** `--viral-genomes` and `--viral-taxids` (both produced by `viralunity get-databases virus-genome`).
+**Required databases:** `--viral-genomes`, `--viral-taxids`, and `--taxdump` (all produced by `viralunity get-databases virus-genome` / NCBI taxdump).
 
 ```bash
 viralunity meta illumina \
@@ -68,13 +73,13 @@ viralunity meta illumina \
 
 #### `--reference-selection-strategy similarity`
 
-De novo assembled contigs from each sample are BLASTed against `--viral-genomes` using `blastn`. The best hit that passes `--blast-qcov` and `--blast-pident` thresholds is selected as the reference.
+De novo assembled contigs from each sample are BLASTed against `--viral-genomes` using `blastn`. For each contig, BLAST returns hits sorted by bitscore (best first). The first hit per contig that passes both `--blast-qcov` and `--blast-pident` thresholds is selected; subsequent hits for the same contig are ignored. The selected accession is then validated against `--viral-taxids` and `--taxdump`: only hits whose taxid (at any rank — strain, species, genus, or family) traces back to a target family are kept as reference targets.
 
 **When to use:** when sequence identity to a specific genome matters more than taxonomic label — for example, when working with divergent or novel strains where taxid-based lookup may return a reference that is genetically distant. Requires de novo assembly (`--run-denovo-assembly`) to produce the contigs used as BLAST queries.
 
 **Limitation:** requires a pre-built BLAST index alongside `--viral-genomes` (created automatically by `viralunity get-databases virus-genome`). If no contigs pass the identity/coverage thresholds, no reference assembly is triggered for that sample.
 
-**Required databases:** `--viral-genomes` with its BLAST index (produced by `viralunity get-databases virus-genome`).
+**Required databases:** `--viral-genomes` with its BLAST index, `--viral-taxids`, and `--taxdump` (produced by `viralunity get-databases virus-genome` / NCBI taxdump).
 
 ```bash
 viralunity meta illumina \
@@ -102,9 +107,10 @@ viralunity meta illumina \
 | | `taxid` | `similarity` |
 |---|---|---|
 | Requires de novo assembly | No | Yes |
-| Requires `--viral-taxids` | Yes | No |
+| Requires `--viral-taxids` | Yes | Yes (family validation) |
+| Requires `--taxdump` | Yes (family validation + species fallback) | Yes (family validation) |
 | Requires BLAST index | No | Yes |
-| Selection basis | Taxonomic ID match | Sequence identity |
+| Selection basis | Taxonomic ID match (exact → species fallback) | Best BLAST hit per contig |
 | Speed | Fast | Slower (BLAST per sample) |
 | Best for | Known strains with good RefSeq coverage | Divergent or novel strains |
 

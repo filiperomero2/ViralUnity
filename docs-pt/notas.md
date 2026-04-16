@@ -39,13 +39,18 @@ Quando `--run-reference-assembly` está habilitado, o pipeline de metagenômica 
 
 #### `--reference-selection-strategy taxid` (padrão)
 
-O taxid atribuído a cada read ou contig pelo classificador (Kraken2 ou Diamond) é consultado no arquivo `--viral-taxids` (`genome2taxid.tsv`) para encontrar todos os accessions de genoma que compartilham aquele taxid. Cada accession encontrado gera uma montagem de referência separada para aquela amostra.
+Para cada amostra com hits de classificação em uma família-alvo, todos os taxids do sumário (Kraken2 ou Diamond) são consultados no arquivo `--viral-taxids` (`genome2taxid.tsv`). A busca é feita em duas etapas:
+
+1. **Correspondência exata** — o valor do taxid da linha do sumário é buscado diretamente no `genome2taxid.tsv`. Se um ou mais accessions forem encontrados, todos são usados como alvos de referência.
+2. **Fallback para nível de espécie** — se o taxid exato não estiver presente (ex.: o classificador atribuiu um taxid de cepa ou subespécie abaixo do nível de espécie na taxonomia NCBI), o ancestral no nível de espécie é resolvido via `--taxdump` e a busca é repetida contra o `genome2taxid.tsv`.
+
+O `--taxdump` é usado apenas para (a) validar se o taxid correspondido pertence a uma família-alvo e (b) construir o rótulo da chave de referência — não é usado para normalizar o rank da busca em si. Um aviso é emitido uma vez por família caso nenhum accession seja encontrado para aquela família na amostra.
 
 **Quando usar:** quando o banco de dados do classificador e o banco `--viral-genomes` foram construídos a partir do mesmo release do RefSeq. A ligação pelo taxid é direta e não requer comparação de sequências. Rápida e determinística.
 
-**Limitação:** uma correspondência de taxid não garante que a referência seja a mais próxima geneticamente — apenas garante identidade taxonômica. Para famílias muito diversas (ex.: Flaviviridae), múltiplos accessions podem corresponder ao mesmo taxid, gerando uma montagem para cada um.
+**Limitação:** uma correspondência de taxid não garante que a referência seja a mais próxima geneticamente — apenas garante identidade taxonômica. Se precisar da referência mais próxima geneticamente em vez de um representante da espécie, use `similarity`.
 
-**Bancos de dados necessários:** `--viral-genomes` e `--viral-taxids` (ambos gerados por `viralunity get-databases virus-genome`).
+**Bancos de dados necessários:** `--viral-genomes`, `--viral-taxids` e `--taxdump` (gerados por `viralunity get-databases virus-genome` / taxdump do NCBI).
 
 ```bash
 viralunity meta illumina \

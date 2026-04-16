@@ -92,6 +92,23 @@ def get_family_for_taxid(taxid_str, nodes, names):
     return None
 
 
+def get_taxid_at_rank(taxid_str, target_rank, nodes):
+    """Walk the taxonomy tree upward and return the taxid string at target_rank, or None."""
+    visited = set()
+    current = taxid_str
+    while current and current not in visited:
+        visited.add(current)
+        if current not in nodes:
+            break
+        parent, rank = nodes[current]
+        if rank == target_rank:
+            return current
+        if current == parent:  # reached taxonomy root
+            break
+        current = parent
+    return None
+
+
 def clean_accession(sseqid):
     """Strip NCBI pipe-delimited prefixes (e.g. ref|NC_004911.1|) from a BLAST sseqid."""
     m = re.match(r'^[a-z]+\|([^|]+)\|?$', sseqid)
@@ -193,46 +210,77 @@ def main(args=None):
             args.genome2taxid, sep="\t", header=None, names=["accession", "taxid"]
         )
         g2t["taxid"] = g2t["taxid"].astype(str)
+        g2t["accession"] = g2t["accession"].astype(str)
 
-        # Use all ranks so species-level taxids in the summary can match genome2taxid
+        # Build a direct taxid -> accessions map.
+        # The taxid value from the summary is used as-is (no rank normalisation).
+        # This avoids cross-database taxid mismatches that silently produce empty results
+        # when protein2taxid and genome2taxid use different taxid levels for the same organism.
+        taxid_to_accs = {}
+        for _, grow in g2t.iterrows():
+            taxid_to_accs.setdefault(grow["taxid"], []).append(grow["accession"])
+
         taxid_candidates = filtered_df[filtered_df["sample"].isin(valid_samples)].copy()
         taxid_candidates["taxid_str"] = taxid_candidates["taxid"].astype(str)
 
-        merged = pd.merge(
-            taxid_candidates, g2t, left_on="taxid_str", right_on="taxid", how="inner"
-        )
+        # Track which (sample, family) pairs produced at least one accession so we can
+        # emit a single warning per family rather than one noisy warning per taxid row.
+        found_per_sample_family = {}
 
-        for _, row in merged.iterrows():
+        for _, row in taxid_candidates.iterrows():
             sample = row["sample"]
-            acc = row["accession"]
-            species_taxid = row["taxid_str"]
+            taxid_str = row["taxid_str"]
 
-            # Resolve the family for this specific accession via taxdump
+            # Use taxdump only to validate the hit belongs to a target family and to
+            # build a clean ref_key — not to normalise the taxid lookup level.
             if nodes:
-                family = get_family_for_taxid(species_taxid, nodes, tax_names)
+                family = get_family_for_taxid(taxid_str, nodes, tax_names)
                 if family is None or family not in families:
-                    # Accession belongs to a non-target family — skip
                     continue
-                ref_key = f"{family.replace(' ', '_')}_{acc}"
             else:
-                # No taxdump: fall back to joining all target families found in sample
-                # (inaccurate — multiple families will appear in ref_key)
                 all_fams = family_hits[family_hits["sample"] == sample]["name"].unique()
-                fams = "_".join(sorted(all_fams)).replace(" ", "_")
-                ref_key = f"{fams}_{acc}"
+                family = sorted(all_fams)[0] if len(all_fams) else "unknown"
 
-            out_records.append(
-                {"sample": sample, "ref_key": ref_key, "reference_genome": acc}
+            accs = taxid_to_accs.get(taxid_str, [])
+            if not accs and nodes:
+                # Fallback: if the exact taxid isn't in genome2taxid (e.g. it's a
+                # strain or subspecies), try the species-level ancestor taxid.
+                species_taxid = get_taxid_at_rank(taxid_str, "species", nodes)
+                if species_taxid and species_taxid != taxid_str:
+                    accs = taxid_to_accs.get(species_taxid, [])
+            if not accs:
+                continue  # silently skip; will warn per-family below if nothing found
+
+            found_per_sample_family.setdefault(sample, set()).add(family)
+            for acc in accs:
+                ref_key = f"{family.replace(' ', '_')}_{acc}"
+                out_records.append(
+                    {"sample": sample, "ref_key": ref_key, "reference_genome": acc}
+                )
+
+        # Warn once per (sample, target-family) that produced no accessions at all.
+        for sample in valid_samples:
+            sample_families = (
+                set(family_hits[family_hits["sample"] == sample]["name"].unique())
+                & set(families)
             )
+            for fam in sample_families:
+                if fam not in found_per_sample_family.get(sample, set()):
+                    print(
+                        f"  Warning: no genome found in genome2taxid for family {fam!r}, "
+                        f"sample {sample}. If using a --refseq database, only one accession "
+                        "per species is indexed; for broader coverage use "
+                        "--reference-selection-strategy similarity."
+                    )
 
     elif args.strategy == "similarity":
         if not args.contigs_dir:
             print("Error: --contigs-dir required for similarity strategy.")
             sys.exit(1)
 
-        # Load genome2taxid for family lookup of BLAST hits
+        # Load genome2taxid for family lookup of BLAST hits (taxdump not required)
         g2t_dict = {}
-        if nodes and os.path.exists(args.genome2taxid):
+        if os.path.exists(args.genome2taxid):
             g2t = pd.read_csv(
                 args.genome2taxid, sep="\t", header=None, names=["accession", "taxid"]
             )
@@ -272,36 +320,52 @@ def main(args=None):
                 if not res.stdout.strip():
                     print(f"BLAST produced no hits for {sample}.")
                     continue
+
+                # BLAST output is sorted by bitscore (best first) within each query.
+                # Track assigned contigs so only the best qualifying hit per contig is kept.
+                assigned_contigs = set()
                 for line in res.stdout.strip().split("\n"):
                     parts = line.split("\t")
-                    if len(parts) >= 4:
-                        raw_sseqid = parts[1]
+                    if len(parts) < 4:
+                        continue
+                    qseqid = parts[0]
+                    if qseqid in assigned_contigs:
+                        continue
+                    raw_sseqid = parts[1]
+                    try:
                         pident = float(parts[2])
                         qcov = float(parts[3])
-                        if pident >= args.blast_pident and qcov >= args.blast_qcov:
-                            # Strip NCBI pipe-delimited prefix (e.g. ref|NC_004911.1|)
-                            acc = clean_accession(raw_sseqid)
+                    except ValueError:
+                        continue
+                    if pident < args.blast_pident or qcov < args.blast_qcov:
+                        continue
 
-                            # Resolve family via taxdump + genome2taxid
-                            if nodes and g2t_dict:
-                                species_taxid = g2t_dict.get(acc, "")
-                                family = get_family_for_taxid(species_taxid, nodes, tax_names) if species_taxid else None
-                                if family is None or family not in families:
-                                    continue
-                                ref_key = f"{family.replace(' ', '_')}_{acc}"
-                            else:
-                                # No taxdump fallback
-                                all_fams = family_hits[family_hits["sample"] == sample]["name"].unique()
-                                fams = "_".join(sorted(all_fams)).replace(" ", "_")
-                                ref_key = f"{fams}_{acc}"
+                    # Strip NCBI pipe-delimited prefix (e.g. ref|NC_004911.1|)
+                    acc = clean_accession(raw_sseqid)
 
-                            out_records.append(
-                                {
-                                    "sample": sample,
-                                    "ref_key": ref_key,
-                                    "reference_genome": acc,
-                                }
-                            )
+                    # Keep hits whose taxid (at any rank) traces back to a target family.
+                    if g2t_dict:
+                        hit_taxid = g2t_dict.get(acc, "")
+                        if not hit_taxid:
+                            continue
+                        if nodes:
+                            family = get_family_for_taxid(hit_taxid, nodes, tax_names)
+                            if family is None or family not in families:
+                                continue
+                            ref_key = f"{family.replace(' ', '_')}_{acc}"
+                        else:
+                            all_fams = family_hits[family_hits["sample"] == sample]["name"].unique()
+                            fams = "_".join(sorted(all_fams)).replace(" ", "_")
+                            ref_key = f"{fams}_{acc}"
+                    else:
+                        all_fams = family_hits[family_hits["sample"] == sample]["name"].unique()
+                        fams = "_".join(sorted(all_fams)).replace(" ", "_")
+                        ref_key = f"{fams}_{acc}"
+
+                    out_records.append(
+                        {"sample": sample, "ref_key": ref_key, "reference_genome": acc}
+                    )
+                    assigned_contigs.add(qseqid)
             except Exception as e:
                 print(f"Error running BLAST for {sample}: {e}")
 
