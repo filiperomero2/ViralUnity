@@ -36,7 +36,7 @@ elif host_filtering_enabled:
         benchmark:
             config["output"] + "logs/remove_host/host_genome_indexing.benchmark.txt"
         conda:
-            "../envs/utils.yaml"
+            "../envs/alignment.yaml"
         shell:
             r"""
             set -euo pipefail
