@@ -155,6 +155,28 @@ def get_taxdump(path, url):
     click.echo(f"Use --taxdump {db_dir} in your viralunity meta commands.")
 
 
+# Characters that, on their own, would make a sequence look like DNA/RNA. All
+# six are also valid amino-acid one-letter codes (A, C, G, T, U, N), so this
+# alphabet is only meaningful in combination with a minimum length check.
+_DNA_LIKE_ALPHABET = set("ACGTUN")
+
+
+def _looks_like_dna(seq: str, min_length: int = 20) -> bool:
+    """Return ``True`` if ``seq`` looks like a DNA/RNA nucleotide sequence.
+
+    The check is intentionally conservative: a sequence is considered DNA only
+    if it is at least ``min_length`` residues long *and* every non-gap, non-
+    whitespace character (after upper-casing) belongs to the DNA/RNA alphabet
+    ``{A, C, G, T, U, N}``. Real proteins of length >= 20 almost always contain
+    at least one amino-acid letter outside this set (M, L, K, R, ...), so
+    false positives are negligible in practice.
+    """
+    cleaned = "".join(seq.split()).replace("-", "").replace("*", "").upper()
+    if len(cleaned) < min_length:
+        return False
+    return all(c in _DNA_LIKE_ALPHABET for c in cleaned)
+
+
 def _parse_data_report(report_path: Path) -> dict:
     org2taxid = {}
     with open(report_path) as f:
@@ -186,14 +208,30 @@ def _reformat_protein_fasta(
 
     This function extracts the organism name to map to the taxID from data_report.jsonl,
     and returns a mapping of the protein accession (the first token after >) to the taxID.
+
+    Records whose sequence is entirely DNA/RNA are skipped. NCBI Datasets has
+    been observed to leak nucleotide CDS sequences into ``protein.faa`` for
+    some virus genomes; those records use a genome accession (``NC_*``) as
+    their header instead of a protein accession (``NP_*`` / ``YP_*``) and
+    would otherwise cause ``diamond makedb`` to abort with::
+
+        Error: The sequences are expected to be proteins but only contain DNA letters.
     """
     organism_re = re.compile(r"\[organism=([^\]]+)\]")
     taxid_map = {}  # protein_acc -> taxid (written to protein2taxid.tsv)
     written = 0
+    skipped_dna = 0
+    skipped_dna_examples = []
 
     with open(output_faa, "w") as out_handle:
         for prot_file in protein_files:
             for record in SeqIO.parse(prot_file, "fasta"):
+                if _looks_like_dna(str(record.seq)):
+                    skipped_dna += 1
+                    if len(skipped_dna_examples) < 5:
+                        skipped_dna_examples.append(record.id)
+                    continue
+
                 org_m = organism_re.search(record.description)
                 if org_m:
                     org_name = org_m.group(1)
@@ -209,6 +247,16 @@ def _reformat_protein_fasta(
                 SeqIO.write(record, out_handle, "fasta")
 
     click.echo(f"  Processed {written} protein sequences.")
+    if skipped_dna:
+        preview = ", ".join(skipped_dna_examples)
+        suffix = ", ..." if skipped_dna > len(skipped_dna_examples) else ""
+        click.echo(
+            f"  WARNING: Skipped {skipped_dna} DNA/RNA record(s) found in "
+            f"protein.faa (e.g. {preview}{suffix}). "
+            "NCBI Datasets sometimes leaks nucleotide CDS sequences into the "
+            "protein output; those records were removed so diamond makedb "
+            "can build the database."
+        )
     return taxid_map
 
 
@@ -398,6 +446,99 @@ def _reformat_genome_fasta(
 
     click.echo(f"  Processed {written} genome sequences.")
     return taxid_map
+
+
+@get_databases.command("clean-protein-fasta")
+@click.option(
+    "--input",
+    "input_path",
+    required=True,
+    type=click.Path(exists=True, dir_okay=False, readable=True),
+    help="Input protein FASTA file (e.g. databases/diamond/viral.protein.faa).",
+)
+@click.option(
+    "--output",
+    "output_path",
+    default=None,
+    type=click.Path(dir_okay=False, writable=True),
+    help=(
+        "Output FASTA path. Defaults to '<input>.cleaned.faa'. If equal to "
+        "--input, the original file is replaced atomically (a backup is kept "
+        "at '<input>.with_dna.bak' unless --no-backup is given)."
+    ),
+)
+@click.option(
+    "--no-backup",
+    is_flag=True,
+    default=False,
+    help="When replacing the input file in place, do not keep a .with_dna.bak backup.",
+)
+@click.option(
+    "--min-dna-length",
+    default=20,
+    show_default=True,
+    type=int,
+    help="Minimum sequence length to classify a record as DNA (smaller records are kept).",
+)
+def clean_protein_fasta(input_path, output_path, no_backup, min_dna_length):
+    """Strip nucleotide records from a protein FASTA file.
+
+    NCBI Datasets occasionally leaks DNA CDS sequences into the ``protein.faa``
+    bundled with virus genome packages (the offending records use a genome
+    accession such as ``NC_xxxxxx.1`` as their header). ``diamond makedb`` then
+    refuses to build the database with::
+
+        Error: The sequences are expected to be proteins but only contain DNA letters.
+
+    This command rewrites the file, dropping any record whose sequence is at
+    least ``--min-dna-length`` residues long and made up exclusively of the
+    DNA/RNA alphabet ``{A, C, G, T, U, N}``. All other records are passed
+    through untouched.
+    """
+    input_p = Path(input_path)
+    if output_path is None:
+        output_p = input_p.with_suffix(input_p.suffix + ".cleaned.faa") \
+            if input_p.suffix else Path(str(input_p) + ".cleaned.faa")
+    else:
+        output_p = Path(output_path)
+
+    in_place = output_p.resolve() == input_p.resolve()
+    tmp_p = output_p.with_suffix(output_p.suffix + ".tmp") if in_place else output_p
+
+    kept = 0
+    dropped = 0
+    dropped_examples = []
+
+    click.echo(f"Cleaning protein FASTA: {input_p}")
+    with open(tmp_p, "w") as out_handle:
+        for record in SeqIO.parse(str(input_p), "fasta"):
+            if _looks_like_dna(str(record.seq), min_length=min_dna_length):
+                dropped += 1
+                if len(dropped_examples) < 5:
+                    dropped_examples.append(record.id)
+                continue
+            SeqIO.write(record, out_handle, "fasta")
+            kept += 1
+
+    if in_place:
+        if not no_backup:
+            backup_p = input_p.with_suffix(input_p.suffix + ".with_dna.bak")
+            shutil.move(str(input_p), str(backup_p))
+            click.echo(f"Backed up original to: {backup_p}")
+        else:
+            input_p.unlink()
+        shutil.move(str(tmp_p), str(output_p))
+
+    click.echo(f"Kept {kept} protein record(s).")
+    if dropped:
+        preview = ", ".join(dropped_examples)
+        suffix = ", ..." if dropped > len(dropped_examples) else ""
+        click.echo(
+            f"Dropped {dropped} DNA/RNA record(s) (e.g. {preview}{suffix})."
+        )
+    else:
+        click.echo("No DNA/RNA records found.")
+    click.echo(f"Cleaned FASTA written to: {output_p}")
 
 
 @get_databases.command("virus-genome")

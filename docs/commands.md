@@ -417,6 +417,39 @@ viralunity get-databases diamond --path /data/dbs --threads 4
 #      --taxids /data/dbs/diamond/protein2taxid.tsv
 ```
 
+NCBI Datasets occasionally bundles a small number of nucleotide CDS records
+(with a genome accession such as `NC_xxxxxx.1` as the header) inside the
+`protein.faa` it returns for `--include protein`. The `diamond` subcommand
+automatically detects and drops these records before running
+`diamond makedb` and prints a warning summarizing how many were skipped.
+
+### `clean-protein-fasta` — Strip nucleotide records from a protein FASTA
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--input` | *(required)* | Input protein FASTA file (e.g. `databases/diamond/viral.protein.faa`). |
+| `--output` | `<input>.cleaned.faa` | Output FASTA path. If equal to `--input`, the file is replaced atomically. |
+| `--no-backup` | off | When replacing the input in place, do not keep a `.with_dna.bak` backup. |
+| `--min-dna-length` | `20` | Minimum sequence length to classify a record as DNA. |
+
+Use this command to recover an already-downloaded `viral.protein.faa` that
+fails `diamond makedb` with:
+
+```
+Error: The sequences are expected to be proteins but only contain DNA letters.
+```
+
+```bash
+viralunity get-databases clean-protein-fasta \
+    --input databases/diamond/viral.protein.faa \
+    --output databases/diamond/viral.protein.faa
+
+diamond makedb \
+    --in databases/diamond/viral.protein.faa \
+    --db databases/diamond/viral.dmnd \
+    --threads 4
+```
+
 ### `virus-genome` — Viral genomes database
 
 | Option | Default | Description |
