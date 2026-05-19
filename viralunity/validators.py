@@ -384,6 +384,118 @@ def validate_reference_assembly_requirements(args: Dict[str, Any]) -> None:
             raise FileNotFoundError(f"Viral taxids file does not exist: {viral_taxids}")
 
 
+# ---------------------------------------------------------------------------
+# Path resolution
+# ---------------------------------------------------------------------------
+#
+# CLI arguments that point to a filesystem location. The lists are kept here
+# (next to the validators) so they can be reused both at validation time and
+# inside ``viralunity_meta.main`` / ``viralunity_consensus.main`` to make the
+# paths absolute before anything else sees them. Resolving paths up-front
+# means a user who runs ``viralunity meta nanopore ... --host-reference
+# databases/host/host.fasta --config-file scratch/run.yml`` does NOT silently
+# get the host reference looked up under ``scratch/databases/host/...`` just
+# because the generated config happens to live in ``scratch/``.
+
+META_PATH_ARG_KEYS = (
+    "sample_sheet",
+    "config_file",
+    "output",
+    "kraken2_database",
+    "krona_database",
+    "taxdump",
+    "host_reference",
+    "deacon_index",
+    "taxids",
+    "diamond_database",
+    "viral_genomes",
+    "viral_taxids",
+    "adapters",
+)
+
+CONSENSUS_PATH_ARG_KEYS = (
+    "sample_sheet",
+    "config_file",
+    "output",
+    "reference",
+    "primer_scheme",
+    "adapters",
+)
+
+
+def _is_path_sentinel(value: Any) -> bool:
+    """Return True if a path-typed argument value should be left untouched.
+
+    Sentinels are: ``None``, non-string scalars (ints, bools), the empty
+    string, and the literal placeholder ``"NA"`` (after stripping
+    whitespace). This matches the conventions used by the existing
+    validators in this module.
+    """
+    if value is None:
+        return True
+    if not isinstance(value, str):
+        return True
+    stripped = value.strip()
+    if not stripped:
+        return True
+    if stripped == "NA":
+        return True
+    return False
+
+
+def resolve_path_args(
+    args: Dict[str, Any],
+    keys,
+    base_dir: str = None,
+) -> Dict[str, Any]:
+    """Rewrite path-typed argument values to absolute paths in place.
+
+    Each value listed in ``keys`` that is a non-sentinel relative path string
+    is replaced with ``os.path.abspath(os.path.join(base_dir, value))``.
+    Absolute paths, sentinels (``None``, ``""``, ``"NA"``), and non-string
+    values are left unchanged. Missing keys are ignored.
+
+    The ``reference`` argument of the consensus pipeline can be a dict
+    (segmented reference, ``segment -> path``); each value of the dict is
+    resolved while preserving the keys.
+
+    Args:
+        args: Mutable dict of CLI arguments.
+        keys: Iterable of argument keys whose values are filesystem paths.
+        base_dir: Base directory to resolve relative paths against.
+            Defaults to the current working directory at call time.
+
+    Returns:
+        The same ``args`` dict (modified in place). Returned for chaining.
+    """
+    base_dir = base_dir or os.getcwd()
+
+    for key in keys:
+        if key not in args:
+            continue
+        value = args[key]
+
+        if isinstance(value, dict):
+            args[key] = {
+                seg: (
+                    v
+                    if _is_path_sentinel(v) or os.path.isabs(v)
+                    else os.path.abspath(os.path.join(base_dir, v))
+                )
+                for seg, v in value.items()
+            }
+            continue
+
+        if _is_path_sentinel(value):
+            continue
+        if os.path.isabs(value):
+            continue
+
+        args[key] = os.path.abspath(os.path.join(base_dir, value))
+
+    return args
+
+
 def get_samples_from_args(args: Dict[str, Any]) -> Dict[str, List[str]]:
     """Extract and validate samples from arguments.
 

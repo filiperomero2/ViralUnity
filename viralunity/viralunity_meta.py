@@ -17,6 +17,8 @@ from viralunity.validators import (
     validate_illumina_requirements,
     validate_nanopore_requirements,
     validate_metagenomics_requirements,
+    resolve_path_args,
+    META_PATH_ARG_KEYS,
 )
 from viralunity.config_generator import ConfigGenerator
 from viralunity.exceptions import ValidationError
@@ -189,7 +191,7 @@ def run_snakemake_workflow(args: Dict[str, Any]) -> bool:
         targets=["all"],
         forceall=True,
         lock=False,
-        workdir=os.path.dirname(args["config_file"]),
+        workdir=os.getcwd(),
     )
 
     if successful:
@@ -210,6 +212,13 @@ def main(args: Dict[str, Any]) -> int:
         Exit code (0 for success, 1 for failure)
     """
     try:
+        # Make every user-supplied path absolute relative to the shell's cwd
+        # *before* validation or config generation looks at them. This means
+        # the meaning of e.g. ``--host-reference databases/host/host.fasta``
+        # no longer depends on where the user happens to place
+        # ``--config-file``.
+        resolve_path_args(args, META_PATH_ARG_KEYS)
+
         # Validate arguments
         samples = validate_args(args)
 

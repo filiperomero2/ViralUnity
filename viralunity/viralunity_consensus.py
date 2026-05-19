@@ -16,6 +16,8 @@ from viralunity.validators import (
     get_samples_from_args,
     validate_illumina_requirements,
     validate_consensus_requirements,
+    resolve_path_args,
+    CONSENSUS_PATH_ARG_KEYS,
 )
 from viralunity.config_generator import ConfigGenerator
 from viralunity.exceptions import ValidationError
@@ -183,8 +185,20 @@ def main(args: Dict[str, Any]) -> int:
         Exit code (0 for success, 1 for failure)
     """
     try:
+        # Make every user-supplied path absolute relative to the shell's cwd
+        # before anything else looks at them. ``segmented_reference`` is
+        # resolved later (after the validator parses ``SEGMENT=PATH``
+        # entries into a dict).
+        resolve_path_args(args, CONSENSUS_PATH_ARG_KEYS)
+
         # Validate arguments
         samples = validate_args(args)
+
+        # ``validate_consensus_requirements`` parses --segmented-reference
+        # ("L=/path/L.fasta") into a dict stored under ``reference``. Resolve
+        # that dict's values now that it exists.
+        if isinstance(args.get("reference"), dict):
+            resolve_path_args(args, ("reference",))
 
         # Generate config file
         generate_config_file(samples, args)
