@@ -73,6 +73,11 @@ assets/
 notes.txt
 my_config.yml
 samplesheet.csv
+databases/
+old_*
+my_results*
+scratch/
+teste_*
 
 # Local test assets
 test/dryrun_output/

@@ -164,3 +164,47 @@ if run_diamond_reads:
             "../envs/utils.yaml"
         script:
             "../python/apply_negative_background_filter.py"
+
+    rule make_filtered_krona_input_diamond_reads:
+        input:
+            summary = (
+                config["output"] + "metagenomics/taxonomic_assignments/diamond_reads/diamond_reads_taxa_summary_RPM.bleed.neg.tsv"
+                if has_negative_controls else
+                config["output"] + "metagenomics/taxonomic_assignments/diamond_reads/diamond_reads_taxa_summary_RPM.bleed.tsv"
+            ),
+            krona_input = config["output"] + "metagenomics/taxonomic_assignments/diamond_reads/results/{sample}.diamond.supported.krona_input.tsv"
+        output:
+            config["output"] + "metagenomics/taxonomic_assignments/diamond_reads/results/{sample}.diamond.supported.filtered.krona_input.tsv"
+        params:
+            sample = "{sample}",
+            tool = "diamond",
+            mode = "reads",
+            taxdump = config["taxdump"]
+        conda:
+            "../envs/utils.yaml"
+        script:
+            "../python/filter_krona_by_pass_taxids.py"
+
+    rule create_filtered_krona_report_diamond_reads:
+        input:
+            config["output"] + "metagenomics/taxonomic_assignments/diamond_reads/results/{sample}.diamond.supported.filtered.krona_input.tsv"
+        output:
+            config["output"] + "metagenomics/taxonomic_assignments/diamond_reads/reports/{sample}.diamond.filtered.krona.html"
+        params:
+            krona_database = config["krona_database"]
+        log:
+            config["output"] + "logs/krona_diamond_reads/{sample}.filtered.log"
+        benchmark:
+            config["output"] + "logs/krona_diamond_reads/{sample}.filtered.benchmark.txt"
+        conda:
+            "../envs/taxonomy.yaml"
+        shell:
+            r"""
+            set -euo pipefail
+            if [ -s {input} ]; then
+                ktImportTaxonomy {input} -tax {params.krona_database} -o {output} 2> {log}
+            else
+                echo "Empty filtered krona input (diamond reads)." >> {log}
+                touch {output}
+            fi
+            """

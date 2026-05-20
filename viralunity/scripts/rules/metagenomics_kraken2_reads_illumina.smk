@@ -152,3 +152,47 @@ rule apply_negative_background_kraken2_reads:
         "../envs/utils.yaml"
     script:
         "../python/apply_negative_background_filter.py"
+
+rule make_filtered_krona_input_kraken2_reads:
+    input:
+        summary = (
+            config["output"] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_taxa_summary_RPM.bleed.neg.tsv"
+            if has_negative_controls else
+            config["output"] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_taxa_summary_RPM.bleed.tsv"
+        ),
+        krona_input = config["output"] + "metagenomics/taxonomic_assignments/kraken2_reads/results/{sample}.output.krona.txt"
+    output:
+        config["output"] + "metagenomics/taxonomic_assignments/kraken2_reads/results/{sample}.output.filtered.krona.txt"
+    params:
+        sample = "{sample}",
+        tool = "kraken2",
+        mode = "reads",
+        taxdump = config["taxdump"]
+    conda:
+        "../envs/utils.yaml"
+    script:
+        "../python/filter_krona_by_pass_taxids.py"
+
+rule create_filtered_krona_report_from_kraken2_reads:
+    input:
+        config["output"] + "metagenomics/taxonomic_assignments/kraken2_reads/results/{sample}.output.filtered.krona.txt"
+    output:
+        config["output"] + "metagenomics/taxonomic_assignments/kraken2_reads/reports/{sample}.output.filtered.krona.html"
+    params:
+        krona_database = config["krona_database"]
+    log:
+        config["output"] + "logs/krona_kraken2_reads/{sample}.filtered.log"
+    benchmark:
+        config["output"] + "logs/krona_kraken2_reads/{sample}.filtered.benchmark.txt"
+    conda:
+        "../envs/taxonomy.yaml"
+    shell:
+        r"""
+        set -euo pipefail
+        if [ -s {input} ]; then
+            ktImportTaxonomy {input} -tax {params.krona_database} -o {output} 2> {log}
+        else
+            echo "Empty filtered krona input (kraken2 reads)." >> {log}
+            touch {output}
+        fi
+        """

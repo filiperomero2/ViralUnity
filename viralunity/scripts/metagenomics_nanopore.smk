@@ -66,18 +66,37 @@ def _all_inputs():
             targets.append(config["output"] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_taxa_summary_RPM.bleed.neg.tsv")
         else:
             targets.append(config["output"] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_taxa_summary_RPM.bleed.tsv")
+        targets.extend(expand(
+            config["output"] + "metagenomics/taxonomic_assignments/kraken2_reads/reports/{sample}.output.filtered.krona.html",
+            sample=config["samples"],
+        ))
     if run_denovo and run_k2_contigs:
-        targets.append(config["output"] + "metagenomics/taxonomic_assignments/kraken2_contigs/kraken2_contigs_taxa_summary.tsv")
+        if has_negative_controls:
+            targets.append(config["output"] + "metagenomics/taxonomic_assignments/kraken2_contigs/kraken2_contigs_taxa_summary_RPM.bleed.neg.tsv")
+        else:
+            targets.append(config["output"] + "metagenomics/taxonomic_assignments/kraken2_contigs/kraken2_contigs_taxa_summary_RPM.bleed.tsv")
+        targets.extend(expand(
+            config["output"] + "metagenomics/taxonomic_assignments/kraken2_contigs/reports/{sample}.output.filtered.krona.html",
+            sample=config["samples"],
+        ))
     if run_diamond_reads:
         if has_negative_controls:
             targets.append(config["output"] + "metagenomics/taxonomic_assignments/diamond_reads/diamond_reads_taxa_summary_RPM.bleed.neg.tsv")
         else:
             targets.append(config["output"] + "metagenomics/taxonomic_assignments/diamond_reads/diamond_reads_taxa_summary_RPM.bleed.tsv")
+        targets.extend(expand(
+            config["output"] + "metagenomics/taxonomic_assignments/diamond_reads/reports/{sample}.diamond.filtered.krona.html",
+            sample=config["samples"],
+        ))
     if run_denovo and run_diamond_contigs:
         if has_negative_controls:
             targets.append(config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary_RPM.bleed.neg.tsv")
         else:
             targets.append(config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary_RPM.bleed.tsv")
+        targets.extend(expand(
+            config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/reports/{sample}.diamond.supported.filtered.krona.html",
+            sample=config["samples"],
+        ))
 
     if config.get("run_reference_assembly", False):
         targets.append(config["output"] + "reference_assembly_done.txt")
@@ -120,17 +139,21 @@ rule organize_files:
     input:
         kraken2_reads_reports = expand(rules.run_kraken2_reads.output.report, sample=config["samples"]) if run_k2_reads else [],
         kraken2_reads_krona = expand(rules.create_krona_report_from_kraken2_reads.output, sample=config["samples"]) if run_k2_reads else [],
+        kraken2_reads_filtered_krona = expand(rules.create_filtered_krona_report_from_kraken2_reads.output, sample=config["samples"]) if run_k2_reads else [],
         diamond_reads_tsv = expand(rules.run_diamond_reads.output.tsv, sample=config["samples"]) if run_diamond_reads else [],
         diamond_reads_krona = expand(rules.create_krona_report_diamond_reads.output, sample=config["samples"]) if run_diamond_reads else [],
+        diamond_reads_filtered_krona = expand(rules.create_filtered_krona_report_diamond_reads.output, sample=config["samples"]) if run_diamond_reads else [],
         host_filtered = expand(rules.remove_host_reads.output.filtered, sample=config["samples"]),
         megahit_contigs = expand(rules.run_megahit.output.contigs, sample=config["samples"]) if run_denovo else [],
         kraken2_contigs_reports = expand(rules.run_kraken2_contigs.output.report, sample=config["samples"]) if run_denovo and run_k2_contigs else [],
         kraken2_contigs_krona = expand(rules.create_krona_report_from_kraken2_contigs.output, sample=config["samples"]) if run_denovo and run_k2_contigs else [],
+        kraken2_contigs_filtered_krona = expand(rules.create_filtered_krona_report_from_kraken2_contigs.output, sample=config["samples"]) if run_denovo and run_k2_contigs else [],
         diamond_contigs_tsv = expand(rules.run_diamond_contigs.output.tsv, sample=config["samples"]) if run_denovo and run_diamond_contigs else [],
         diamond_contigs_krona = expand(rules.create_krona_report_diamond_contigs.output, sample=config["samples"]) if run_denovo and run_diamond_contigs else [],
+        diamond_contigs_filtered_krona = expand(rules.create_filtered_krona_report_diamond_contigs.output, sample=config["samples"]) if run_denovo and run_diamond_contigs else [],
         summary_k2_reads = config["output"] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_taxa_summary_RPM.bleed.tsv" if run_k2_reads else [],
         summary_diamond_reads = config["output"] + "metagenomics/taxonomic_assignments/diamond_reads/diamond_reads_taxa_summary_RPM.bleed.tsv" if run_diamond_reads else [],
-        summary_k2_contigs = config["output"] + "metagenomics/taxonomic_assignments/kraken2_contigs/kraken2_contigs_taxa_summary.tsv" if run_denovo and run_k2_contigs else [],
+        summary_k2_contigs = config["output"] + "metagenomics/taxonomic_assignments/kraken2_contigs/kraken2_contigs_taxa_summary_RPM.bleed.tsv" if run_denovo and run_k2_contigs else [],
         summary_diamond_contigs = config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary_RPM.bleed.tsv" if run_denovo and run_diamond_contigs else [],
     output:
         benchmark = config["output"] + "benchmark.tsv"
@@ -160,6 +183,10 @@ rule organize_files:
                 sample=$(basename $_file .output.krona.html);
                 ln -sf $PWD/$_file {params.outdir}samples/$sample/kraken2_reads.krona.html;
             done
+            for _file in {input.kraken2_reads_filtered_krona}; do
+                sample=$(basename $_file .output.filtered.krona.html);
+                ln -sf $PWD/$_file {params.outdir}samples/$sample/kraken2_reads.filtered.krona.html;
+            done
         fi
 
         # DIAMOND Reads
@@ -171,6 +198,10 @@ rule organize_files:
             for _file in {input.diamond_reads_krona}; do
                 sample=$(basename $_file .diamond.krona.html);
                 ln -sf $PWD/$_file {params.outdir}samples/$sample/diamond_reads.krona.html;
+            done
+            for _file in {input.diamond_reads_filtered_krona}; do
+                sample=$(basename $_file .diamond.filtered.krona.html);
+                ln -sf $PWD/$_file {params.outdir}samples/$sample/diamond_reads.filtered.krona.html;
             done
         fi
 
@@ -193,6 +224,10 @@ rule organize_files:
                     sample=$(basename $_file .output.krona.html);
                     ln -sf $PWD/$_file {params.outdir}samples/$sample/kraken2_contigs.krona.html;
                 done
+                for _file in {input.kraken2_contigs_filtered_krona}; do
+                    sample=$(basename $_file .output.filtered.krona.html);
+                    ln -sf $PWD/$_file {params.outdir}samples/$sample/kraken2_contigs.filtered.krona.html;
+                done
             fi
             if [ "{params.run_diamond_contigs}" = "True" ]; then
                 for _file in {input.diamond_contigs_tsv}; do
@@ -202,6 +237,10 @@ rule organize_files:
                 for _file in {input.diamond_contigs_krona}; do
                     sample=$(basename $_file .diamond.supported.krona.html);
                     ln -sf $PWD/$_file {params.outdir}samples/$sample/diamond_contigs.krona.html;
+                done
+                for _file in {input.diamond_contigs_filtered_krona}; do
+                    sample=$(basename $_file .diamond.supported.filtered.krona.html);
+                    ln -sf $PWD/$_file {params.outdir}samples/$sample/diamond_contigs.filtered.krona.html;
                 done
             fi
         fi

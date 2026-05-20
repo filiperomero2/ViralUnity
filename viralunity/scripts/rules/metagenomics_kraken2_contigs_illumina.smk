@@ -103,3 +103,92 @@ if run_denovo and run_k2_contigs:
             if [ -n "$header_file" ]; then head -n 1 "$header_file" > {output}; else echo -e "sample\ttool\tmode\trank\ttaxid\tname\tcount\tpercent\tsource" > {output}; fi
             for f in {input}; do [ -s "$f" ] && tail -n +2 "$f" >> {output}; done
             """
+
+    rule add_RPM_to_kraken2_contigs_summary:
+        input:
+            config["output"] + "metagenomics/taxonomic_assignments/kraken2_contigs/kraken2_contigs_taxa_summary.tsv",
+            merged_fastqs = expand(
+                config["output"] + "host_filtered/{sample}.merged.fastq.gz",
+                sample=config["samples"]
+            )
+        output:
+            config["output"] + "metagenomics/taxonomic_assignments/kraken2_contigs/kraken2_contigs_taxa_summary_RPM.tsv"
+        params:
+            sample_to_fastq = get_sample_to_fastq(),
+            reads_col = "count"
+        conda:
+            "../envs/utils.yaml"
+        script:
+            "../python/add_RPM_to_summary.py"
+
+    rule apply_bleed_filter_kraken2_contigs:
+        input:
+            config["output"] + "metagenomics/taxonomic_assignments/kraken2_contigs/kraken2_contigs_taxa_summary_RPM.tsv"
+        output:
+            config["output"] + "metagenomics/taxonomic_assignments/kraken2_contigs/kraken2_contigs_taxa_summary_RPM.bleed.tsv"
+        params:
+            fraction = config.get("bleed_fraction", 0.005),
+            rpm_floor = 1.0,
+            rpm_col = "rpm",
+        conda:
+            "../envs/utils.yaml"
+        script:
+            "../python/apply_max_rpm_bleed_filter.py"
+
+    rule apply_negative_background_kraken2_contigs:
+        input:
+            config["output"] + "metagenomics/taxonomic_assignments/kraken2_contigs/kraken2_contigs_taxa_summary_RPM.bleed.tsv"
+        output:
+            config["output"] + "metagenomics/taxonomic_assignments/kraken2_contigs/kraken2_contigs_taxa_summary_RPM.bleed.neg.tsv"
+        params:
+            negatives = config.get("negative_controls", []),
+            count_col = "count",
+            p_threshold = config.get("negative_p_threshold", 0.01)
+        conda:
+            "../envs/utils.yaml"
+        script:
+            "../python/apply_negative_background_filter.py"
+
+    rule make_filtered_krona_input_kraken2_contigs:
+        input:
+            summary = (
+                config["output"] + "metagenomics/taxonomic_assignments/kraken2_contigs/kraken2_contigs_taxa_summary_RPM.bleed.neg.tsv"
+                if has_negative_controls else
+                config["output"] + "metagenomics/taxonomic_assignments/kraken2_contigs/kraken2_contigs_taxa_summary_RPM.bleed.tsv"
+            ),
+            krona_input = config["output"] + "metagenomics/taxonomic_assignments/kraken2_contigs/results/{sample}.output.krona.txt"
+        output:
+            config["output"] + "metagenomics/taxonomic_assignments/kraken2_contigs/results/{sample}.output.filtered.krona.txt"
+        params:
+            sample = "{sample}",
+            tool = "kraken2",
+            mode = "contigs",
+            taxdump = config["taxdump"]
+        conda:
+            "../envs/utils.yaml"
+        script:
+            "../python/filter_krona_by_pass_taxids.py"
+
+    rule create_filtered_krona_report_from_kraken2_contigs:
+        input:
+            config["output"] + "metagenomics/taxonomic_assignments/kraken2_contigs/results/{sample}.output.filtered.krona.txt"
+        output:
+            config["output"] + "metagenomics/taxonomic_assignments/kraken2_contigs/reports/{sample}.output.filtered.krona.html"
+        params:
+            krona_database = config["krona_database"]
+        log:
+            config["output"] + "logs/krona_kraken2_contigs/{sample}.filtered.log"
+        benchmark:
+            config["output"] + "logs/krona_kraken2_contigs/{sample}.filtered.benchmark.txt"
+        conda:
+            "../envs/taxonomy.yaml"
+        shell:
+            r"""
+            set -euo pipefail
+            if [ -s {input} ]; then
+                ktImportTaxonomy {input} -tax {params.krona_database} -o {output} 2> {log}
+            else
+                echo "Empty filtered krona input (kraken2 contigs)." >> {log}
+                touch {output}
+            fi
+            """

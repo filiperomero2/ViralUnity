@@ -177,7 +177,7 @@ The metagenomics pipeline takes raw reads to taxonomic classifications and visua
 3. **Read classification** — [Kraken2](https://github.com/DerrickWood/kraken2) and/or [DIAMOND](https://github.com/bbuchfink/diamond) blastx on reads (optional each).
 4. **Optional de novo assembly** — [MEGAHIT](https://github.com/voutcn/megahit) on host-filtered pairs.
 5. **Contig classification** — Kraken2 and/or Diamond on contigs (when assembly is run).
-6. **Summaries and filters** — Per-sample taxa tables, RPM normalization, optional max-RPM bleed filter and negative-control background filter. [Krona](https://github.com/marbl/Krona) plots and [MultiQC](https://multiqc.info) reports.
+6. **Summaries and filters** — Per-sample taxa tables, RPM normalization, optional max-RPM bleed filter and negative-control background filter. [Krona](https://github.com/marbl/Krona) plots (both a raw `*.krona.html` and a post-filter `*.filtered.krona.html` per sample/classifier/mode) and [MultiQC](https://multiqc.info) reports.
 7. **Optional dynamic reference assembly** — Automatic reference sequence selection from taxonomic hits and subsequent consensus assembly.
 
 ### Pipeline overview (Nanopore)
@@ -343,6 +343,26 @@ viralunity meta nanopore \
     --run-diamond-reads --run-diamond-contigs \
     --run-polish-medaka --medaka-model r941_min_high_g360 \
     --threads 4 --threads-total 4
+```
+
+### Krona outputs (raw vs. filtered)
+
+For every classifier/mode that runs, the pipeline emits two Krona HTMLs per sample:
+
+- `samples/<sample>/<classifier>_<mode>.krona.html` — built directly from the per-sample taxonomic classification before any cross-sample filtering. This is the raw view of what the classifier reported.
+- `samples/<sample>/<classifier>_<mode>.filtered.krona.html` — built from the same krona input, but pruned to taxa that survive the cross-sample filters in the `_taxa_summary_RPM.bleed[.neg].tsv` table for that `(sample, tool, mode)`.
+
+Filtering is *lineage-aware*: a contig/read is kept when any ancestor of its leaf taxid at the `family`, `genus`, or `species` rank passes `bleed_pass` (and, when negative controls are configured, also `neg_pass`). This is the inverse of how `summarize_krona_taxa.py` aggregates rows up the lineage, so the filtered Krona shows exactly the contigs/reads that contributed to a passing rank-row. Strain and sub-species hits whose species/genus/family passes are preserved; rows with `taxid==0` are dropped.
+
+`viralunity/scripts/python/filter_krona_by_pass_taxids.py` also exposes a CLI for standalone use:
+
+```bash
+python viralunity/scripts/python/filter_krona_by_pass_taxids.py \
+    --summary path/to/diamond_contigs_taxa_summary_RPM.bleed.neg.tsv \
+    --krona-input path/to/{sample}.diamond.supported.krona_input.tsv \
+    --out path/to/{sample}.diamond.supported.filtered.krona_input.tsv \
+    --sample {sample} --tool diamond --mode contigs \
+    --taxdump path/to/taxdump
 ```
 
 ---
