@@ -15,7 +15,6 @@ from viralunity.scripts.python.filter_krona_by_pass_taxids import (
     run,
 )
 
-
 # Synthetic taxonomy used by all tests:
 #     1 (no rank, root)
 #       └── 1000 (family)
@@ -75,7 +74,7 @@ def _write_krona_input(path: str, rows):
 
 def _read_lines(path: str):
     with open(path) as f:
-        return [l.rstrip("\n") for l in f if l.strip()]
+        return [line.rstrip("\n") for line in f if line.strip()]
 
 
 def _summary_rows():
@@ -83,17 +82,59 @@ def _summary_rows():
     return pd.DataFrame(
         [
             # sample A, kraken2/reads: SpeciesA1 passes
-            {"sample": "A", "tool": "kraken2", "mode": "reads", "rank": "species", "taxid": "3001", "bleed_pass": True},
+            {
+                "sample": "A",
+                "tool": "kraken2",
+                "mode": "reads",
+                "rank": "species",
+                "taxid": "3001",
+                "bleed_pass": True,
+            },
             # sample A, kraken2/reads: SpeciesA2 fails
-            {"sample": "A", "tool": "kraken2", "mode": "reads", "rank": "species", "taxid": "3002", "bleed_pass": False},
+            {
+                "sample": "A",
+                "tool": "kraken2",
+                "mode": "reads",
+                "rank": "species",
+                "taxid": "3002",
+                "bleed_pass": False,
+            },
             # sample A, kraken2/reads: GenusB passes (genus-rank entry)
-            {"sample": "A", "tool": "kraken2", "mode": "reads", "rank": "genus",   "taxid": "2100", "bleed_pass": True},
+            {
+                "sample": "A",
+                "tool": "kraken2",
+                "mode": "reads",
+                "rank": "genus",
+                "taxid": "2100",
+                "bleed_pass": True,
+            },
             # sample B, kraken2/reads: SpeciesB1 passes — must NOT affect sample A
-            {"sample": "B", "tool": "kraken2", "mode": "reads", "rank": "species", "taxid": "3100", "bleed_pass": True},
+            {
+                "sample": "B",
+                "tool": "kraken2",
+                "mode": "reads",
+                "rank": "species",
+                "taxid": "3100",
+                "bleed_pass": True,
+            },
             # sample A, kraken2/contigs: nothing passes (different mode)
-            {"sample": "A", "tool": "kraken2", "mode": "contigs", "rank": "species", "taxid": "3001", "bleed_pass": False},
+            {
+                "sample": "A",
+                "tool": "kraken2",
+                "mode": "contigs",
+                "rank": "species",
+                "taxid": "3001",
+                "bleed_pass": False,
+            },
             # sample A, diamond/reads: SpeciesA2 passes — must NOT affect kraken2/reads
-            {"sample": "A", "tool": "diamond", "mode": "reads",  "rank": "species", "taxid": "3002", "bleed_pass": True},
+            {
+                "sample": "A",
+                "tool": "diamond",
+                "mode": "reads",
+                "rank": "species",
+                "taxid": "3002",
+                "bleed_pass": True,
+            },
         ]
     )
 
@@ -120,31 +161,21 @@ class TestLineageHelpers(unittest.TestCase):
         self.assertEqual(lineage, ["4001", "3001", "2000", "1000", "1"])
 
     def test_lineage_passes_when_species_in_pass_set(self):
-        self.assertTrue(
-            _lineage_passes("4001", {"3001"}, self.parent_map, self.rank_map)
-        )
+        self.assertTrue(_lineage_passes("4001", {"3001"}, self.parent_map, self.rank_map))
 
     def test_lineage_passes_when_genus_in_pass_set(self):
         # Strain 4002 lives under SpeciesA2 / GenusA / FamilyA. If only genus
         # 2000 passes, the strain row must still be kept.
-        self.assertTrue(
-            _lineage_passes("4002", {"2000"}, self.parent_map, self.rank_map)
-        )
+        self.assertTrue(_lineage_passes("4002", {"2000"}, self.parent_map, self.rank_map))
 
     def test_lineage_fails_when_no_relevant_rank_passes(self):
-        self.assertFalse(
-            _lineage_passes("4001", {"3002"}, self.parent_map, self.rank_map)
-        )
+        self.assertFalse(_lineage_passes("4001", {"3002"}, self.parent_map, self.rank_map))
 
     def test_taxid_zero_never_passes(self):
-        self.assertFalse(
-            _lineage_passes("0", {"3001", "3002"}, self.parent_map, self.rank_map)
-        )
+        self.assertFalse(_lineage_passes("0", {"3001", "3002"}, self.parent_map, self.rank_map))
 
     def test_unknown_taxid_never_passes(self):
-        self.assertFalse(
-            _lineage_passes("999999", {"3001"}, self.parent_map, self.rank_map)
-        )
+        self.assertFalse(_lineage_passes("999999", {"3001"}, self.parent_map, self.rank_map))
 
 
 class TestBuildPassTaxids(unittest.TestCase):
@@ -181,7 +212,9 @@ class TestBuildPassTaxids(unittest.TestCase):
         self.assertEqual(passes, {"3001", "2100"})
 
     def test_missing_taxid_column_raises(self):
-        bad = pd.DataFrame([{"sample": "A", "tool": "kraken2", "mode": "reads", "bleed_pass": True}])
+        bad = pd.DataFrame(
+            [{"sample": "A", "tool": "kraken2", "mode": "reads", "bleed_pass": True}]
+        )
         bad.to_csv(self.summary_path, sep="\t", index=False)
         with self.assertRaises(ValueError):
             build_pass_taxids(self.summary_path, sample="A", tool="kraken2", mode="reads")
@@ -206,48 +239,75 @@ class TestFilterKronaInput(unittest.TestCase):
         self.krona_out = os.path.join(self._tmp.name, "filtered.tsv")
 
     def test_keeps_strain_when_species_passes(self):
-        _write_krona_input(self.krona_in, [
-            ("contig_strain", "4001"),
-            ("contig_species_a2", "3002"),
-            ("contig_unknown", "9999"),
-            ("contig_zero", "0"),
-        ])
+        _write_krona_input(
+            self.krona_in,
+            [
+                ("contig_strain", "4001"),
+                ("contig_species_a2", "3002"),
+                ("contig_unknown", "9999"),
+                ("contig_zero", "0"),
+            ],
+        )
         kept, total = filter_krona_input(
-            self.krona_in, self.krona_out, {"3001"}, self.parent_map, self.rank_map,
+            self.krona_in,
+            self.krona_out,
+            {"3001"},
+            self.parent_map,
+            self.rank_map,
         )
         self.assertEqual(total, 4)
         self.assertEqual(kept, 1)
         self.assertEqual(_read_lines(self.krona_out), ["contig_strain\t4001"])
 
     def test_keeps_species_direct_match(self):
-        _write_krona_input(self.krona_in, [
-            ("contig_species_a1", "3001"),
-            ("contig_species_a2", "3002"),
-        ])
+        _write_krona_input(
+            self.krona_in,
+            [
+                ("contig_species_a1", "3001"),
+                ("contig_species_a2", "3002"),
+            ],
+        )
         kept, _ = filter_krona_input(
-            self.krona_in, self.krona_out, {"3001"}, self.parent_map, self.rank_map,
+            self.krona_in,
+            self.krona_out,
+            {"3001"},
+            self.parent_map,
+            self.rank_map,
         )
         self.assertEqual(kept, 1)
         self.assertEqual(_read_lines(self.krona_out), ["contig_species_a1\t3001"])
 
     def test_keeps_when_genus_passes(self):
-        _write_krona_input(self.krona_in, [
-            ("contig_strain_a1a", "4001"),
-            ("contig_strain_a2a", "4002"),
-            ("contig_species_b1", "3100"),
-        ])
+        _write_krona_input(
+            self.krona_in,
+            [
+                ("contig_strain_a1a", "4001"),
+                ("contig_strain_a2a", "4002"),
+                ("contig_species_b1", "3100"),
+            ],
+        )
         kept, _ = filter_krona_input(
-            self.krona_in, self.krona_out, {"2000"}, self.parent_map, self.rank_map,
+            self.krona_in,
+            self.krona_out,
+            {"2000"},
+            self.parent_map,
+            self.rank_map,
         )
         # 4001 and 4002 are both under genus 2000; 3100 is under genus 2100.
         self.assertEqual(kept, 2)
-        self.assertEqual(sorted(_read_lines(self.krona_out)),
-                         sorted(["contig_strain_a1a\t4001", "contig_strain_a2a\t4002"]))
+        self.assertEqual(
+            sorted(_read_lines(self.krona_out)),
+            sorted(["contig_strain_a1a\t4001", "contig_strain_a2a\t4002"]),
+        )
 
     def test_empty_pass_set_yields_empty_output(self):
         _write_krona_input(self.krona_in, [("c1", "3001"), ("c2", "3002")])
         kept, _ = filter_krona_input(
-            self.krona_in, self.krona_out, set(), self.parent_map, self.rank_map,
+            self.krona_in,
+            self.krona_out,
+            set(),
+            self.parent_map,
+            self.rank_map,
         )
         self.assertEqual(kept, 0)
         self.assertEqual(_read_lines(self.krona_out), [])
@@ -255,7 +315,11 @@ class TestFilterKronaInput(unittest.TestCase):
     def test_empty_krona_input_yields_empty_output(self):
         _write_krona_input(self.krona_in, [])
         kept, total = filter_krona_input(
-            self.krona_in, self.krona_out, {"3001"}, self.parent_map, self.rank_map,
+            self.krona_in,
+            self.krona_out,
+            {"3001"},
+            self.parent_map,
+            self.rank_map,
         )
         self.assertEqual((kept, total), (0, 0))
         self.assertEqual(_read_lines(self.krona_out), [])
@@ -281,12 +345,15 @@ class TestRunEndToEnd(unittest.TestCase):
         #   contig under strain 4001 (descendant of species 3001) → kept (lineage)
         #   contig under species 3002 → dropped
         #   contig under species 3100 (descendant of genus 2100) → kept (genus match)
-        _write_krona_input(self.krona_in, [
-            ("c_3001", "3001"),
-            ("c_4001", "4001"),
-            ("c_3002", "3002"),
-            ("c_3100", "3100"),
-        ])
+        _write_krona_input(
+            self.krona_in,
+            [
+                ("c_3001", "3001"),
+                ("c_4001", "4001"),
+                ("c_3002", "3002"),
+                ("c_3100", "3100"),
+            ],
+        )
         run(
             summary=self.summary,
             krona_input=self.krona_in,
@@ -304,10 +371,13 @@ class TestRunEndToEnd(unittest.TestCase):
 
     def test_run_sample_isolation(self):
         # Sample B's pass set ({3100}) must not pull in sample A's hits.
-        _write_krona_input(self.krona_in, [
-            ("c_3001", "3001"),
-            ("c_3100", "3100"),
-        ])
+        _write_krona_input(
+            self.krona_in,
+            [
+                ("c_3001", "3001"),
+                ("c_3100", "3100"),
+            ],
+        )
         run(
             summary=self.summary,
             krona_input=self.krona_in,
@@ -323,10 +393,13 @@ class TestRunEndToEnd(unittest.TestCase):
     def test_run_tool_mode_isolation(self):
         # Sample A, diamond/reads pass set is {3002}; the kraken2/reads pass
         # set must not leak across.
-        _write_krona_input(self.krona_in, [
-            ("c_3001", "3001"),
-            ("c_3002", "3002"),
-        ])
+        _write_krona_input(
+            self.krona_in,
+            [
+                ("c_3001", "3001"),
+                ("c_3002", "3002"),
+            ],
+        )
         run(
             summary=self.summary,
             krona_input=self.krona_in,
@@ -346,10 +419,13 @@ class TestRunEndToEnd(unittest.TestCase):
         # For sample A, kraken2/reads pass set with bleed+neg becomes {2100}.
         # contig under species 3001 (no longer passing) must be dropped;
         # contig under species 3100 (under passing genus 2100) must be kept.
-        _write_krona_input(self.krona_in, [
-            ("c_3001", "3001"),
-            ("c_3100", "3100"),
-        ])
+        _write_krona_input(
+            self.krona_in,
+            [
+                ("c_3001", "3001"),
+                ("c_3100", "3100"),
+            ],
+        )
         run(
             summary=self.summary,
             krona_input=self.krona_in,

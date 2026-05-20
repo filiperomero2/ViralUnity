@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 import argparse
-import pandas as pd
+import glob
 import os
 import re
-import glob
 import subprocess
 import sys
+
+import pandas as pd
 
 
 def parse_args():
@@ -15,22 +16,14 @@ def parse_args():
     parser.add_argument(
         "--summary-dir", required=True, help="Directory containing TSV summary files."
     )
-    parser.add_argument(
-        "--method", required=True, choices=["kraken2", "diamond", "both"]
-    )
+    parser.add_argument("--method", required=True, choices=["kraken2", "diamond", "both"])
     parser.add_argument("--source", required=True, choices=["reads", "contigs", "both"])
     parser.add_argument("--reads-count", type=int, default=100)
     parser.add_argument("--contigs-count", type=int, default=1)
-    parser.add_argument(
-        "--families", required=True, help="Comma-separated list of families."
-    )
+    parser.add_argument("--families", required=True, help="Comma-separated list of families.")
     parser.add_argument("--strategy", required=True, choices=["taxid", "similarity"])
-    parser.add_argument(
-        "--genome2taxid", required=True, help="Path to genome2taxid.tsv"
-    )
-    parser.add_argument(
-        "--blast-db", required=True, help="Path to viral.genomes.fasta BLAST DB"
-    )
+    parser.add_argument("--genome2taxid", required=True, help="Path to genome2taxid.tsv")
+    parser.add_argument("--blast-db", required=True, help="Path to viral.genomes.fasta BLAST DB")
     parser.add_argument("--blast-qcov", type=float, default=80)
     parser.add_argument("--blast-pident", type=float, default=80)
     parser.add_argument(
@@ -41,7 +34,7 @@ def parse_args():
         "--taxdump",
         default="",
         help="Path to NCBI taxdump directory (nodes.dmp + names.dmp) used to resolve "
-             "the viral family for each matched accession.",
+        "the viral family for each matched accession.",
     )
     parser.add_argument("--out-tsv", required=True, help="Output TSV mapping file")
     return parser.parse_args()
@@ -111,7 +104,7 @@ def get_taxid_at_rank(taxid_str, target_rank, nodes):
 
 def clean_accession(sseqid):
     """Strip NCBI pipe-delimited prefixes (e.g. ref|NC_004911.1|) from a BLAST sseqid."""
-    m = re.match(r'^[a-z]+\|([^|]+)\|?$', sseqid)
+    m = re.match(r"^[a-z]+\|([^|]+)\|?$", sseqid)
     if m:
         return m.group(1)
     return sseqid
@@ -141,13 +134,17 @@ def main(args=None):
         if args.source in ["reads", "both"]:
             summary_files.extend(
                 glob.glob(
-                    os.path.join(args.summary_dir, "kraken2_reads", "kraken2_reads_taxa_summary.tsv")
+                    os.path.join(
+                        args.summary_dir, "kraken2_reads", "kraken2_reads_taxa_summary.tsv"
+                    )
                 )
             )
         if args.source in ["contigs", "both"]:
             summary_files.extend(
                 glob.glob(
-                    os.path.join(args.summary_dir, "kraken2_contigs", "kraken2_contigs_taxa_summary.tsv")
+                    os.path.join(
+                        args.summary_dir, "kraken2_contigs", "kraken2_contigs_taxa_summary.tsv"
+                    )
                 )
             )
 
@@ -155,13 +152,17 @@ def main(args=None):
         if args.source in ["reads", "both"]:
             summary_files.extend(
                 glob.glob(
-                    os.path.join(args.summary_dir, "diamond_reads", "diamond_reads_taxa_summary.tsv")
+                    os.path.join(
+                        args.summary_dir, "diamond_reads", "diamond_reads_taxa_summary.tsv"
+                    )
                 )
             )
         if args.source in ["contigs", "both"]:
             summary_files.extend(
                 glob.glob(
-                    os.path.join(args.summary_dir, "diamond_contigs", "diamond_contigs_taxa_summary.tsv")
+                    os.path.join(
+                        args.summary_dir, "diamond_contigs", "diamond_contigs_taxa_summary.tsv"
+                    )
                 )
             )
 
@@ -206,9 +207,7 @@ def main(args=None):
             print(f"Warning: {args.genome2taxid} not found!")
             sys.exit(0)
 
-        g2t = pd.read_csv(
-            args.genome2taxid, sep="\t", header=None, names=["accession", "taxid"]
-        )
+        g2t = pd.read_csv(args.genome2taxid, sep="\t", header=None, names=["accession", "taxid"])
         g2t["taxid"] = g2t["taxid"].astype(str)
         g2t["accession"] = g2t["accession"].astype(str)
 
@@ -254,16 +253,13 @@ def main(args=None):
             found_per_sample_family.setdefault(sample, set()).add(family)
             for acc in accs:
                 ref_key = f"{family.replace(' ', '_')}_{acc}"
-                out_records.append(
-                    {"sample": sample, "ref_key": ref_key, "reference_genome": acc}
-                )
+                out_records.append({"sample": sample, "ref_key": ref_key, "reference_genome": acc})
 
         # Warn once per (sample, target-family) that produced no accessions at all.
         for sample in valid_samples:
-            sample_families = (
-                set(family_hits[family_hits["sample"] == sample]["name"].unique())
-                & set(families)
-            )
+            sample_families = set(
+                family_hits[family_hits["sample"] == sample]["name"].unique()
+            ) & set(families)
             for fam in sample_families:
                 if fam not in found_per_sample_family.get(sample, set()):
                     print(
@@ -293,9 +289,13 @@ def main(args=None):
                 if os.path.exists(contig_file_alt):
                     contig_file = contig_file_alt
                 else:
-                    contig_globs = glob.glob(os.path.join(args.contigs_dir, sample, "*.contigs.fa*"))
+                    contig_globs = glob.glob(
+                        os.path.join(args.contigs_dir, sample, "*.contigs.fa*")
+                    )
                     if not contig_globs:
-                        print(f"Warning: no contig file found for sample {sample} in {args.contigs_dir}, skipping.")
+                        print(
+                            f"Warning: no contig file found for sample {sample} in {args.contigs_dir}, skipping."
+                        )
                         continue
                     contig_file = contig_globs[0]
 
@@ -379,6 +379,7 @@ def main(args=None):
 
 
 if "snakemake" in globals():
+
     class SnakemakeArgs:
         pass
 

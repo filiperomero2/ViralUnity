@@ -1,7 +1,6 @@
 """Click CLI for viralunity build-deacon-index command."""
 
 import logging
-import shutil
 import subprocess
 from pathlib import Path
 
@@ -65,6 +64,6 @@ def build_deacon_index(path, input_fasta, threads):
     click.echo(f"Building Deacon index for '{input_path.name}'...")
     _run(cmd)
 
-    click.echo(f"\nDeacon index built successfully.")
+    click.echo("\nDeacon index built successfully.")
     click.echo(f"  Index: {output_file}")
     click.echo(f"Use --deacon-index {output_file} in your viralunity meta commands.")

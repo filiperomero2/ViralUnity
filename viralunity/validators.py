@@ -1,23 +1,24 @@
 """Validation functions for ViralUnity pipeline arguments and data."""
 
 import os
-from typing import Dict, Any, List
+from typing import Any, Dict, List
+
 import pandas as pd
 
+from viralunity.constants import DataType
 from viralunity.exceptions import (
+    AdaptersNotFoundError,
+    DiamondDatabaseNotFoundError,
+    FileNotFoundError,
     Kraken2DatabaseNotFoundError,
     KronaDatabaseNotFoundError,
-    ValidationError,
-    FileNotFoundError,
-    SampleSheetError,
-    SampleConfigurationNotFoundError,
-    ReferenceNotFoundError,
     PrimerSchemeNotFoundError,
+    ReferenceNotFoundError,
+    SampleConfigurationNotFoundError,
+    SampleSheetError,
     TaxdumpNotFoundError,
-    DiamondDatabaseNotFoundError,
-    AdaptersNotFoundError,
+    ValidationError,
 )
-from viralunity.constants import DataType
 
 
 def validate_file_exists(file_path: str, description: str = "File") -> None:
@@ -34,9 +35,7 @@ def validate_file_exists(file_path: str, description: str = "File") -> None:
         raise FileNotFoundError(f"{description} does not exist: {file_path}")
 
 
-def validate_directory_exists(
-    directory_path: str, description: str = "Directory"
-) -> None:
+def validate_directory_exists(directory_path: str, description: str = "Directory") -> None:
     """Validate that a directory exists.
 
     Args:
@@ -50,9 +49,7 @@ def validate_directory_exists(
         raise FileNotFoundError(f"{description} does not exist: {directory_path}")
 
 
-def validate_sample_sheet(
-    sample_sheet_path: str, data_type: str
-) -> Dict[str, List[str]]:
+def validate_sample_sheet(sample_sheet_path: str, data_type: str) -> Dict[str, List[str]]:
     """Validate and parse sample sheet file.
 
     Args:
@@ -190,9 +187,7 @@ def validate_consensus_requirements(args: Dict[str, Any]) -> None:
     if isinstance(reference, dict):
         for segment_name, segment_path in reference.items():
             try:
-                validate_file_exists(
-                    segment_path, f"Reference file for segment '{segment_name}'"
-                )
+                validate_file_exists(segment_path, f"Reference file for segment '{segment_name}'")
             except FileNotFoundError as e:
                 raise ReferenceNotFoundError(str(e)) from e
     else:
@@ -221,7 +216,7 @@ def validate_metagenomics_requirements(args: Dict[str, Any]) -> None:
     run_k2_contigs = args.get("run_kraken2_contigs", True)
     run_diamond_reads = args.get("run_diamond_reads", False)
     run_diamond_contigs = args.get("run_diamond_contigs", False)
-    
+
     if not run_denovo:
         if run_k2_contigs:
             raise ValidationError(
@@ -247,9 +242,7 @@ def validate_metagenomics_requirements(args: Dict[str, Any]) -> None:
         try:
             validate_directory_exists(krona_db, "Krona database directory")
         except FileNotFoundError as e:
-            raise KronaDatabaseNotFoundError(
-                f"Krona database directory does not exist: {e}"
-            ) from e
+            raise KronaDatabaseNotFoundError(f"Krona database directory does not exist: {e}") from e
 
     # Kraken2 database: required only when Kraken2 is enabled
     if any_kraken2:
@@ -299,12 +292,8 @@ def validate_metagenomics_requirements(args: Dict[str, Any]) -> None:
                 "taxids mapping file is required when running Diamond. "
                 "Set --taxids or do not use --run-diamond-reads / --run-diamond-contigs."
             )
-        if not os.path.isfile(taxids) and not (
-            taxids.endswith(".gz") and os.path.isfile(taxids)
-        ):
-            raise DiamondDatabaseNotFoundError(
-                f"Taxid mapping file not found: {taxids}"
-            )
+        if not os.path.isfile(taxids) and not (taxids.endswith(".gz") and os.path.isfile(taxids)):
+            raise DiamondDatabaseNotFoundError(f"Taxid mapping file not found: {taxids}")
 
     # Deacon index: when provided for host depletion, must exist
     deacon_idx = args.get("deacon_index", "NA")
@@ -348,8 +337,7 @@ def validate_reference_assembly_requirements(args: Dict[str, Any]) -> None:
                 "Strategy 'similarity' with method 'diamond' requires --run-diamond-contigs."
             )
         if method == "both" and not (
-            args.get("run_kraken2_contigs", True)
-            or args.get("run_diamond_contigs", False)
+            args.get("run_kraken2_contigs", True) or args.get("run_diamond_contigs", False)
         ):
             raise ValidationError(
                 "Strategy 'similarity' with method 'both' requires at least one mapping tool on contigs."

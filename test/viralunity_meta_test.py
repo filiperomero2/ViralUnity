@@ -1,15 +1,16 @@
 import unittest
-from unittest.mock import patch, mock_open
-from viralunity.viralunity_meta import (
-    validate_args,
-    generate_config_file,
-    main,
-)
+from unittest.mock import mock_open, patch
+
 from viralunity.exceptions import (
+    AdaptersNotFoundError,
     Kraken2DatabaseNotFoundError,
     KronaDatabaseNotFoundError,
     SampleConfigurationNotFoundError,
-    AdaptersNotFoundError,
+)
+from viralunity.viralunity_meta import (
+    generate_config_file,
+    main,
+    validate_args,
 )
 
 
@@ -39,9 +40,7 @@ class Test_ValidateArgs(unittest.TestCase):
         self, mock_get_samples, mock_validate_meta, mock_validate_illumina
     ):
         """Test successful validation with all validators passing."""
-        mock_get_samples.return_value = {
-            "sample1": ["file1_R1.fastq", "file1_R2.fastq"]
-        }
+        mock_get_samples.return_value = {"sample1": ["file1_R1.fastq", "file1_R2.fastq"]}
 
         samples = validate_args(self.args)
 
@@ -53,9 +52,7 @@ class Test_ValidateArgs(unittest.TestCase):
     @patch("viralunity.viralunity_meta.get_samples_from_args")
     def test_validate_args_sample_sheet_not_exist(self, mock_get_samples):
         """Test validation fails when sample sheet cannot be retrieved."""
-        mock_get_samples.side_effect = SampleConfigurationNotFoundError(
-            "Sample sheet not found"
-        )
+        mock_get_samples.side_effect = SampleConfigurationNotFoundError("Sample sheet not found")
 
         with self.assertRaises(SampleConfigurationNotFoundError):
             validate_args(self.args)
@@ -64,9 +61,7 @@ class Test_ValidateArgs(unittest.TestCase):
 
     @patch("viralunity.viralunity_meta.validate_metagenomics_requirements")
     @patch("viralunity.viralunity_meta.get_samples_from_args")
-    def test_validate_args_kraken2_db_not_exist(
-        self, mock_get_samples, mock_validate_meta
-    ):
+    def test_validate_args_kraken2_db_not_exist(self, mock_get_samples, mock_validate_meta):
         """Test validation fails when Kraken2 database doesn't exist."""
         mock_get_samples.return_value = {"sample1": ["file1.fastq"]}
         mock_validate_meta.side_effect = Kraken2DatabaseNotFoundError(
@@ -78,9 +73,7 @@ class Test_ValidateArgs(unittest.TestCase):
 
     @patch("viralunity.viralunity_meta.validate_metagenomics_requirements")
     @patch("viralunity.viralunity_meta.get_samples_from_args")
-    def test_validate_args_krona_db_not_exist(
-        self, mock_get_samples, mock_validate_meta
-    ):
+    def test_validate_args_krona_db_not_exist(self, mock_get_samples, mock_validate_meta):
         """Test validation fails when Krona database doesn't exist."""
         mock_get_samples.return_value = {"sample1": ["file1.fastq"]}
         mock_validate_meta.side_effect = KronaDatabaseNotFoundError(
@@ -113,9 +106,7 @@ class Test_ValidateArgs(unittest.TestCase):
         self, mock_get_samples, mock_validate_meta, mock_validate_illumina
     ):
         """Test validation succeeds even if config file already exists."""
-        mock_get_samples.return_value = {
-            "sample1": ["file1_R1.fastq", "file1_R2.fastq"]
-        }
+        mock_get_samples.return_value = {"sample1": ["file1_R1.fastq", "file1_R2.fastq"]}
 
         samples = validate_args(self.args)
 
@@ -128,9 +119,7 @@ class Test_ValidateArgs(unittest.TestCase):
         self, mock_get_samples, mock_validate_meta, mock_validate_illumina
     ):
         """Test validation succeeds even if output directory already exists."""
-        mock_get_samples.return_value = {
-            "sample1": ["file1_R1.fastq", "file1_R2.fastq"]
-        }
+        mock_get_samples.return_value = {"sample1": ["file1_R1.fastq", "file1_R2.fastq"]}
 
         samples = validate_args(self.args)
 
@@ -158,9 +147,7 @@ class Test_GenerateConfigFile(unittest.TestCase):
     @patch("builtins.open", new_callable=mock_open)
     @patch("os.makedirs")
     @patch("viralunity.config_generator.yaml.dump")
-    def test_generate_config_file_illumina(
-        self, mock_yaml_dump, mock_makedirs, mock_open
-    ):
+    def test_generate_config_file_illumina(self, mock_yaml_dump, mock_makedirs, mock_open):
         self.args["data_type"] = "illumina"
         self.samples = {
             "sample1": ["sample1_R1.fastq", "sample1_R2.fastq"],
@@ -192,9 +179,7 @@ class Test_GenerateConfigFile(unittest.TestCase):
     @patch("builtins.open", new_callable=mock_open)
     @patch("os.makedirs")
     @patch("viralunity.config_generator.yaml.dump")
-    def test_generate_config_file_nanopore(
-        self, mock_yaml_dump, mock_makedirs, mock_open
-    ):
+    def test_generate_config_file_nanopore(self, mock_yaml_dump, mock_makedirs, mock_open):
         self.args["data_type"] = "nanopore"
         self.samples = {
             "sample1": ["sample1.fastq"],

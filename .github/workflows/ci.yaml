@@ -2,37 +2,53 @@ name: 'CI'
 
 on:
   pull_request:
+  push:
+    branches: [main]
 
 jobs:
-  test:
+  lint:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
+      - name: Install lint tooling
+        run: pip install "black>=24.4" "ruff>=0.5"
+
+      - name: black --check
+        run: black --check viralunity/ test/
+
+      - name: ruff check
+        run: ruff check viralunity/ test/
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Add conda to system path
         run: |
           # $CONDA is an environment variable pointing to the root of the miniconda directory
           echo $CONDA/bin >> $GITHUB_PATH
 
-      - name: Install dependencies
-        run: |
-          conda env update --file environment.yml --name viralunity
+      - name: Install conda env
+        run: conda env update --file environment.yml --name viralunity
 
       - name: Activate conda env
-        run: |
-          echo $CONDA/envs/viralunity/bin >> $GITHUB_PATH
+        run: echo $CONDA/envs/viralunity/bin >> $GITHUB_PATH
+
+      - name: Install viralunity with dev extras
+        run: pip install -e ".[dev]"
+
+      - name: Verify 'viralunity' installation working
+        run: viralunity --version
 
       - name: Run unit tests
         run: python -m unittest discover ./test -p *test.py
 
-      - name: Viralunity install
-        run: pip install -e .
-      
-      - name: Verify 'viralunity' installation working
-        run: viralunity -v
+      - name: Run Snakemake dry-run tests
+        run: pytest test/viralunity_dryrun_test.py -v

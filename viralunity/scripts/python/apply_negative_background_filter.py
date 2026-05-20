@@ -25,9 +25,7 @@ def poisson_sf(k: int, mu: float) -> float:
     return max(0.0, sf)
 
 
-def infer_group_cols(
-    df: pd.DataFrame, extra_group_cols: Optional[List[str]] = None
-) -> List[str]:
+def infer_group_cols(df: pd.DataFrame, extra_group_cols: Optional[List[str]] = None) -> List[str]:
     """Default grouping: (tool,mode if present) + rank + taxid"""
     group_cols = []
     for c in ["tool", "mode"]:
@@ -105,13 +103,9 @@ def apply_negative_background_filter(
     neg_set = set(negatives)
     out["is_negative_control"] = out["sample"].isin(neg_set)
 
-    neg_samples_present = sorted(
-        set(out.loc[out["is_negative_control"], "sample"].unique())
-    )
+    neg_samples_present = sorted(set(out.loc[out["is_negative_control"], "sample"].unique()))
     if len(neg_samples_present) == 0:
-        raise ValueError(
-            "None of the provided negative controls are present in the input table."
-        )
+        raise ValueError("None of the provided negative controls are present in the input table.")
 
     # Category columns = group_cols excluding rank+taxid (for per-tool/mode totals)
     category_cols = [c for c in group_cols if c not in ["rank", "taxid"]]
@@ -143,9 +137,7 @@ def apply_negative_background_filter(
     b_by_tax = b_by_tax.merge(B_by_cat, on=category_cols, how="left")
 
     # lambda only defined for taxa seen in negatives (b_by_tax rows)
-    b_by_tax["lambda_bg"] = b_by_tax["neg_b_t"].astype(float) / b_by_tax[
-        "neg_B"
-    ].astype(float)
+    b_by_tax["lambda_bg"] = b_by_tax["neg_b_t"].astype(float) / b_by_tax["neg_B"].astype(float)
 
     # merge taxon-level background params to all rows (taxa absent in negatives -> NaN)
     out = out.merge(
@@ -171,17 +163,17 @@ def apply_negative_background_filter(
 
     # observed counts (integer)
     obs = out.loc[eval_mask, count_col].fillna(0).astype(float).round().astype(int)
-    mu = out.loc[eval_mask, "lambda_bg"].astype(float) * out.loc[
-        eval_mask, total_reads_col
-    ].astype(float)
+    mu = out.loc[eval_mask, "lambda_bg"].astype(float) * out.loc[eval_mask, total_reads_col].astype(
+        float
+    )
 
     out.loc[eval_mask, "mu_bg"] = mu
 
     pvals = [poisson_sf(int(k), float(m)) for k, m in zip(obs.tolist(), mu.tolist())]
     out.loc[eval_mask, "p_bg"] = pvals
-    out.loc[eval_mask, "neg_pass"] = pd.Series(
-        pvals, index=out.index[eval_mask]
-    ) < float(p_threshold)
+    out.loc[eval_mask, "neg_pass"] = pd.Series(pvals, index=out.index[eval_mask]) < float(
+        p_threshold
+    )
 
     out["neg_controls_used"] = len(neg_samples_present)
     out["p_threshold"] = float(p_threshold)
@@ -203,9 +195,7 @@ def run_cli():
         required=True,
         help="Input TSV (must include sample,taxid,total_reads).",
     )
-    ap.add_argument(
-        "--out", required=True, help="Output TSV with background columns added."
-    )
+    ap.add_argument("--out", required=True, help="Output TSV with background columns added.")
     ap.add_argument(
         "--negatives",
         required=True,
@@ -263,9 +253,7 @@ def run_snakemake():
     if isinstance(negatives, str):
         negatives = [x.strip() for x in negatives.split(",") if x.strip()]
     if not isinstance(negatives, list):
-        raise ValueError(
-            "snakemake.params.negatives must be a list or comma-separated string."
-        )
+        raise ValueError("snakemake.params.negatives must be a list or comma-separated string.")
 
     count_col = getattr(snakemake.params, "count_col", None)
     if count_col is None:

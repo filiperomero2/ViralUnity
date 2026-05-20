@@ -1,7 +1,7 @@
 import os
 import subprocess
+
 import pytest
-import yaml
 
 # Path to the directory containing dry-run configurations
 CONFIG_DIR = os.path.join(os.getcwd(), "test", "dryrun_configs")
@@ -47,9 +47,7 @@ def test_snakemake_dryrun(config_filename):
 
     # Check if the workflow file exists
     if not os.path.exists(workflow_path):
-        pytest.fail(
-            f"Workflow file not found: {workflow_path} for config {config_filename}"
-        )
+        pytest.fail(f"Workflow file not found: {workflow_path} for config {config_filename}")
 
     # Run Snakemake dry-run
     # -n: dry-run, -p: print commands

@@ -6,22 +6,23 @@ the viralunity consensus snakemake pipeline.
 Filipe Moreira - 2024/09/21
 """
 
+import logging
 import os
 import sys
-import logging
-from typing import Dict, Any
+from typing import Any, Dict
+
 from snakemake import snakemake
 
-from viralunity.validators import (
-    get_samples_from_args,
-    validate_illumina_requirements,
-    validate_consensus_requirements,
-    resolve_path_args,
-    CONSENSUS_PATH_ARG_KEYS,
-)
 from viralunity.config_generator import ConfigGenerator
-from viralunity.exceptions import ValidationError
 from viralunity.constants import DataType, ResourceDefaults
+from viralunity.exceptions import ValidationError
+from viralunity.validators import (
+    CONSENSUS_PATH_ARG_KEYS,
+    get_samples_from_args,
+    resolve_path_args,
+    validate_consensus_requirements,
+    validate_illumina_requirements,
+)
 
 # Set up logging
 logger = logging.getLogger(__name__)

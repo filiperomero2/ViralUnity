@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
-import pandas as pd
 import subprocess
+
+import pandas as pd
 
 
 def get_number_of_reads(fastq):

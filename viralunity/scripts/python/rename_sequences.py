@@ -15,9 +15,7 @@ def rename_sequences(input, output):
     sequence = ""
 
     for line in lines:
-        if line.startswith(">"):
-            header = line
-        else:
+        if not line.startswith(">"):
             sequence = sequence + line
 
     with open(output, "w") as f:

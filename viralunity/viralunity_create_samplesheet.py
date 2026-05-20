@@ -7,16 +7,15 @@ Create sample sheet from directory structure
 Filipe Moreira - 2023/09/16
 """
 
-import os
 import glob
 import logging
+import os
 from typing import Dict, List
-from pathlib import Path
 
 import click
 
-from viralunity.exceptions import ValidationError, FileNotFoundError
 from viralunity.constants import SampleSheetPattern, SampleSheetSeparator
+from viralunity.exceptions import FileNotFoundError, ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -187,9 +186,7 @@ def find_samples_level_1(input_dir: str, separator: str) -> Dict[str, List[str]]
     return samples
 
 
-def find_samples_level_0(
-    input_dir: str, separator: str, pattern: str
-) -> Dict[str, List[str]]:
+def find_samples_level_0(input_dir: str, separator: str, pattern: str) -> Dict[str, List[str]]:
     """Find samples in the base directory (level 0).
 
     Args:

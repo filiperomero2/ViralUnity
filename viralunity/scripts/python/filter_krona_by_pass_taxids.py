@@ -18,11 +18,12 @@ from typing import Dict, Optional, Set, Tuple
 
 import pandas as pd
 
-
 RANKS_OF_INTEREST = ("family", "genus", "species")
 
 
-def load_taxdump(nodes_dmp: str, names_dmp: Optional[str] = None) -> Tuple[Dict[str, str], Dict[str, str]]:
+def load_taxdump(
+    nodes_dmp: str, names_dmp: Optional[str] = None
+) -> Tuple[Dict[str, str], Dict[str, str]]:
     """
     Read nodes.dmp (and optionally names.dmp) and return parent + rank maps.
 
@@ -84,7 +85,7 @@ def build_pass_taxids(
         (df.get("sample") == sample)
         & (df.get("tool") == tool)
         & (df.get("mode") == mode)
-        & (df["bleed_pass"].astype(bool) == True)
+        & df["bleed_pass"].astype(bool)
     )
 
     if "neg_pass" in df.columns:
@@ -188,10 +189,14 @@ def run_cli() -> None:
     ap.add_argument("--summary", required=True, help="Path to *_RPM.bleed[.neg].tsv.")
     ap.add_argument("--krona-input", required=True, help="Per-sample krona_input.tsv.")
     ap.add_argument("--out", required=True, help="Output filtered krona_input.tsv.")
-    ap.add_argument("--sample", required=True, help="Sample id (must match summary's 'sample' column).")
+    ap.add_argument(
+        "--sample", required=True, help="Sample id (must match summary's 'sample' column)."
+    )
     ap.add_argument("--tool", required=True, choices=["kraken2", "diamond"])
     ap.add_argument("--mode", required=True, choices=["reads", "contigs"])
-    ap.add_argument("--taxdump-dir", required=True, help="Directory with nodes.dmp [and names.dmp].")
+    ap.add_argument(
+        "--taxdump-dir", required=True, help="Directory with nodes.dmp [and names.dmp]."
+    )
     args = ap.parse_args()
 
     run(

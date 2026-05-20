@@ -1,6 +1,7 @@
-import pandas as pd
 import os
 import sys
+
+import pandas as pd
 
 input_file = snakemake.input[0]
 output_file = snakemake.output[0]
@@ -16,8 +17,7 @@ if not os.path.exists(input_file) or os.path.getsize(input_file) == 0:
     # Create empty output and exit cleanly
     open(output_file, "w").close()
     print(
-        f"[filter_taxids] Empty input file: {input_file}. "
-        f"Created empty output: {output_file}",
+        f"[filter_taxids] Empty input file: {input_file}. " f"Created empty output: {output_file}",
         file=sys.stderr,
     )
     sys.exit(0)
@@ -30,8 +30,7 @@ try:
 except pd.errors.EmptyDataError:
     open(output_file, "w").close()
     print(
-        f"[filter_taxids] No data in input file: {input_file}. "
-        f"Created empty output.",
+        f"[filter_taxids] No data in input file: {input_file}. " f"Created empty output.",
         file=sys.stderr,
     )
     sys.exit(0)
@@ -46,7 +45,7 @@ if keep_columns is not None:
 if df.empty:
     open(output_file, "w").close()
     print(
-        f"[filter_taxids] No rows after column selection. " f"Created empty output.",
+        "[filter_taxids] No rows after column selection. " "Created empty output.",
         file=sys.stderr,
     )
     sys.exit(0)
@@ -61,8 +60,7 @@ else:
     if taxid_colname not in df.columns:
         open(output_file, "w").close()
         print(
-            f"[filter_taxids] TaxID column '{taxid_colname}' not found. "
-            f"Created empty output.",
+            f"[filter_taxids] TaxID column '{taxid_colname}' not found. " f"Created empty output.",
             file=sys.stderr,
         )
         sys.exit(0)

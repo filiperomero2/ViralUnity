@@ -18,14 +18,12 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from viralunity import viralunity_consensus, viralunity_meta
 from viralunity.validators import (
-    CONSENSUS_PATH_ARG_KEYS,
     META_PATH_ARG_KEYS,
     _is_path_sentinel,
     resolve_path_args,
 )
-from viralunity import viralunity_meta, viralunity_consensus
-
 
 # ---------------------------------------------------------------------------
 # _is_path_sentinel
@@ -148,9 +146,7 @@ class TestMetaMainResolvesPaths(unittest.TestCase):
             captured.update(args)
             return {"sample1": ["/abs/sample1.fastq"]}
 
-        with patch(
-            "viralunity.viralunity_meta.validate_args", side_effect=fake_validate
-        ), patch(
+        with patch("viralunity.viralunity_meta.validate_args", side_effect=fake_validate), patch(
             "viralunity.viralunity_meta.generate_config_file"
         ), patch(
             "viralunity.viralunity_meta.run_snakemake_workflow", return_value=True
@@ -215,8 +211,9 @@ class TestMetaWorkdirUsesCwd(unittest.TestCase):
             captured.update(kwargs)
             return True
 
-        with patch("viralunity.viralunity_meta.snakemake", side_effect=fake_snakemake), \
-             tempfile.TemporaryDirectory() as tmp:
+        with patch(
+            "viralunity.viralunity_meta.snakemake", side_effect=fake_snakemake
+        ), tempfile.TemporaryDirectory() as tmp:
             tmp_real = os.path.realpath(tmp)
             old_cwd = os.getcwd()
             os.chdir(tmp_real)
@@ -226,9 +223,7 @@ class TestMetaWorkdirUsesCwd(unittest.TestCase):
                         "data_type": "nanopore",
                         # Pretend the user put the config in a sub-directory
                         # so the old code would have set workdir=that subdir.
-                        "config_file": os.path.join(
-                            tmp_real, "scratch", "run.yml"
-                        ),
+                        "config_file": os.path.join(tmp_real, "scratch", "run.yml"),
                         "threads_total": 1,
                     }
                 )
@@ -237,7 +232,8 @@ class TestMetaWorkdirUsesCwd(unittest.TestCase):
 
         self.assertEqual(captured["workdir"], tmp_real)
         self.assertNotEqual(
-            captured["workdir"], os.path.join(tmp_real, "scratch"),
+            captured["workdir"],
+            os.path.join(tmp_real, "scratch"),
             "workdir must NOT be the config file's parent directory",
         )
 
@@ -257,9 +253,7 @@ class TestConsensusMainResolvesPaths(unittest.TestCase):
 
         with patch(
             "viralunity.viralunity_consensus.validate_args", side_effect=fake_validate
-        ), patch(
-            "viralunity.viralunity_consensus.generate_config_file"
-        ), patch(
+        ), patch("viralunity.viralunity_consensus.generate_config_file"), patch(
             "viralunity.viralunity_consensus.run_snakemake_workflow", return_value=True
         ), tempfile.TemporaryDirectory() as tmp:
             tmp_real = os.path.realpath(tmp)

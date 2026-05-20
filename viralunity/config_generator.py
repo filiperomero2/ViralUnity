@@ -1,7 +1,8 @@
 """Configuration file generation for ViralUnity pipelines."""
 
 import os
-from typing import Dict, List, Any, Optional, Union
+from typing import Any, Dict, List, Optional, Union
+
 import yaml
 
 from viralunity.constants import ConfigKeys, DataType, ResourceDefaults
@@ -277,12 +278,10 @@ class ConfigGenerator:
             [f.strip() for f in families.split(",")],
             section,
         )
-        self._set(
-            ConfigKeys.REF_SELECTION_STRATEGY, reference_selection_strategy, section
-        )
+        self._set(ConfigKeys.REF_SELECTION_STRATEGY, reference_selection_strategy, section)
         self._set(ConfigKeys.REF_BLAST_QCOV, blast_qcov, section)
         self._set(ConfigKeys.REF_BLAST_PIDENT, blast_pident, section)
-        
+
         db_section = self.SECTION_DATABASES
         self._set(ConfigKeys.VIRAL_GENOMES, viral_genomes, db_section)
         self._set(ConfigKeys.VIRAL_TAXIDS, viral_taxids, db_section)

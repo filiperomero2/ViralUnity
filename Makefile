@@ -1,10 +1,24 @@
-.PHONY: test run-meta run-consensus install build-docker run-docker
+.PHONY: test test-dryrun lint format run-meta run-consensus install install-dev build-docker run-docker
 
-test: install
+test: install-dev
 	python3 -m unittest discover ./test -p *test.py
+
+test-dryrun: install-dev
+	pytest test/viralunity_dryrun_test.py -v
+
+lint: install-dev
+	black --check viralunity/ test/
+	ruff check viralunity/ test/
+
+format: install-dev
+	black viralunity/ test/
+	ruff check --fix viralunity/ test/
 
 install:
 	pip install -e .
+
+install-dev:
+	pip install -e ".[dev]"
 
 run-meta:
 	viralunity meta \

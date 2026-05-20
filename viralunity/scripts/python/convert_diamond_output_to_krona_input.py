@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-import os
 import gzip
+import os
 
 
 def open_maybe_gzip(path, mode="rt"):
@@ -59,10 +59,11 @@ def parse_diamond_results(diamond_output_path, assembly2taxid):
             read_id = parts[0]
             sseqid = parts[1]
 
-            # Expected: assembly|protein (e.g. NCBI RefSeq format)
+            # Expected: assembly|protein (e.g. NCBI RefSeq format).
+            # The protein component is not used downstream; only the
+            # assembly accession is looked up for taxid mapping.
             fields = sseqid.split("|")
             assembly_acc = fields[0] if len(fields) >= 1 else ""
-            prot_acc = fields[1] if len(fields) >= 2 else ""
 
             if not assembly_acc:
                 continue
@@ -125,7 +126,6 @@ if __name__ == "__main__":
         data_format = snakemake.params.data_format
         main(input_files, output_file, data_format)
     else:
-        import sys
 
         # CLI usage
         parser = argparse.ArgumentParser()
@@ -133,9 +133,7 @@ if __name__ == "__main__":
         parser.add_argument("--sequences", required=True)
         parser.add_argument("--taxids", required=True)
         parser.add_argument("--output", required=True)
-        parser.add_argument(
-            "--data-format", choices=["fastq", "fasta"], default="fastq"
-        )
+        parser.add_argument("--data-format", choices=["fastq", "fasta"], default="fastq")
         args = parser.parse_args()
         main(
             [args.diamond, args.sequences, args.taxids],

@@ -1,7 +1,9 @@
 """Click CLI for viralunity consensus command."""
 
-import click
 from typing import Optional, Tuple
+
+import click
+
 from viralunity.constants import ResourceDefaults
 from viralunity.viralunity_consensus import main as consensus_main
 
@@ -162,9 +164,7 @@ def consensus():
 @consensus.command("illumina")
 @_add_common_options
 @_add_resource_options(ResourceDefaults.CONSENSUS_ILLUMINA_RULES)
-@click.option(
-    "--adapters", default=None, help="Path to adapter sequences FASTA [fastp QC]."
-)
+@click.option("--adapters", default=None, help="Path to adapter sequences FASTA [fastp QC].")
 @click.option(
     "--trim-head",
     default=0,

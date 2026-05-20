@@ -1,12 +1,13 @@
 """Top-level click CLI for ViralUnity."""
 
 import click
+
 from viralunity import __program__, __version__
+from viralunity.viralunity_build_deacon_index_cli import build_deacon_index
 from viralunity.viralunity_consensus_cli import consensus
-from viralunity.viralunity_meta_cli import meta
 from viralunity.viralunity_create_samplesheet import create_samplesheet
 from viralunity.viralunity_get_databases_cli import get_databases
-from viralunity.viralunity_build_deacon_index_cli import build_deacon_index
+from viralunity.viralunity_meta_cli import meta
 
 
 @click.group()

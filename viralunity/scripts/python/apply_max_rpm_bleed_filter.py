@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 import argparse
-import sys
-import pandas as pd
 from typing import List, Optional
 
+import pandas as pd
 
-def infer_group_cols(
-    df: pd.DataFrame, extra_group_cols: Optional[List[str]] = None
-) -> List[str]:
+
+def infer_group_cols(df: pd.DataFrame, extra_group_cols: Optional[List[str]] = None) -> List[str]:
     """
     Decide what defines a 'taxon' for max-RPM purposes.
 
@@ -33,9 +31,7 @@ def infer_group_cols(
     if extra_group_cols:
         for c in extra_group_cols:
             if c not in df.columns:
-                raise ValueError(
-                    f"Requested group column '{c}' not found in input columns."
-                )
+                raise ValueError(f"Requested group column '{c}' not found in input columns.")
             group_cols.append(c)
 
     return group_cols
@@ -82,9 +78,7 @@ def apply_bleed_filter(
     # Default threshold is 0 (so everything passes) when not applied; but keep explicit threshold column too
     out["bleed_threshold"] = 0.0
     mask = out["bleed_applied"]
-    out.loc[mask, "bleed_threshold"] = out.loc[mask, "max_rpm"].astype(float) * float(
-        fraction
-    )
+    out.loc[mask, "bleed_threshold"] = out.loc[mask, "max_rpm"].astype(float) * float(fraction)
 
     # Pass if above threshold, OR if not applied (max_rpm below floor)
     out["bleed_pass"] = True
@@ -105,12 +99,8 @@ def run_cli():
         required=True,
         help="Input TSV (must include sample,taxid,rpm).",
     )
-    ap.add_argument(
-        "--out", required=True, help="Output TSV with bleed filter columns added."
-    )
-    ap.add_argument(
-        "--rpm-col", default="rpm", help="Name of RPM column (default: rpm)."
-    )
+    ap.add_argument("--out", required=True, help="Output TSV with bleed filter columns added.")
+    ap.add_argument("--rpm-col", default="rpm", help="Name of RPM column (default: rpm).")
     ap.add_argument(
         "--fraction",
         type=float,

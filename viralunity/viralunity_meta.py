@@ -6,23 +6,24 @@ the viralunity metagenomics snakemake pipeline.
 Filipe Moreira - 2024/09/21
 """
 
-import os
 import logging
-from typing import Dict, Any
+import os
 from pathlib import Path
+from typing import Any, Dict
+
 from snakemake import snakemake
 
-from viralunity.validators import (
-    get_samples_from_args,
-    validate_illumina_requirements,
-    validate_nanopore_requirements,
-    validate_metagenomics_requirements,
-    resolve_path_args,
-    META_PATH_ARG_KEYS,
-)
 from viralunity.config_generator import ConfigGenerator
-from viralunity.exceptions import ValidationError
 from viralunity.constants import DataType, ResourceDefaults
+from viralunity.exceptions import ValidationError
+from viralunity.validators import (
+    META_PATH_ARG_KEYS,
+    get_samples_from_args,
+    resolve_path_args,
+    validate_illumina_requirements,
+    validate_metagenomics_requirements,
+    validate_nanopore_requirements,
+)
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -150,13 +151,9 @@ def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None
     # Add resource settings
     shared_rules = ResourceDefaults.META_SHARED_RULES
     if data_type == DataType.ILLUMINA:
-        generator.add_resource_settings(
-            args, shared_rules + ResourceDefaults.META_ILLUMINA_RULES
-        )
+        generator.add_resource_settings(args, shared_rules + ResourceDefaults.META_ILLUMINA_RULES)
     else:
-        generator.add_resource_settings(
-            args, shared_rules + ResourceDefaults.META_NANOPORE_RULES
-        )
+        generator.add_resource_settings(args, shared_rules + ResourceDefaults.META_NANOPORE_RULES)
 
     # Save config file
     generator.save()
@@ -176,9 +173,7 @@ def run_snakemake_workflow(args: Dict[str, Any]) -> bool:
     logger.info("Starting Snakemake workflow")
 
     thisdir = os.path.abspath(os.path.dirname(__file__))
-    workflow_path = os.path.join(
-        thisdir, "scripts", f"metagenomics_{args['data_type']}.smk"
-    )
+    workflow_path = os.path.join(thisdir, "scripts", f"metagenomics_{args['data_type']}.smk")
 
     if not os.path.isfile(workflow_path):
         raise ValidationError(f"Workflow file not found: {workflow_path}")

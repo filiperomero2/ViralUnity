@@ -2,7 +2,9 @@
 
 import unittest
 from unittest.mock import patch
+
 from click.testing import CliRunner
+
 from viralunity.viralunity_meta_cli import meta
 
 
@@ -41,9 +43,7 @@ class Test_MetaIlluminaCommand(unittest.TestCase):
 
     def test_default_values_optional_args(self):
         """Check that all optional Illumina meta args have correct defaults."""
-        with patch(
-            "viralunity.viralunity_meta_cli.meta_main", return_value=0
-        ) as mock_main:
+        with patch("viralunity.viralunity_meta_cli.meta_main", return_value=0) as mock_main:
             result = self.runner.invoke(meta, self._required, catch_exceptions=False)
         self.assertEqual(result.exit_code, 0, result.output)
         args = mock_main.call_args[0][0]
@@ -60,9 +60,7 @@ class Test_MetaIlluminaCommand(unittest.TestCase):
         self.assertFalse(args["create_config_only"])
 
     def test_remove_human_reads_flag(self):
-        with patch(
-            "viralunity.viralunity_meta_cli.meta_main", return_value=0
-        ) as mock_main:
+        with patch("viralunity.viralunity_meta_cli.meta_main", return_value=0) as mock_main:
             result = self.runner.invoke(
                 meta, self._required + ["--remove-human-reads"], catch_exceptions=False
             )
@@ -96,9 +94,7 @@ class Test_MetaNanoporeCommand(unittest.TestCase):
 
     def test_default_values_optional_args(self):
         """Check nanopore-specific defaults for the meta command."""
-        with patch(
-            "viralunity.viralunity_meta_cli.meta_main", return_value=0
-        ) as mock_main:
+        with patch("viralunity.viralunity_meta_cli.meta_main", return_value=0) as mock_main:
             result = self.runner.invoke(meta, self._required, catch_exceptions=False)
         self.assertEqual(result.exit_code, 0, result.output)
         args = mock_main.call_args[0][0]
@@ -109,9 +105,7 @@ class Test_MetaNanoporeCommand(unittest.TestCase):
 
     def test_kraken2_flags(self):
         """Test --no-kraken2-reads disables reads classification."""
-        with patch(
-            "viralunity.viralunity_meta_cli.meta_main", return_value=0
-        ) as mock_main:
+        with patch("viralunity.viralunity_meta_cli.meta_main", return_value=0) as mock_main:
             result = self.runner.invoke(
                 meta, self._required + ["--no-kraken2-reads"], catch_exceptions=False
             )

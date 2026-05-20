@@ -1,8 +1,9 @@
 """Click CLI for viralunity meta command."""
 
 import click
-from viralunity.viralunity_meta import main as meta_main
+
 from viralunity.constants import ResourceDefaults
+from viralunity.viralunity_meta import main as meta_main
 
 # Common options (applied to both illumina and nanopore subcommands)
 _COMMON_META_OPTIONS = [
@@ -109,9 +110,7 @@ _COMMON_META_OPTIONS = [
     ),
     click.option(
         "--diamond-sensitivity",
-        type=click.Choice(
-            ["sensitive", "mid-sensitive", "more-sensitive", "ultra-sensitive"]
-        ),
+        type=click.Choice(["sensitive", "mid-sensitive", "more-sensitive", "ultra-sensitive"]),
         default="sensitive",
         show_default=True,
         help="Diamond sensitivity mode.",
@@ -292,9 +291,7 @@ def _build_meta_args(data_type, **kwargs) -> dict:
     """Build args dict for meta_main, normalising negative_controls."""
     negative = kwargs.get("negative_controls", "")
     if isinstance(negative, str):
-        kwargs["negative_controls"] = [
-            x.strip() for x in negative.split(",") if x.strip()
-        ]
+        kwargs["negative_controls"] = [x.strip() for x in negative.split(",") if x.strip()]
     kwargs["data_type"] = data_type
     return kwargs
 
@@ -306,9 +303,7 @@ def meta():
 
 @meta.command("illumina")
 @_add_common_meta_options
-@_add_resource_options(
-    ResourceDefaults.META_SHARED_RULES + ResourceDefaults.META_ILLUMINA_RULES
-)
+@_add_resource_options(ResourceDefaults.META_SHARED_RULES + ResourceDefaults.META_ILLUMINA_RULES)
 @click.option(
     "--adapters",
     default="NA",
@@ -366,9 +361,7 @@ def meta_illumina(**kwargs):
 
 @meta.command("nanopore")
 @_add_common_meta_options
-@_add_resource_options(
-    ResourceDefaults.META_SHARED_RULES + ResourceDefaults.META_NANOPORE_RULES
-)
+@_add_resource_options(ResourceDefaults.META_SHARED_RULES + ResourceDefaults.META_NANOPORE_RULES)
 @click.option(
     "--run-polish-racon/--no-polish-racon",
     default=False,

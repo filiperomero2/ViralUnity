@@ -2,7 +2,9 @@
 
 import unittest
 from unittest.mock import patch
+
 from click.testing import CliRunner
+
 from viralunity.viralunity_consensus_cli import consensus
 
 
@@ -25,9 +27,7 @@ class Test_ConsensusIlluminaCommand(unittest.TestCase):
 
     def _invoke(self, extra_args=None):
         args = self._required + (extra_args or [])
-        with patch(
-            "viralunity.viralunity_consensus_cli.consensus_main", return_value=0
-        ):
+        with patch("viralunity.viralunity_consensus_cli.consensus_main", return_value=0):
             return self.runner.invoke(consensus, args, catch_exceptions=False)
 
     def test_required_args_missing_causes_error(self):
@@ -50,9 +50,7 @@ class Test_ConsensusIlluminaCommand(unittest.TestCase):
             "--output",
             "output_dir",
         ]
-        with patch(
-            "viralunity.viralunity_consensus_cli.consensus_main", return_value=0
-        ):
+        with patch("viralunity.viralunity_consensus_cli.consensus_main", return_value=0):
             result = self.runner.invoke(consensus, args, catch_exceptions=False)
         self.assertEqual(result.exit_code, 0, result.output)
 
@@ -89,9 +87,7 @@ class Test_ConsensusIlluminaCommand(unittest.TestCase):
         with patch(
             "viralunity.viralunity_consensus_cli.consensus_main", return_value=0
         ) as mock_main:
-            result = self.runner.invoke(
-                consensus, self._required, catch_exceptions=False
-            )
+            result = self.runner.invoke(consensus, self._required, catch_exceptions=False)
         self.assertEqual(result.exit_code, 0, result.output)
         args = mock_main.call_args[0][0]
         self.assertEqual(args["data_type"], "illumina")
@@ -131,12 +127,8 @@ class Test_ConsensusNanoporeCommand(unittest.TestCase):
         ]
 
     def test_required_args_success(self):
-        with patch(
-            "viralunity.viralunity_consensus_cli.consensus_main", return_value=0
-        ):
-            result = self.runner.invoke(
-                consensus, self._required, catch_exceptions=False
-            )
+        with patch("viralunity.viralunity_consensus_cli.consensus_main", return_value=0):
+            result = self.runner.invoke(consensus, self._required, catch_exceptions=False)
         self.assertEqual(result.exit_code, 0, result.output)
 
     def test_default_values_optional_args(self):
@@ -144,9 +136,7 @@ class Test_ConsensusNanoporeCommand(unittest.TestCase):
         with patch(
             "viralunity.viralunity_consensus_cli.consensus_main", return_value=0
         ) as mock_main:
-            result = self.runner.invoke(
-                consensus, self._required, catch_exceptions=False
-            )
+            result = self.runner.invoke(consensus, self._required, catch_exceptions=False)
         self.assertEqual(result.exit_code, 0, result.output)
         args = mock_main.call_args[0][0]
         self.assertEqual(args["data_type"], "nanopore")

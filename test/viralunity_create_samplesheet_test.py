@@ -2,11 +2,13 @@
 
 import unittest
 from unittest.mock import patch
+
 from click.testing import CliRunner
+
 from viralunity.viralunity_create_samplesheet import (
     create_samplesheet,
-    validate_args,
     generate_sample_sheet,
+    validate_args,
 )
 
 
@@ -36,9 +38,7 @@ class Test_CreateSamplesheeetCommand(unittest.TestCase):
         """Check that defaults match the expected values."""
         with patch(
             "viralunity.viralunity_create_samplesheet.validate_args"
-        ) as mock_validate, patch(
-            "viralunity.viralunity_create_samplesheet.generate_sample_sheet"
-        ) as mock_gen:
+        ) as mock_validate, patch("viralunity.viralunity_create_samplesheet.generate_sample_sheet"):
             result = self.runner.invoke(
                 create_samplesheet,
                 ["--input", "input/dir", "--output", "output.file"],
@@ -99,9 +99,7 @@ class Test_GenerateSamplesheet(unittest.TestCase):
     @patch("os.path.isdir", return_value=True)
     @patch("os.path.isfile", return_value=True)
     @patch("builtins.open", new_callable=unittest.mock.mock_open)
-    def test_generate_samplesheet_level_1(
-        self, mock_open, mock_isfile, mock_isdir, mock_glob
-    ):
+    def test_generate_samplesheet_level_1(self, mock_open, mock_isfile, mock_isdir, mock_glob):
         self.args["level"] = 1
         generate_sample_sheet(self.args)
         mock_open.assert_called_with("output.file", "w")

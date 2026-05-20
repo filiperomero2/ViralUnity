@@ -1,12 +1,14 @@
-import unittest
 import subprocess
-import pandas as pd
+import unittest
 from unittest.mock import patch
+
+import pandas as pd
+
 from viralunity.scripts.python.calculate_assembly_stats import (
-    get_number_of_reads,
-    get_number_of_mapped_reads,
-    get_coverage_info,
     generate_output,
+    get_coverage_info,
+    get_number_of_mapped_reads,
+    get_number_of_reads,
     main,
 )
 
@@ -74,17 +76,13 @@ class TestGetCoverageInfo(unittest.TestCase):
         self.assertEqual(result[1], expected_percentage_of_sites_above_10x)
         self.assertEqual(result[2], expected_percentage_of_sites_above_100x)
         self.assertEqual(result[3], expected_percentage_of_sites_above_1000x)
-        self.assertEqual(
-            result[4], expected_percentage_of_sites_above_specified_threshold
-        )
+        self.assertEqual(result[4], expected_percentage_of_sites_above_specified_threshold)
 
 
 class TestWriteOutput(unittest.TestCase):
 
     @patch("viralunity.scripts.python.calculate_assembly_stats.get_number_of_reads")
-    @patch(
-        "viralunity.scripts.python.calculate_assembly_stats.get_number_of_mapped_reads"
-    )
+    @patch("viralunity.scripts.python.calculate_assembly_stats.get_number_of_mapped_reads")
     @patch("viralunity.scripts.python.calculate_assembly_stats.get_coverage_info")
     @patch("pandas.DataFrame.to_csv")
     def test_write_output(

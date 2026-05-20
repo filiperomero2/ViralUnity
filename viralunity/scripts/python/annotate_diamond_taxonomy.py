@@ -5,7 +5,6 @@ DIAMOND supported TSV and assembly/taxdump, for use by summarize_krona_taxa.
 
 import gzip
 import os
-from pathlib import Path
 
 
 def open_maybe_gzip(path, mode="rt"):

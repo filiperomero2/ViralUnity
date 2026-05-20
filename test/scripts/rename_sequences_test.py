@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import mock_open, patch
+
 from viralunity.scripts.python.rename_sequences import rename_sequences
 
 
@@ -15,9 +16,7 @@ class TestRenameSequences(unittest.TestCase):
 
         rename_sequences(input, output)
 
-        mock_open.assert_any_call(
-            "assembly/consensus/final_consensus/1234.consensus.fasta"
-        )
+        mock_open.assert_any_call("assembly/consensus/final_consensus/1234.consensus.fasta")
         mock_open.assert_any_call(
             "assembly/consensus/final_consensus/1234.consensus.renamed.fasta", "w"
         )

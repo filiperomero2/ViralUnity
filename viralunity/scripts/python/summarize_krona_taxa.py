@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import os
-import sys
 from collections import defaultdict
 
 RANKS_OF_INTEREST = ("family", "genus", "species")

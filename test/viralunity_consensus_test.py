@@ -1,16 +1,18 @@
-import unittest
-from unittest.mock import patch, mock_open
 import sys
+import unittest
+from unittest.mock import mock_open, patch
+
 import pandas as pd
+
+from viralunity.exceptions import (
+    AdaptersNotFoundError,
+    SampleConfigurationNotFoundError,
+    ValidationError,
+)
 from viralunity.viralunity_consensus import (
-    validate_args,
     generate_config_file,
     main,
-)
-from viralunity.exceptions import (
-    ValidationError,
-    SampleConfigurationNotFoundError,
-    AdaptersNotFoundError,
+    validate_args,
 )
 
 
@@ -41,9 +43,7 @@ class Test_ValidateArgs(unittest.TestCase):
         self, mock_get_samples, mock_validate_consensus, mock_validate_illumina
     ):
         """Test successful validation with all validators passing."""
-        mock_get_samples.return_value = {
-            "sample1": ["file1_R1.fastq", "file1_R2.fastq"]
-        }
+        mock_get_samples.return_value = {"sample1": ["file1_R1.fastq", "file1_R2.fastq"]}
 
         samples = validate_args(self.args)
 
@@ -55,9 +55,7 @@ class Test_ValidateArgs(unittest.TestCase):
     @patch("viralunity.viralunity_consensus.get_samples_from_args")
     def test_validate_args_sample_sheet_not_exist(self, mock_get_samples):
         """Test validation fails when sample sheet cannot be retrieved."""
-        mock_get_samples.side_effect = SampleConfigurationNotFoundError(
-            "Sample sheet not found"
-        )
+        mock_get_samples.side_effect = SampleConfigurationNotFoundError("Sample sheet not found")
 
         with self.assertRaises(SampleConfigurationNotFoundError):
             validate_args(self.args)
@@ -71,9 +69,7 @@ class Test_ValidateArgs(unittest.TestCase):
         self, mock_get_samples, mock_validate_consensus, mock_validate_illumina
     ):
         """Test validation succeeds even if config file already exists."""
-        mock_get_samples.return_value = {
-            "sample1": ["file1_R1.fastq", "file1_R2.fastq"]
-        }
+        mock_get_samples.return_value = {"sample1": ["file1_R1.fastq", "file1_R2.fastq"]}
 
         samples = validate_args(self.args)
 
@@ -86,9 +82,7 @@ class Test_ValidateArgs(unittest.TestCase):
         self, mock_get_samples, mock_validate_consensus, mock_validate_illumina
     ):
         """Test validation succeeds even if output directory already exists."""
-        mock_get_samples.return_value = {
-            "sample1": ["file1_R1.fastq", "file1_R2.fastq"]
-        }
+        mock_get_samples.return_value = {"sample1": ["file1_R1.fastq", "file1_R2.fastq"]}
 
         samples = validate_args(self.args)
 
@@ -132,9 +126,7 @@ class Test_ValidateArgs(unittest.TestCase):
     ):
         """Test validation fails when neither --reference nor --segmented-reference are provided."""
         mock_get_samples.return_value = {"sample1": ["file1.fastq"]}
-        mock_validate_consensus.side_effect = ValidationError(
-            "A reference is required."
-        )
+        mock_validate_consensus.side_effect = ValidationError("A reference is required.")
         self.args["reference"] = None
         self.args["segmented_reference"] = None
 
@@ -212,9 +204,7 @@ class Test_ValidateSampleSheet(unittest.TestCase):
         """Test sample sheet validation for Illumina data."""
         from viralunity.validators import validate_sample_sheet
 
-        with patch(
-            "viralunity.validators.pd.read_csv", return_value=self.samplesheet_dataframe
-        ):
+        with patch("viralunity.validators.pd.read_csv", return_value=self.samplesheet_dataframe):
             samples = validate_sample_sheet("sample_sheet.csv", "illumina")
             self.assertEqual(
                 samples,
@@ -229,9 +219,7 @@ class Test_ValidateSampleSheet(unittest.TestCase):
         """Test sample sheet validation fails when file doesn't exist."""
         from viralunity.validators import validate_sample_sheet
 
-        with patch(
-            "viralunity.validators.pd.read_csv", return_value=self.samplesheet_dataframe
-        ):
+        with patch("viralunity.validators.pd.read_csv", return_value=self.samplesheet_dataframe):
             with self.assertRaises(Exception):
                 validate_sample_sheet("sample_sheet.csv", "illumina")
 
@@ -240,9 +228,7 @@ class Test_ValidateSampleSheet(unittest.TestCase):
         """Test sample sheet validation for Nanopore data."""
         from viralunity.validators import validate_sample_sheet
 
-        with patch(
-            "viralunity.validators.pd.read_csv", return_value=self.samplesheet_dataframe
-        ):
+        with patch("viralunity.validators.pd.read_csv", return_value=self.samplesheet_dataframe):
             samples = validate_sample_sheet("sample_sheet.csv", "nanopore")
             self.assertEqual(
                 samples,
@@ -257,9 +243,7 @@ class Test_ValidateSampleSheet(unittest.TestCase):
         """Test sample sheet validation fails when file doesn't exist."""
         from viralunity.validators import validate_sample_sheet
 
-        with patch(
-            "viralunity.validators.pd.read_csv", return_value=self.samplesheet_dataframe
-        ):
+        with patch("viralunity.validators.pd.read_csv", return_value=self.samplesheet_dataframe):
             with self.assertRaises(Exception):
                 validate_sample_sheet("sample_sheet.csv", "nanopore")
 
@@ -286,9 +270,7 @@ class Test_GenerateConfigFile(unittest.TestCase):
     @patch("builtins.open", new_callable=mock_open)
     @patch("os.makedirs")
     @patch("viralunity.config_generator.yaml.dump")
-    def test_generate_config_file_illumina(
-        self, mock_yaml_dump, mock_makedirs, mock_open
-    ):
+    def test_generate_config_file_illumina(self, mock_yaml_dump, mock_makedirs, mock_open):
         """Test config file generation for Illumina data."""
         self.args["data_type"] = "illumina"
         self.samples = {
@@ -347,9 +329,7 @@ class Test_GenerateConfigFile(unittest.TestCase):
     @patch("builtins.open", new_callable=mock_open)
     @patch("os.makedirs")
     @patch("viralunity.config_generator.yaml.dump")
-    def test_generate_config_file_nanopore(
-        self, mock_yaml_dump, mock_makedirs, mock_open
-    ):
+    def test_generate_config_file_nanopore(self, mock_yaml_dump, mock_makedirs, mock_open):
         """Test config file generation for Nanopore data."""
         self.args["data_type"] = "nanopore"
         self.samples = {
@@ -417,9 +397,7 @@ class Test_MainFunction(unittest.TestCase):
     )
     @patch("viralunity.viralunity_consensus.generate_config_file")
     @patch("viralunity.viralunity_consensus.run_snakemake_workflow", return_value=True)
-    def test_main_success(
-        self, mock_run_workflow, mock_generate_config_file, mock_validate_args
-    ):
+    def test_main_success(self, mock_run_workflow, mock_generate_config_file, mock_validate_args):
         """Test main function succeeds when workflow completes."""
         result = main(
             {

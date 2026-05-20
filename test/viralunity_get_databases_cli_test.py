@@ -5,7 +5,6 @@ the NCBI Datasets bug where some virus protein FASTA records are actually
 nucleotide CDS sequences.
 """
 
-import os
 import tempfile
 import textwrap
 import unittest
@@ -16,10 +15,8 @@ from click.testing import CliRunner
 from viralunity.viralunity_get_databases_cli import (
     _looks_like_dna,
     _reformat_protein_fasta,
-    clean_protein_fasta,
     get_databases,
 )
-
 
 # ---------------------------------------------------------------------------
 # _looks_like_dna unit tests
@@ -69,8 +66,7 @@ class TestLooksLikeDna(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 
-_MIXED_FASTA = textwrap.dedent(
-    """\
+_MIXED_FASTA = textwrap.dedent("""\
     >NC_139268.1
     ATGGACAACTCAATTGTTGTAGTCAGAGCTACTAAGGCCGCCTTTGTGCCAATCAAACCT
     AAATTGGAAGATGAGGTCAACTATCCTCGAGAGTTCTTTGTAGACGGAAGGATTCCTGCG
@@ -85,8 +81,7 @@ _MIXED_FASTA = textwrap.dedent(
     KNYKVQVKIQNPTACTANGSCDPSVTRQAYADVTFSFTQYSTRT
     >YP_999999.1 hypothetical protein [organism=mystery virus]
     MSKTASSHNSLSAQLRRAANTRIEVEGNLALSIANDLLLAYGQSPFNSEAECISLSPRFD
-    """
-)
+    """)
 
 
 def _write_fasta(tmpdir: Path, name: str, content: str) -> Path:
@@ -139,14 +134,12 @@ class TestReformatProteinFasta(unittest.TestCase):
             self.assertNotIn("ATGGACAACTCAATTGTTGTAGTCAGAGCTAC", written)
 
     def test_pure_protein_input_writes_everything(self):
-        protein_only = textwrap.dedent(
-            """\
+        protein_only = textwrap.dedent("""\
             >YP_1.1 protein A [organism=virus a]
             MPKLPRGLRFGADNEILNDFQ
             >YP_2.1 protein B [organism=virus b]
             MSKTASSHNSLSAQLRRAANT
-            """
-        )
+            """)
         with tempfile.TemporaryDirectory() as tmp:
             tmpdir = Path(tmp)
             input_fa = _write_fasta(tmpdir, "protein.faa", protein_only)
@@ -260,14 +253,12 @@ class TestCleanProteinFastaCommand(unittest.TestCase):
             self.assertIn(">YP_011242554.1", cleaned)
 
     def test_clean_protein_only_input_is_a_noop(self):
-        protein_only = textwrap.dedent(
-            """\
+        protein_only = textwrap.dedent("""\
             >YP_1.1 protein A
             MPKLPRGLRFGADNEILNDFQ
             >YP_2.1 protein B
             MSKTASSHNSLSAQLRRAANT
-            """
-        )
+            """)
         with tempfile.TemporaryDirectory() as tmp:
             tmpdir = Path(tmp)
             input_fa = _write_fasta(tmpdir, "viral.protein.faa", protein_only)

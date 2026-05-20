@@ -1,13 +1,14 @@
 """Click CLI for viralunity get-databases command group."""
 
 import json
+import logging
 import os
 import re
 import shutil
 import subprocess
 import zipfile
-import logging
 from pathlib import Path
+
 import click
 from Bio import SeqIO
 
@@ -380,10 +381,10 @@ def get_diamond(path, taxon, refseq, threads, skip_makedb):
                 str(threads),
             ]
         )
-        click.echo(f"\nDiamond database ready.")
+        click.echo("\nDiamond database ready.")
         click.echo(f"  DB:          {dmnd}")
         click.echo(f"  Taxid map:   {taxid_map_path}")
-        click.echo(f"\nUse in viralunity meta commands:")
+        click.echo("\nUse in viralunity meta commands:")
         click.echo(f"  --diamond-database  {dmnd}")
         click.echo(f"  --taxids  {taxid_map_path}")
     else:
@@ -497,8 +498,11 @@ def clean_protein_fasta(input_path, output_path, no_backup, min_dna_length):
     """
     input_p = Path(input_path)
     if output_path is None:
-        output_p = input_p.with_suffix(input_p.suffix + ".cleaned.faa") \
-            if input_p.suffix else Path(str(input_p) + ".cleaned.faa")
+        output_p = (
+            input_p.with_suffix(input_p.suffix + ".cleaned.faa")
+            if input_p.suffix
+            else Path(str(input_p) + ".cleaned.faa")
+        )
     else:
         output_p = Path(output_path)
 
@@ -533,9 +537,7 @@ def clean_protein_fasta(input_path, output_path, no_backup, min_dna_length):
     if dropped:
         preview = ", ".join(dropped_examples)
         suffix = ", ..." if dropped > len(dropped_examples) else ""
-        click.echo(
-            f"Dropped {dropped} DNA/RNA record(s) (e.g. {preview}{suffix})."
-        )
+        click.echo(f"Dropped {dropped} DNA/RNA record(s) (e.g. {preview}{suffix}).")
     else:
         click.echo("No DNA/RNA records found.")
     click.echo(f"Cleaned FASTA written to: {output_p}")
@@ -622,9 +624,7 @@ def get_virus_genome(path, taxon, refseq, skip_makeblastdb):
     # Find genome FASTA files
     genome_files = list(raw_dir.rglob("*.fna"))
     if not genome_files:
-        raise click.ClickException(
-            "No genome FASTA files (.fna) found in downloaded package."
-        )
+        raise click.ClickException("No genome FASTA files (.fna) found in downloaded package.")
     click.echo(f"Found {len(genome_files)} genome file(s).")
 
     # Reformat FASTA
@@ -649,18 +649,20 @@ def get_virus_genome(path, taxon, refseq, skip_makeblastdb):
         _run(
             [
                 "makeblastdb",
-                "-in", str(reformatted_fasta),
-                "-dbtype", "nucl",
+                "-in",
+                str(reformatted_fasta),
+                "-dbtype",
+                "nucl",
             ]
         )
         click.echo("BLAST database index files created alongside the FASTA.")
 
-    click.echo(f"\nViral genome database ready.")
+    click.echo("\nViral genome database ready.")
     click.echo(f"  FASTA:       {reformatted_fasta}")
     click.echo(f"  Taxid map:   {taxid_map_path}")
     if not skip_makeblastdb:
         click.echo(f"  BLAST DB:    {reformatted_fasta} (index files: .nhr/.nin/.nsq/...)")
-    click.echo(f"\nUse in viralunity meta commands:")
+    click.echo("\nUse in viralunity meta commands:")
     click.echo(f"  --viral-genomes  {reformatted_fasta}")
     click.echo(f"  --viral-taxids   {taxid_map_path}")
 
@@ -732,22 +734,14 @@ def get_host_genome(path, accession):
                     with open(info_dest, "w") as out:
                         out.write(f"Accession: {accession}\n")
                         org = record.get("organism", {})
-                        out.write(
-                            f"Organism Name: {org.get('organismName', 'Unknown')}\n"
-                        )
+                        out.write(f"Organism Name: {org.get('organismName', 'Unknown')}\n")
                         out.write(f"TaxID: {org.get('taxId', 'Unknown')}\n")
                         asm = record.get("assemblyInfo", {})
-                        out.write(
-                            f"Assembly Name: {asm.get('assemblyName', 'Unknown')}\n"
-                        )
-                        out.write(
-                            f"Assembly Level: {asm.get('assemblyLevel', 'Unknown')}\n"
-                        )
+                        out.write(f"Assembly Name: {asm.get('assemblyName', 'Unknown')}\n")
+                        out.write(f"Assembly Level: {asm.get('assemblyLevel', 'Unknown')}\n")
                         binfo = asm.get("biosample", {})
                         if binfo:
-                            out.write(
-                                f"BioSample: {binfo.get('accession', 'Unknown')}\n"
-                            )
+                            out.write(f"BioSample: {binfo.get('accession', 'Unknown')}\n")
 
                         out.write("\n--- Full JSON Report ---\n")
                         out.write(json.dumps(record, indent=2))
@@ -756,7 +750,7 @@ def get_host_genome(path, accession):
                     pass
 
     shutil.rmtree(raw_dir)
-    click.echo(f"\nHost genome downloaded successfully.")
+    click.echo("\nHost genome downloaded successfully.")
     click.echo(f"  FASTA: {fasta_dest}")
     if info_dest.exists():
         click.echo(f"  Info:  {info_dest}")
@@ -791,7 +785,7 @@ def get_deacon_index(path, index_name):
     click.echo(f"Downloading Deacon index '{index_name}'...")
     _run(cmd)
 
-    click.echo(f"\nDeacon index downloaded successfully.")
+    click.echo("\nDeacon index downloaded successfully.")
     click.echo(f"  Index: {output_file}")
     click.echo(f"Use --deacon-index {output_file} in your viralunity meta commands.")
 
