@@ -1,22 +1,13 @@
 """Click CLI for viralunity build-deacon-index command."""
 
 import logging
-import subprocess
 from pathlib import Path
 
 import click
 
+from viralunity._subprocess import run_command
+
 logger = logging.getLogger(__name__)
-
-
-def _run(cmd: list, cwd: str | None = None) -> None:
-    """Run a shell command, streaming output and raising on failure."""
-    click.echo(f"$ {' '.join(str(c) for c in cmd)}")
-    result = subprocess.run(cmd, cwd=cwd)
-    if result.returncode != 0:
-        raise click.ClickException(
-            f"Command failed with exit code {result.returncode}: {' '.join(str(c) for c in cmd)}"
-        )
 
 
 @click.command("build-deacon-index")
@@ -62,7 +53,7 @@ def build_deacon_index(path, input_fasta, threads):
     ]
 
     click.echo(f"Building Deacon index for '{input_path.name}'...")
-    _run(cmd)
+    run_command(cmd)
 
     click.echo("\nDeacon index built successfully.")
     click.echo(f"  Index: {output_file}")

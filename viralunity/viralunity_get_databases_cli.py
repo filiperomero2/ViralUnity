@@ -5,12 +5,13 @@ import logging
 import os
 import re
 import shutil
-import subprocess
 import zipfile
 from pathlib import Path
 
 import click
 from Bio import SeqIO
+
+from viralunity._subprocess import run_command
 
 logger = logging.getLogger(__name__)
 
@@ -21,16 +22,6 @@ def _make_db_dir(path: str, db_name: str) -> Path:
     db_dir.mkdir(parents=True, exist_ok=True)
     click.echo(f"Database directory: {db_dir}")
     return db_dir
-
-
-def _run(cmd: list, cwd: str | None = None) -> None:
-    """Run a shell command, streaming output and raising on failure."""
-    click.echo(f"$ {' '.join(str(c) for c in cmd)}")
-    result = subprocess.run(cmd, cwd=cwd)
-    if result.returncode != 0:
-        raise click.ClickException(
-            f"Command failed with exit code {result.returncode}: {' '.join(str(c) for c in cmd)}"
-        )
 
 
 @click.group(name="get-databases")
@@ -62,10 +53,10 @@ def get_kraken2(path, url):
     archive_path = db_dir / archive_name
 
     click.echo(f"Downloading Kraken2 database from:\n  {url}")
-    _run(["wget", "-c", "-O", str(archive_path), url])
+    run_command(["wget", "-c", "-O", str(archive_path), url])
 
     click.echo("Extracting archive...")
-    _run(["tar", "-xzvf", str(archive_path), "-C", str(db_dir)])
+    run_command(["tar", "-xzvf", str(archive_path), "-C", str(db_dir)])
 
     click.echo(f"\nKraken2 database ready at: {db_dir}")
     click.echo(f"Use --kraken2-database {db_dir} in your viralunity meta commands.")
@@ -111,7 +102,7 @@ def get_krona(path):
     conda_krona_taxonomy.symlink_to(taxonomy_dir.resolve())
 
     click.echo("Running ktUpdateTaxonomy.sh ...")
-    _run(["ktUpdateTaxonomy.sh", str(taxonomy_dir)])
+    run_command(["ktUpdateTaxonomy.sh", str(taxonomy_dir)])
 
     click.echo(f"\nKrona taxonomy ready at: {taxonomy_dir}")
     click.echo(f"Use --krona-database {taxonomy_dir} in your viralunity meta commands.")
@@ -141,10 +132,10 @@ def get_taxdump(path, url):
     archive_path = db_dir / archive_name
 
     click.echo(f"Downloading NCBI taxdump from:\n  {url}")
-    _run(["wget", "-c", "-O", str(archive_path), url])
+    run_command(["wget", "-c", "-O", str(archive_path), url])
 
     click.echo("Extracting archive...")
-    _run(["tar", "-xzvf", str(archive_path), "-C", str(db_dir)])
+    run_command(["tar", "-xzvf", str(archive_path), "-C", str(db_dir)])
 
     for required in ("nodes.dmp", "names.dmp"):
         if not (db_dir / required).exists():
@@ -327,7 +318,7 @@ def get_diamond(path, taxon, refseq, threads, skip_makedb):
         cmd.append("--refseq")
 
     click.echo(f"Downloading viral proteins for taxon '{taxon}' from NCBI Datasets...")
-    _run(cmd)
+    run_command(cmd)
 
     click.echo("Extracting archive...")
     with zipfile.ZipFile(zip_path, "r") as zf:
@@ -369,7 +360,7 @@ def get_diamond(path, taxon, refseq, threads, skip_makedb):
     if not skip_makedb:
         dmnd = db_dir / "viral.dmnd"
         click.echo(f"Building Diamond database ({threads} thread(s))...")
-        _run(
+        run_command(
             [
                 "diamond",
                 "makedb",
@@ -603,7 +594,7 @@ def get_virus_genome(path, taxon, refseq, skip_makeblastdb):
         cmd.append("--refseq")
 
     click.echo(f"Downloading viral genomes for taxon '{taxon}' from NCBI Datasets...")
-    _run(cmd)
+    run_command(cmd)
 
     click.echo("Extracting archive...")
     with zipfile.ZipFile(zip_path, "r") as zf:
@@ -646,7 +637,7 @@ def get_virus_genome(path, taxon, refseq, skip_makeblastdb):
 
     if not skip_makeblastdb:
         click.echo("Building nucleotide BLAST database (makeblastdb)...")
-        _run(
+        run_command(
             [
                 "makeblastdb",
                 "-in",
@@ -705,7 +696,7 @@ def get_host_genome(path, accession):
     ]
 
     click.echo(f"Downloading host genome {accession} from NCBI Datasets...")
-    _run(cmd)
+    run_command(cmd)
 
     click.echo("Extracting archive...")
     with zipfile.ZipFile(zip_path, "r") as zf:
@@ -783,7 +774,7 @@ def get_deacon_index(path, index_name):
     cmd = ["deacon", "index", "fetch", index_name, "-o", str(output_file)]
 
     click.echo(f"Downloading Deacon index '{index_name}'...")
-    _run(cmd)
+    run_command(cmd)
 
     click.echo("\nDeacon index downloaded successfully.")
     click.echo(f"  Index: {output_file}")
