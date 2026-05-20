@@ -7,6 +7,7 @@ import re
 import shutil
 import zipfile
 from pathlib import Path
+from typing import Callable
 
 import click
 from Bio import SeqIO
@@ -169,8 +170,20 @@ def _looks_like_dna(seq: str, min_length: int = 20) -> bool:
     return all(c in _DNA_LIKE_ALPHABET for c in cleaned)
 
 
-def _parse_data_report(report_path: Path) -> dict:
-    org2taxid = {}
+def _parse_data_report_jsonl(
+    report_path: Path,
+    key_extractor: Callable[[dict], str],
+) -> dict:
+    """Parse an NCBI Datasets ``data_report.jsonl`` into a ``key -> taxid`` map.
+
+    Each line is one JSON record. The taxid is read from the embedded
+    ``virus`` or ``organism`` block (``virus`` takes precedence, matching the
+    newer Datasets schema). The key per record is whatever
+    ``key_extractor(record)`` returns (e.g. organism name, or genome
+    accession). Records with empty key or empty taxid are silently skipped,
+    as are malformed JSON lines.
+    """
+    out: dict = {}
     with open(report_path) as f:
         for line in f:
             line = line.strip()
@@ -181,11 +194,22 @@ def _parse_data_report(report_path: Path) -> dict:
             except json.JSONDecodeError:
                 continue
             org_data = record.get("virus", record.get("organism", {}))
-            org_name = org_data.get("organismName", "")
             taxid = str(org_data.get("taxId", ""))
-            if org_name and taxid:
-                org2taxid[org_name] = taxid
-    return org2taxid
+            key = key_extractor(record)
+            if key and taxid:
+                out[key] = taxid
+    return out
+
+
+def _organism_name_from_record(record: dict) -> str:
+    """Extract the organism name from a Datasets JSONL record (or "")."""
+    org_data = record.get("virus", record.get("organism", {}))
+    return org_data.get("organismName", "")
+
+
+def _accession_from_record(record: dict) -> str:
+    """Extract the top-level accession from a Datasets JSONL record (or "")."""
+    return record.get("accession", "")
 
 
 def _reformat_protein_fasta(
@@ -332,8 +356,8 @@ def get_diamond(path, taxon, refseq, threads, skip_makedb):
         )
     report_path = report_candidates[0]
     click.echo(f"Parsing taxonomy metadata from: {report_path}")
-    acc2taxid = _parse_data_report(report_path)
-    click.echo(f"  Found {len(acc2taxid)} genome accessions with TaxIDs.")
+    org2taxid = _parse_data_report_jsonl(report_path, key_extractor=_organism_name_from_record)
+    click.echo(f"  Found {len(org2taxid)} organisms with TaxIDs.")
 
     protein_files = list(raw_dir.rglob("protein.faa"))
     if not protein_files:
@@ -345,7 +369,7 @@ def get_diamond(path, taxon, refseq, threads, skip_makedb):
 
     reformatted_faa = db_dir / "viral.protein.faa"
     click.echo(f"Reformatting headers -> {reformatted_faa}")
-    taxid_map = _reformat_protein_fasta(protein_files, reformatted_faa, acc2taxid)
+    taxid_map = _reformat_protein_fasta(protein_files, reformatted_faa, org2taxid)
 
     taxid_map_path = db_dir / "protein2taxid.tsv"
     with open(taxid_map_path, "w") as f:
@@ -388,28 +412,8 @@ def get_diamond(path, taxon, refseq, threads, skip_makedb):
         )
 
 
-def _parse_genome_data_report(report_path: Path) -> dict:
-    """Parse data_report.jsonl and return accession -> taxid mapping.
-
-    Each JSONL record is expected to have an 'accession' field and a
-    'virus'/'organism' block containing 'taxId'.
-    """
-    acc2taxid = {}
-    with open(report_path) as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                record = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            accession = record.get("accession", "")
-            org_data = record.get("virus", record.get("organism", {}))
-            taxid = str(org_data.get("taxId", ""))
-            if accession and taxid:
-                acc2taxid[accession] = taxid
-    return acc2taxid
+# Removed _parse_genome_data_report — replaced by a call to
+# _parse_data_report_jsonl with `key_extractor=_accession_from_record`.
 
 
 def _reformat_genome_fasta(
@@ -609,7 +613,7 @@ def get_virus_genome(path, taxon, refseq, skip_makeblastdb):
         )
     report_path = report_candidates[0]
     click.echo(f"Parsing taxonomy metadata from: {report_path}")
-    acc2taxid = _parse_genome_data_report(report_path)
+    acc2taxid = _parse_data_report_jsonl(report_path, key_extractor=_accession_from_record)
     click.echo(f"  Found {len(acc2taxid)} genome accessions with TaxIDs.")
 
     # Find genome FASTA files
