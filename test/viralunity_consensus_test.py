@@ -12,9 +12,6 @@ from viralunity.exceptions import (
     SampleConfigurationNotFoundError,
     AdaptersNotFoundError,
 )
-import os
-
-print(os.environ.get("PATH"))
 
 
 class Test_ValidateArgs(unittest.TestCase):

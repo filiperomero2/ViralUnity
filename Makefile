@@ -1,6 +1,6 @@
 .PHONY: test run-meta run-consensus install build-docker run-docker
 
-test:
+test: install
 	python3 -m unittest discover ./test -p *test.py
 
 install:

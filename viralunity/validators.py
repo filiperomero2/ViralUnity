@@ -15,6 +15,7 @@ from viralunity.exceptions import (
     PrimerSchemeNotFoundError,
     TaxdumpNotFoundError,
     DiamondDatabaseNotFoundError,
+    AdaptersNotFoundError,
 )
 from viralunity.constants import DataType
 
@@ -70,7 +71,7 @@ def validate_sample_sheet(
     try:
         df = pd.read_csv(sample_sheet_path, header=None)
     except Exception as e:
-        raise SampleSheetError(f"Failed to read sample sheet: {e}")
+        raise SampleSheetError(f"Failed to read sample sheet: {e}") from e
 
     samples = {}
 
@@ -122,7 +123,7 @@ def validate_illumina_requirements(args: Dict[str, Any]) -> None:
         except FileNotFoundError as e:
             raise AdaptersNotFoundError(
                 f"Illumina adapter sequences file does not exist: {e}"
-            )
+            ) from e
 
 
 def validate_nanopore_requirements(args: Dict[str, Any]) -> None:
@@ -193,19 +194,19 @@ def validate_consensus_requirements(args: Dict[str, Any]) -> None:
                     segment_path, f"Reference file for segment '{segment_name}'"
                 )
             except FileNotFoundError as e:
-                raise ReferenceNotFoundError(str(e))
+                raise ReferenceNotFoundError(str(e)) from e
     else:
         try:
             validate_file_exists(reference, "Reference sequence file")
         except FileNotFoundError as e:
-            raise ReferenceNotFoundError(f"Reference sequence file does not exist: {e}")
+            raise ReferenceNotFoundError(f"Reference sequence file does not exist: {e}") from e
 
     primer_scheme = args.get("primer_scheme")
     if primer_scheme:
         try:
             validate_file_exists(primer_scheme, "Primer scheme file")
         except FileNotFoundError as e:
-            raise PrimerSchemeNotFoundError(f"Primer scheme file does not exist: {e}")
+            raise PrimerSchemeNotFoundError(f"Primer scheme file does not exist: {e}") from e
 
 
 def validate_metagenomics_requirements(args: Dict[str, Any]) -> None:
@@ -248,7 +249,7 @@ def validate_metagenomics_requirements(args: Dict[str, Any]) -> None:
         except FileNotFoundError as e:
             raise KronaDatabaseNotFoundError(
                 f"Krona database directory does not exist: {e}"
-            )
+            ) from e
 
     # Kraken2 database: required only when Kraken2 is enabled
     if any_kraken2:
@@ -263,7 +264,7 @@ def validate_metagenomics_requirements(args: Dict[str, Any]) -> None:
         except FileNotFoundError as e:
             raise Kraken2DatabaseNotFoundError(
                 f"Kraken2 database directory does not exist: {e}"
-            )
+            ) from e
 
     # Taxdump: required for taxonomic summaries whenever any classification is run
     if any_classification:
@@ -276,7 +277,7 @@ def validate_metagenomics_requirements(args: Dict[str, Any]) -> None:
         try:
             validate_directory_exists(taxdump, "Taxdump directory")
         except FileNotFoundError as e:
-            raise TaxdumpNotFoundError(f"Taxdump directory does not exist: {e}")
+            raise TaxdumpNotFoundError(f"Taxdump directory does not exist: {e}") from e
         nodes = os.path.join(taxdump, "nodes.dmp")
         names = os.path.join(taxdump, "names.dmp")
         if not os.path.isfile(nodes) or not os.path.isfile(names):
@@ -311,7 +312,7 @@ def validate_metagenomics_requirements(args: Dict[str, Any]) -> None:
         try:
             validate_file_exists(deacon_idx, "Deacon index file")
         except FileNotFoundError as e:
-            raise FileNotFoundError(f"Deacon index file does not exist: {e}")
+            raise FileNotFoundError(f"Deacon index file does not exist: {e}") from e
 
     validate_reference_assembly_requirements(args)
 

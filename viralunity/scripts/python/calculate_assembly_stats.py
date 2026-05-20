@@ -24,7 +24,7 @@ def get_number_of_mapped_reads(bam):
 
 
 def get_coverage_info(table_cov, minimum_depth):
-    df = pd.read_csv(table_cov, header=None, delim_whitespace=True)  # check this
+    df = pd.read_csv(table_cov, header=None, sep=r"\s+")
     total_sequenced_bases = df[2].sum()
     reference_genome_length = len(df)
     average_depth = total_sequenced_bases / reference_genome_length

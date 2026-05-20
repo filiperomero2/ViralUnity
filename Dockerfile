@@ -1,5 +1,5 @@
 FROM continuumio/miniconda3:25.1.1-2
-LABEL version="1.0.3" \
+LABEL version="1.1.0" \
       description="Docker image for viralunity"
 
 WORKDIR /app

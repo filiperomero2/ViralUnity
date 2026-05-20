@@ -223,7 +223,7 @@ def main(args: Dict[str, Any]) -> int:
         samples = validate_args(args)
 
         if samples is None or len(samples) == 0:
-            print("No samples were provided.")
+            logger.warning("No samples were provided.")
             return 0
 
         # Generate config file

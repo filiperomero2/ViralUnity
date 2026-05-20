@@ -381,4 +381,4 @@ class ConfigGenerator:
         except (OSError, IOError) as e:
             raise ConfigurationError(
                 f"Failed to write config file to {self.config_path}: {e}"
-            )
+            ) from e
