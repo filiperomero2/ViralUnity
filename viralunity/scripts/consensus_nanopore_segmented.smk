@@ -17,6 +17,7 @@ rule sanitize_reference:
         fai = config["output"] + "reference/{segment}.sanitized.fasta.fai"
     shell:
         """
+        set -euo pipefail
         mkdir -p $(dirname {output.fasta})
         sed '/^>/s/[\\/|,~ ]/_/g' {input} > {output.fasta}
         samtools faidx {output.fasta}
@@ -63,6 +64,7 @@ rule unify_assembly_statistics_reports:
         unified_stats_summary = config['output'] + "assembly/assembly_stats_summary.csv"
     shell:
         """
+        set -euo pipefail
         echo \"sample_name,segment,number_of_reads,number_of_trim_paired_reads,number_of_mapped_reads,average_depth,percentage_above_10x,percentage_above_100x,percentage_above_1000x,horizontal_coverage\" > {output.unified_stats_summary} ;
         cat {input.reports} >> {output.unified_stats_summary}
         """
@@ -84,6 +86,7 @@ rule align_consensus_to_reference_genome:
         reference = REFERENCE
     shell:
         """
+        set -euo pipefail
         cat {params.reference} {params.path_consensus}/*.renamed.fasta > {params.path_consensus}/consensus.fasta;
         minimap2 -a --sam-hit-only --secondary=no --score-N=0 {params.reference} {params.path_consensus}/consensus.fasta -o {params.path_consensus}/aln.consensus.sam;
         gofasta sam toMultiAlign --pad -s {params.path_consensus}/aln.consensus.sam -o {output.aln_consensus};
@@ -126,6 +129,7 @@ rule organize_files:
         segments = " ".join(SEGMENTS.keys())
     shell:
         """
+        set -euo pipefail
         mkdir -p {params.outdir}samples/
         for sample in {params.samples}; do
             for segment in {params.segments}; do

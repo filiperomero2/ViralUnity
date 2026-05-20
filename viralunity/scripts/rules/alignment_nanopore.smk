@@ -24,6 +24,7 @@ rule map_reads:
         mem_mb = config.get("map_reads_ram", 4) * 1024
     shell:
         """
+        set -euo pipefail
         minimap2 -a -t {threads} -x map-ont {input.reference} {input.fastq} |
         samtools view --min-MQ {params.minimum_map_quality} -bS -F 4 - |
         samtools sort -o {output.bam} - 2> {log}
@@ -46,6 +47,7 @@ rule trim_primer_sequences:
         path = config['output'] + "assembly/" + SEGMENT_WILDCARD + "mapped_reads/raw/"
     shell:
         """
+        set -euo pipefail
         if [ {params.bed} == NA ]; then
             cp {input.bam} {output.bam};
             cp {input.bam_index} {output.bam_index};

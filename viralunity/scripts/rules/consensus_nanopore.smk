@@ -35,6 +35,7 @@ rule infer_consensus_sequence:
         mem_mb = config.get("infer_consensus_sequence_ram", 4) * 1024
     shell:
         """
+        set -euo pipefail
         run_clair3.sh \
             --bam_fn={input.bam} \
             --ref_fn={input.reference} \

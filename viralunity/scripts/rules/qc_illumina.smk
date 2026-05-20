@@ -38,6 +38,7 @@ rule perform_qc:
         "../envs/qc.yaml"
     shell:
         """
+        set -euo pipefail
         fastp \
             -i {input[0]} \
             -I {input[1]} \

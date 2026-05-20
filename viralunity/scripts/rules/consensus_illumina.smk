@@ -28,6 +28,7 @@ rule detect_isnv:
         mem_mb = config.get("detect_isnv_ram", 4) * 1024
     shell:
         """
+        set -euo pipefail
         lofreq indelqual \
             -f {input.reference} \
             -o {output.bam} \
@@ -79,8 +80,9 @@ rule generate_vcf_consensus:
         config['output'] + "assembly/" + SEGMENT_WILDCARD + "logs/gsaalign/{sample}.log"
     shell:
         """
+        set -euo pipefail
         out_prefix=$(echo {output.vcf} | sed 's/.vcf.gz//')
-        
+
         # Check if the consensus FASTA has sequence content (excluding header)
         if grep -v "^>" {input.consensus} | grep -q "[A-Za-z]"; then
             GSAlign \

@@ -68,6 +68,7 @@ if run_denovo and run_diamond_contigs:
             "../envs/alignment.yaml"
         shell:
             """
+            set -euo pipefail
             if [ -s {input.fasta} ]; then
                 minimap2 -d {output.index} {input.fasta}
             else

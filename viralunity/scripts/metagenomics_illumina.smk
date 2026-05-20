@@ -147,6 +147,7 @@ rule organize_files:
         samples = " ".join(config["samples"].keys())
     shell:
         """
+        set -euo pipefail
         mkdir -p {params.outdir}samples/
         for sample in {params.samples}; do
             mkdir -p {params.outdir}samples/$sample;
