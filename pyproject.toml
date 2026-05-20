@@ -1,0 +1,76 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "viralunity"
+dynamic = ["version"]
+description = "A pipeline for viral metagenomics analysis."
+readme = "README.md"
+authors = [
+    { name = "Filipe Moreira", email = "filiperomero2@gmail.com" },
+    { name = "Felippe Nacif" },
+]
+license = { file = "LICENSE" }
+requires-python = ">=3.8,<3.12"
+keywords = [
+    "metagenomics",
+    "viral",
+    "high-throughput sequencing",
+    "bioinformatics",
+    "viral genome assembly",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+dependencies = [
+    "pyyaml>=6.0",
+    "click>=8.0",
+    "biopython>=1.81",
+    "snakemake==7.32.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=24.4",
+    "pytest>=9.0",
+    "ruff>=0.5",
+]
+
+[project.urls]
+Homepage = "https://github.com/InstitutoTodosPelaSaude/ViralUnity"
+Documentation = "https://viralunity.readthedocs.io/en/latest/"
+
+[project.scripts]
+viralunity = "viralunity.viralunity_cli:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "viralunity.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["viralunity*"]
+exclude = ["test*", "docs*", "docs-pt*"]
+
+[tool.setuptools.package-data]
+"viralunity.scripts" = ["*.smk", "**/*.smk", "envs/*.yaml"]
+
+[tool.black]
+line-length = 100
+target-version = ["py38", "py39", "py310", "py311"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+
+[tool.ruff.lint]
+# Conservative starting set; can expand later.
+select = ["E", "F", "W", "I"]
+ignore = [
+    "E501",  # line length is handled by black where it cares; do not double-flag
+]
