@@ -1,27 +1,35 @@
 #!/usr/bin/env python
 
+import gzip
 import subprocess
 
 import pandas as pd
 
 
-def get_number_of_reads(fastq):
-    if fastq.endswith(".gz"):
-        command = "gunzip -c " + fastq + r' | grep -cE "^\+$"'
-    else:
-        command = r'grep -cE "^\+$" ' + fastq
-    proc = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
-    out, err = proc.communicate()
-    number_of_reads = int(out)
-    return number_of_reads
+def get_number_of_reads(fastq: str) -> int:
+    """Count records in a FASTQ file by counting the "+" separator lines.
+
+    Works for both plain and gzip-compressed inputs. Avoids subprocess +
+    shell=True so the path is not interpreted by a shell.
+    """
+    opener = gzip.open if fastq.endswith(".gz") else open
+    count = 0
+    with opener(fastq, "rt") as f:
+        for line in f:
+            if line.rstrip("\n") == "+":
+                count += 1
+    return count
 
 
-def get_number_of_mapped_reads(bam):
-    command = "samtools view -c -F 260 " + bam
-    proc = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
-    out, err = proc.communicate()
-    number_of_mapped_reads = int(out)
-    return number_of_mapped_reads
+def get_number_of_mapped_reads(bam: str) -> int:
+    """Return the number of mapped reads in a BAM via `samtools view -c -F 260`."""
+    result = subprocess.run(
+        ["samtools", "view", "-c", "-F", "260", bam],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return int(result.stdout.strip())
 
 
 def get_coverage_info(table_cov, minimum_depth):
