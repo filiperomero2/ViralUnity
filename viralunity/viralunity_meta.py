@@ -184,9 +184,6 @@ def run_snakemake_workflow(args: Dict[str, Any]) -> bool:
         cores=args["threads_total"],
         use_conda=True,
         targets=["all"],
-        forceall=True,
-        lock=False,
-        workdir=os.getcwd(),
     )
 
     if successful:
