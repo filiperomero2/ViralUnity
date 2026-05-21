@@ -33,23 +33,7 @@ SEGMENT_WILDCARD = "{segment}/"
 include: "rules/alignment_nanopore.smk"
 include: "rules/consensus_nanopore.smk"
 include: "rules/stats.smk"
-
-rule calculate_assembly_statistics:
-    conda:
-        "envs/utils.yaml"
-    input:
-        get_map_input_fastqs,
-        get_map_input_fastqs,
-        get_map_input_fastqs,
-        rules.trim_primer_sequences.output.bam,
-        rules.calculate_coverage_basewise.output.table_cov,
-        rules.rename_sequences.output.consensus_renamed
-    output:
-        stats_summary = temp(config['output'] + "assembly/{segment}/coverage_stats/{sample}.stats_summary.csv")
-    params:
-        minimum_depth = config["minimum_depth"]
-    script:
-        "python/calculate_assembly_stats.py"
+include: "rules/consensus_nanopore_common.smk"
 
 rule unify_assembly_statistics_reports:
     conda:
@@ -67,31 +51,6 @@ rule unify_assembly_statistics_reports:
         set -euo pipefail
         echo \"sample_name,segment,number_of_reads,number_of_trim_paired_reads,number_of_mapped_reads,average_depth,percentage_above_10x,percentage_above_100x,percentage_above_1000x,horizontal_coverage\" > {output.unified_stats_summary} ;
         cat {input.reports} >> {output.unified_stats_summary}
-        """
-
-rule align_consensus_to_reference_genome:
-    conda:
-        "envs/alignment.yaml"
-    input:
-        stats = rules.unify_assembly_statistics_reports.output.unified_stats_summary,
-        consensus_files = expand(
-            rules.rename_sequences.output.consensus_renamed,
-            sample=config["samples"],
-            allow_missing=True
-        )
-    output:
-        aln_consensus = config['output'] + "assembly/{segment}/consensus/final_consensus/samples_alignment.fasta"
-    params:
-        path_consensus = config['output'] + "assembly/{segment}/consensus/final_consensus/",
-        reference = REFERENCE,
-        minimap2_flags = config.get("minimap2_consensus_align_flags", "-a --sam-hit-only --secondary=no --score-N=0")
-    shell:
-        """
-        set -euo pipefail
-        cat {params.reference} {params.path_consensus}/*.renamed.fasta > {params.path_consensus}/consensus.fasta;
-        minimap2 {params.minimap2_flags} {params.reference} {params.path_consensus}/consensus.fasta -o {params.path_consensus}/aln.consensus.sam;
-        gofasta sam toMultiAlign --pad -s {params.path_consensus}/aln.consensus.sam -o {output.aln_consensus};
-        sed '/^>/ ! s/-/N/g' {output.aln_consensus} > {params.path_consensus}/aln.consensus.indelsMasked.fasta
         """
 
 rule organize_files:

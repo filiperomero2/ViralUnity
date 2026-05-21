@@ -28,27 +28,12 @@ def get_map_input_fastqs(wildcards):
 include: "rules/alignment_nanopore.smk"
 include: "rules/consensus_nanopore.smk"
 include: "rules/stats.smk"
+include: "rules/consensus_nanopore_common.smk"
 
-
-# The calculate_assembly_stats.py expects three fastq inputs: raw_r1, raw_r2 and trimmed
-# Here we employ a workaround by passing the same fastq file for raw_r1 and raw_r2
-# in Nanopore scenario
-rule calculate_assembly_statistics:
-    conda:
-        "envs/utils.yaml"
-    input:
-        get_map_input_fastqs,
-        get_map_input_fastqs,
-        get_map_input_fastqs,
-        rules.trim_primer_sequences.output.bam,
-        rules.calculate_coverage_basewise.output.table_cov,
-        rules.rename_sequences.output.consensus_renamed
-    output:
-        stats_summary = temp(config['output'] + "assembly/coverage_stats/{sample}.stats_summary.csv")
-    params:
-        minimum_depth = config["minimum_depth"]
-    script:
-        "python/calculate_assembly_stats.py"
+# ``calculate_assembly_statistics`` and ``align_consensus_to_reference_genome``
+# are defined in the included ``consensus_nanopore_common.smk``. The
+# ``calculate_assembly_stats.py`` helper expects three fastq inputs
+# (raw_r1, raw_r2, trimmed) — Nanopore passes the same fastq for all three.
 
 rule unify_assembly_statistics_reports:
     conda:
@@ -64,26 +49,6 @@ rule unify_assembly_statistics_reports:
         cat {input.reports} >> {output.unified_stats_summary}
         """
 
-
-rule align_consensus_to_reference_genome:
-    conda:
-        "envs/alignment.yaml"
-    input:
-        rules.unify_assembly_statistics_reports.output.unified_stats_summary
-    output:
-        aln_consensus = config['output'] + "assembly/consensus/final_consensus/samples_alignment.fasta"
-    params:
-        path_consensus = config['output'] + "assembly/consensus/final_consensus/",
-        reference = REFERENCE,
-        minimap2_flags = config.get("minimap2_consensus_align_flags", "-a --sam-hit-only --secondary=no --score-N=0")
-    shell:
-        """
-        set -euo pipefail
-        cat {params.reference} {params.path_consensus}/*.renamed.fasta > {params.path_consensus}/consensus.fasta;
-        minimap2 {params.minimap2_flags} {params.reference} {params.path_consensus}/consensus.fasta -o {params.path_consensus}/aln.consensus.sam;
-        gofasta sam toMultiAlign --pad -s {params.path_consensus}/aln.consensus.sam -o {output.aln_consensus};
-        sed '/^>/ ! s/-/N/g' {output.aln_consensus} > {params.path_consensus}/aln.consensus.indelsMasked.fasta
-        """
 
 rule organize_files:
     conda:
