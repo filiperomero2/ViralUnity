@@ -43,6 +43,13 @@ The release process is documented in [RELEASING.md](RELEASING.md).
 - Community files: `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` (Contributor
   Covenant 2.1), `.github/ISSUE_TEMPLATE/`, `.github/PULL_REQUEST_TEMPLATE.md`.
 - `RELEASING.md` documenting the version-bump and tag workflow.
+- `--clair3-model` flag on `viralunity meta nanopore`, mirroring the
+  consensus CLI option. Only consulted by the reference-assembly
+  path's `infer_consensus_sequence` rule; falls back to
+  `r1041_e82_400bps_sup_v500` when omitted.
+- English `docs/output.md` documenting consensus + meta output
+  directory layouts (parity with PT `docs-pt/saida.md`); fixes the
+  previously-dead `output` entry in the EN toctree.
 
 ### Changed
 
@@ -66,6 +73,28 @@ The release process is documented in [RELEASING.md](RELEASING.md).
   Snakemake's caching and matches the consensus pipeline's invocation;
   the workdir defaults to cwd, which is what `resolve_path_args`
   already prepares paths against.
+- `viralunity meta nanopore`'s `--run-polish-racon`,
+  `--run-polish-medaka`, and `--medaka-model` flags now actually
+  populate the generated YAML config. Previously they were accepted
+  by Click but `generate_config_file` never invoked
+  `add_nanopore_settings`, so the keys silently vanished before
+  reaching the workflow.
+- Docs review for v1.1.0:
+  - `docs/usage.md` `get-databases` tree expanded with
+    `clean-protein-fasta`, `virus-genome`, and `all`.
+  - `docs/installation.md` gained a "Development install" section
+    with `pip install -e ".[dev]"` and a `CONTRIBUTING.md` link.
+  - `docs/commands.md` and `docs-pt/comandos.md` document the three
+    YAML-only configuration keys (`minimap2_consensus_align_flags`,
+    `diamond_max_target_seqs`, `kraken2_extra_flags`).
+  - `docs-pt/comandos.md` adds the missing Illumina level-0
+    `create-samplesheet` example (parity with EN).
+  - `docs/notes.md` + `docs-pt/notas.md`: the dynamic-reference-
+    assembly strategy comparison and required-databases tables now
+    correctly state that both `taxid` and `similarity` strategies
+    use `--viral-taxids` and `--taxdump`.
+  - Sphinx copyright in `docs/conf.py` and `docs-pt/conf.py` bumped
+    from "2025" to "2021-2026" to match `LICENSE`.
 
 ### Fixed
 
@@ -94,6 +123,32 @@ The release process is documented in [RELEASING.md](RELEASING.md).
   cleanly.
 - Removed leftover `print(os.environ.get("PATH"))` debug calls from
   `test/viralunity_consensus_test.py` and `test/viralunity_meta_test.py`.
+- `metagenomics_nanopore.smk`'s `organize_files` benchmark-aggregation
+  rule wrote literal `\t` strings into the first column of
+  `benchmark.tsv`. The shell block had been declared as a Python
+  *raw* triple-quoted string (`r"""..."""`), so the `\\t` escapes in
+  the embedded awk no longer collapsed to tabs. Reverted to a
+  regular triple-quoted string, matching the Illumina counterpart.
+- `select_reference_genomes.py` (taxid strategy): a missing or empty
+  `--viral-taxids` previously produced a silent header-only
+  `reference_targets.tsv`. Now hard-fails early with an actionable
+  message that points users at
+  `viralunity get-databases virus-genome`.
+- `select_reference_genomes.py` (taxid strategy): also index each
+  genome at its species-rank ancestor when building the
+  taxid → accessions map. Handles cross-database taxid drift such
+  as the NCBI promotion of "Betacoronavirus pandemicum" to a species
+  taxid (3418604) above the historical SARS-CoV-2 strain taxid
+  (2697049) that NCBI Datasets / RefSeq still uses for
+  `NC_045512.2`.
+- `extract_reference_fasta` rule: now produces the `.fai` sibling
+  alongside the per-sample reference FASTA via `samtools faidx`, so
+  the downstream `clair3` and `bcftools consensus` calls can find
+  the index they require.
+- `infer_consensus_sequence` rule: `clair3_model` fallback bumped
+  from `r1041_e82_400bps_sup_v420` (not shipped with the clair3
+  conda env we install) to `r1041_e82_400bps_sup_v500` (matches the
+  consensus CLI default and the env's installed model).
 
 ### Refactored
 
