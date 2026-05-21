@@ -226,13 +226,23 @@ def main(args=None):
         g2t["taxid"] = g2t["taxid"].astype(str)
         g2t["accession"] = g2t["accession"].astype(str)
 
-        # Build a direct taxid -> accessions map.
-        # The taxid value from the summary is used as-is (no rank normalisation).
-        # This avoids cross-database taxid mismatches that silently produce empty results
-        # when protein2taxid and genome2taxid use different taxid levels for the same organism.
+        # Build a taxid -> accessions map indexed both at the accession's
+        # registered taxid and at its species-rank ancestor (when taxdump is
+        # available). The latter handles the common cross-database drift case
+        # where the classifier reports at species rank (e.g. taxid 3418604,
+        # "Betacoronavirus pandemicum") while the RefSeq accession is
+        # registered at a finer "no rank" level below it (e.g. NC_045512.2
+        # at taxid 2697049). The existing sample-side species fallback below
+        # covers the inverse direction (sample at sub-species, db at species).
         taxid_to_accs = {}
         for _, grow in g2t.iterrows():
-            taxid_to_accs.setdefault(grow["taxid"], []).append(grow["accession"])
+            acc = grow["accession"]
+            starting_taxid = grow["taxid"]
+            taxid_to_accs.setdefault(starting_taxid, []).append(acc)
+            if nodes:
+                species_taxid = get_taxid_at_rank(starting_taxid, "species", nodes)
+                if species_taxid and species_taxid != starting_taxid:
+                    taxid_to_accs.setdefault(species_taxid, []).append(acc)
 
         taxid_candidates = filtered_df[filtered_df["sample"].isin(valid_samples)].copy()
         taxid_candidates["taxid_str"] = taxid_candidates["taxid"].astype(str)
