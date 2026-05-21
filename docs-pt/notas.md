@@ -73,13 +73,13 @@ viralunity meta illumina \
 
 #### `--reference-selection-strategy similarity`
 
-Os contigs montados de novo de cada amostra são alinhados via `blastn` contra `--viral-genomes`. O melhor hit que superar os limiares `--blast-qcov` e `--blast-pident` é selecionado como referência.
+Os contigs montados de novo de cada amostra são alinhados via `blastn` contra `--viral-genomes`. Para cada contig, o BLAST retorna hits ordenados por bitscore (melhor primeiro). O primeiro hit por contig que superar os limiares `--blast-qcov` e `--blast-pident` é selecionado; hits subsequentes para o mesmo contig são ignorados. O accession selecionado é então validado contra `--viral-taxids` e `--taxdump`: apenas hits cujo taxid (em qualquer nível — cepa, espécie, gênero ou família) remeta a uma família-alvo são mantidos como alvos de referência.
 
 **Quando usar:** quando a identidade de sequência com um genoma específico é mais importante que o rótulo taxonômico — por exemplo, ao trabalhar com cepas divergentes ou novas, onde a busca por taxid pode retornar uma referência geneticamente distante. Requer montagem de novo (`--run-denovo-assembly`) para gerar os contigs usados como query no BLAST.
 
 **Limitação:** requer um índice BLAST pré-construído ao lado do arquivo `--viral-genomes` (criado automaticamente por `viralunity get-databases virus-genome`). Se nenhum contig atingir os limiares de identidade/cobertura, nenhuma montagem de referência é iniciada para aquela amostra.
 
-**Bancos de dados necessários:** `--viral-genomes` com seu índice BLAST (gerado por `viralunity get-databases virus-genome`).
+**Bancos de dados necessários:** `--viral-genomes` com seu índice BLAST, `--viral-taxids` e `--taxdump` (gerados por `viralunity get-databases virus-genome` / taxdump do NCBI).
 
 ```bash
 viralunity meta illumina \
@@ -107,18 +107,20 @@ viralunity meta illumina \
 | | `taxid` | `similarity` |
 |---|---|---|
 | Requer montagem de novo | Não | Sim |
-| Requer `--viral-taxids` | Sim | Não |
+| Requer `--viral-taxids` | Sim | Sim (validação de família) |
+| Requer `--taxdump` | Sim (validação de família + fallback para espécie) | Sim (validação de família) |
 | Requer índice BLAST | Não | Sim |
-| Base da seleção | Correspondência de taxid | Identidade de sequência |
+| Base da seleção | Correspondência de taxid (exato → fallback para espécie) | Melhor hit BLAST por contig |
 | Velocidade | Rápida | Mais lenta (BLAST por amostra) |
 | Melhor para | Cepas conhecidas com boa cobertura no RefSeq | Cepas divergentes ou novas |
 
 ### Bancos de dados necessários
 
 | Opção | Arquivo gerado por | Usado por |
-|-------|--------------------|-----------| 
+|-------|--------------------|-----------|
 | `--viral-genomes` | `viralunity get-databases virus-genome` | Ambas as estratégias |
-| `--viral-taxids` | `viralunity get-databases virus-genome` | Somente `taxid` |
+| `--viral-taxids` | `viralunity get-databases virus-genome` | Ambas (taxid: lookup principal; similarity: validação de família) |
+| `--taxdump` | taxdump do NCBI | Ambas (validação de família; fallback para espécie em `taxid`) |
 | Índice BLAST (`.nhr`/`.nin`/`.nsq`) | `viralunity get-databases virus-genome` | Somente `similarity` |
 
 ## Executar os testes

@@ -13,7 +13,7 @@ from viralunity import __version__ as version
 # -- Project information -----------------------------------------------------
 
 project = "ViralUnity"
-copyright = "2025, Instituto Todos pela Saúde"
+copyright = "2021-2026, Instituto Todos pela Saúde"
 author = "Instituto Todos pela Saúde"
 release = version
 

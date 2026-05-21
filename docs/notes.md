@@ -119,7 +119,8 @@ viralunity meta illumina \
 | Option | File produced by | Used by |
 |--------|-----------------|---------|
 | `--viral-genomes` | `viralunity get-databases virus-genome` | Both strategies |
-| `--viral-taxids` | `viralunity get-databases virus-genome` | `taxid` only |
+| `--viral-taxids` | `viralunity get-databases virus-genome` | Both (`taxid`: primary lookup; `similarity`: family validation) |
+| `--taxdump` | NCBI taxdump | Both (family validation; species-level fallback for `taxid`) |
 | BLAST index (`.nhr`/`.nin`/`.nsq`) | `viralunity get-databases virus-genome` | `similarity` only |
 
 ## Running tests

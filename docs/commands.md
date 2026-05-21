@@ -541,3 +541,26 @@ viralunity build-deacon-index \
     --threads 4
 # output at databases/deacon_indexes/GCA_000001405.29.idx
 ```
+
+---
+
+## Configuration file overrides
+
+A few tool-level parameters are tunable only through the YAML config file produced by `--config-file` (they are not exposed as CLI flags because they rarely need to change). The defaults preserve the historical behaviour, so most users can ignore this section.
+
+Open the generated YAML config file after running with `--create-config-only` and edit the corresponding key under the `# parameters` section:
+
+| Config key | Default | Effect |
+|------------|---------|--------|
+| `minimap2_consensus_align_flags` | `-a --sam-hit-only --secondary=no --score-N=0` | Flags passed to `minimap2` when re-aligning the per-sample consensus back to the reference for the final multiple-sequence alignment. Used by the `consensus` pipelines. |
+| `diamond_max_target_seqs` | `1` | Value of DIAMOND `--max-target-seqs`. Raise it if you need multiple protein hits per query (will slow the run and increase output size). Used by `meta`. |
+| `kraken2_extra_flags` | `--report-minimizer-data` | Extra flags appended to every Kraken2 invocation alongside `--threads` and `--minimum-hit-group`. Set to `""` to drop the minimizer-data column from the report. Used by `meta`. |
+
+Example: to bump DIAMOND to keep up to five protein hits per query and drop Kraken2's minimizer column, edit the YAML config to:
+
+```yaml
+diamond_max_target_seqs: 5
+kraken2_extra_flags: ""
+```
+
+Then re-run the same `viralunity meta ...` invocation (without `--create-config-only`) and pass the edited config to Snakemake.

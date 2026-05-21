@@ -67,6 +67,7 @@ coverage.xml
 data/
 input/
 output*
+!docs/output.md
 .snakemake/
 viralunity/meta.yaml
 assets/

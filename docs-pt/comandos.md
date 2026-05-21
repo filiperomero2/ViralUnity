@@ -40,6 +40,17 @@ viralunity create-samplesheet \
     --output /caminho/amostras.csv
 ```
 
+**Illumina** — todos os FASTQs diretamente no diretório do run (nível 0):
+
+```bash
+viralunity create-samplesheet \
+    --input /caminho/illumina_run/ \
+    --output /caminho/amostras.csv \
+    --level 0 \
+    --separator _ \
+    --pattern R1
+```
+
 **Nanopore** — um FASTQ por subdiretório de barcode:
 
 ```bash
@@ -416,3 +427,26 @@ viralunity build-deacon-index \
     --threads 4
 # saída em databases/deacon_indexes/GCA_000001405.29.idx
 ```
+
+---
+
+## Sobrescrita pelo arquivo de configuração
+
+Alguns parâmetros de baixo nível são configuráveis somente pelo arquivo YAML gerado via `--config-file` (não estão expostos como flags da CLI porque raramente precisam ser alterados). Os valores padrão preservam o comportamento histórico — a maioria dos usuários pode ignorar esta seção.
+
+Abra o YAML gerado após executar com `--create-config-only` e edite a chave correspondente na seção `# parameters`:
+
+| Chave | Padrão | Efeito |
+|-------|--------|--------|
+| `minimap2_consensus_align_flags` | `-a --sam-hit-only --secondary=no --score-N=0` | Flags passadas ao `minimap2` ao realinhar o consenso por amostra contra a referência para gerar o alinhamento múltiplo final. Usada pelos pipelines `consensus`. |
+| `diamond_max_target_seqs` | `1` | Valor de `--max-target-seqs` do DIAMOND. Aumente se precisar de múltiplos hits proteicos por query (deixa a execução mais lenta e aumenta o tamanho da saída). Usada pelo `meta`. |
+| `kraken2_extra_flags` | `--report-minimizer-data` | Flags adicionais incluídas em toda chamada do Kraken2, junto com `--threads` e `--minimum-hit-group`. Use `""` para remover a coluna de dados de minimizers do relatório. Usada pelo `meta`. |
+
+Exemplo: para aumentar o DIAMOND para até cinco hits por query e remover a coluna de minimizers do Kraken2, edite o YAML para:
+
+```yaml
+diamond_max_target_seqs: 5
+kraken2_extra_flags: ""
+```
+
+Em seguida, reexecute o mesmo `viralunity meta ...` (sem `--create-config-only`) passando o config editado para o Snakemake.

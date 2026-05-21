@@ -28,3 +28,13 @@ On macOS with Apple Silicon (M1 or later), the `viralunity/scripts/envs/clair3.y
 viralunity --version
 viralunity --help
 ```
+
+## Development install
+
+To work on ViralUnity itself, install the optional `dev` extras (linters and tests):
+
+```bash
+pip install -e ".[dev]"
+```
+
+See [CONTRIBUTING.md](https://github.com/InstitutoTodosPelaSaude/ViralUnity/blob/main/CONTRIBUTING.md) for the full development workflow.
