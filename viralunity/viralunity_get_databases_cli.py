@@ -7,7 +7,7 @@ import re
 import shutil
 import zipfile
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Optional
 
 import click
 from Bio import SeqIO
@@ -26,7 +26,7 @@ def _make_db_dir(path: str, db_name: str) -> Path:
 
 
 @click.group(name="get-databases")
-def get_databases():
+def get_databases() -> None:
     """Download and set up reference databases for ViralUnity pipelines."""
 
 
@@ -43,7 +43,7 @@ def get_databases():
     show_default=True,
     help="URL of the Kraken2 pre-built index to download.",
 )
-def get_kraken2(path, url):
+def get_kraken2(path: str, url: str) -> None:
     """Download and extract a Kraken2 pre-built index (default: k2_viral).
 
     Creates {path}/kraken2/ and downloads the index archive there.
@@ -70,7 +70,7 @@ def get_kraken2(path, url):
     show_default=True,
     help="Parent directory where the krona/taxonomy/ subdirectory will be created.",
 )
-def get_krona(path):
+def get_krona(path: str) -> None:
     """Set up the Krona taxonomy database.
 
     Creates {path}/krona/taxonomy/, removes the default taxonomy bundled with
@@ -122,7 +122,7 @@ def get_krona(path):
     show_default=True,
     help="URL of the NCBI taxdump archive.",
 )
-def get_taxdump(path, url):
+def get_taxdump(path: str, url: str) -> None:
     """Download and extract the NCBI taxdump (nodes.dmp, names.dmp, ...).
 
     Creates {path}/taxdump/ and extracts the archive there.
@@ -308,7 +308,7 @@ def _reformat_protein_fasta(
     default=False,
     help="Download and reformat files only; skip diamond makedb.",
 )
-def get_diamond(path, taxon, refseq, threads, skip_makedb):
+def get_diamond(path: str, taxon: str, refseq: bool, threads: int, skip_makedb: bool) -> None:
     """Download viral proteins via NCBI Datasets and build a Diamond database.
 
     Uses 'datasets download virus genome' with --include protein to fetch
@@ -476,7 +476,12 @@ def _reformat_genome_fasta(
     type=int,
     help="Minimum sequence length to classify a record as DNA (smaller records are kept).",
 )
-def clean_protein_fasta(input_path, output_path, no_backup, min_dna_length):
+def clean_protein_fasta(
+    input_path: str,
+    output_path: Optional[str],
+    no_backup: bool,
+    min_dna_length: int,
+) -> None:
     """Strip nucleotide records from a protein FASTA file.
 
     NCBI Datasets occasionally leaks DNA CDS sequences into the ``protein.faa``
@@ -563,7 +568,7 @@ def clean_protein_fasta(input_path, output_path, no_backup, min_dna_length):
     default=False,
     help="Download and reformat files only; skip makeblastdb index creation.",
 )
-def get_virus_genome(path, taxon, refseq, skip_makeblastdb):
+def get_virus_genome(path: str, taxon: str, refseq: bool, skip_makeblastdb: bool) -> None:
     """Download viral genomes via NCBI Datasets and build a BLAST database.
 
     Uses 'datasets download virus genome' with --include genome to fetch
@@ -674,7 +679,7 @@ def get_virus_genome(path, taxon, refseq, skip_makeblastdb):
     required=True,
     help="NCBI genome accession ID (e.g. GCA_000001405.29).",
 )
-def get_host_genome(path, accession):
+def get_host_genome(path: str, accession: str) -> None:
     """Download a host genome using NCBI Datasets.
 
     Creates {path}/host_genomes/ and downloads the genome
@@ -765,7 +770,7 @@ def get_host_genome(path, accession):
     show_default=True,
     help="Deacon index name to download.",
 )
-def get_deacon_index(path, index_name):
+def get_deacon_index(path: str, index_name: str) -> None:
     """Download a pre-built Deacon minimizer index.
 
     Creates {path}/deacon_indexes/ and downloads the index using 'deacon index fetch'.
@@ -806,7 +811,7 @@ def get_deacon_index(path, index_name):
     help="Limit to RefSeq genomes only.",
 )
 @click.pass_context
-def get_all(ctx, path, threads, refseq):
+def get_all(ctx: click.Context, path: str, threads: int, refseq: bool) -> None:
     """Download kraken2, krona, taxdump and diamond databases at once."""
     click.echo(f"Downloading all databases to {path}...")
     ctx.invoke(

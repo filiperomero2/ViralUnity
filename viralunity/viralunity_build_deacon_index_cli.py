@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
     show_default=True,
     help="Number of threads to use.",
 )
-def build_deacon_index(path, input_fasta, threads):
+def build_deacon_index(path: str, input_fasta: str, threads: int) -> None:
     """Build a Deacon minimizer index from a FASTA file.
 
     Creates {path}/deacon_indexes/ and runs 'deacon index build' on the input file.

@@ -1,5 +1,7 @@
 """Click CLI for viralunity meta command."""
 
+from typing import Any
+
 import click
 
 from viralunity.constants import ResourceDefaults
@@ -287,7 +289,7 @@ def _add_resource_options(rules: list):
     return decorator
 
 
-def _build_meta_args(data_type, **kwargs) -> dict:
+def _build_meta_args(data_type: str, **kwargs: Any) -> dict:
     """Build args dict for meta_main, normalising negative_controls."""
     negative = kwargs.get("negative_controls", "")
     if isinstance(negative, str):
@@ -297,7 +299,7 @@ def _build_meta_args(data_type, **kwargs) -> dict:
 
 
 @click.group(name="meta")
-def meta():
+def meta() -> None:
     """Viral metagenomics pipeline.
 
     \b
@@ -363,7 +365,7 @@ def meta():
     type=int,
     help="cut_right mean quality threshold [fastp].",
 )
-def meta_illumina(**kwargs):
+def meta_illumina(**kwargs: Any) -> None:
     """Run metagenomics pipeline for Illumina paired-end data.
 
     Performs adapter trimming (fastp), optional host depletion (Deacon),
@@ -397,7 +399,7 @@ def meta_illumina(**kwargs):
     default=None,
     help="Medaka model name (e.g. r941_min_high_g360). Uses Medaka default if omitted.",
 )
-def meta_nanopore(**kwargs):
+def meta_nanopore(**kwargs: Any) -> None:
     """Run metagenomics pipeline for Nanopore long-read data.
 
     Performs optional host depletion (Deacon), de novo assembly (MEGAHIT),

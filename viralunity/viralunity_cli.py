@@ -12,7 +12,7 @@ from viralunity.viralunity_meta_cli import meta
 
 @click.group()
 @click.version_option(version=__version__, prog_name=__program__)
-def cli():
+def cli() -> None:
     """ViralUnity is a simple tool to perform analysis of viral high-throughput sequencing data.
 
     \b
@@ -34,7 +34,7 @@ cli.add_command(get_databases)
 cli.add_command(build_deacon_index)
 
 
-def main():
+def main() -> None:
     cli()
 
 

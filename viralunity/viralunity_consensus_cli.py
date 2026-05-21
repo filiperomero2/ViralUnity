@@ -1,6 +1,6 @@
 """Click CLI for viralunity consensus command."""
 
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 import click
 
@@ -157,7 +157,7 @@ def _add_resource_options(rules: list):
 
 
 @click.group(name="consensus")
-def consensus():
+def consensus() -> None:
     """Reference-guided consensus genome assembly pipeline.
 
     \b
@@ -236,30 +236,30 @@ def consensus():
     help="Run intra-host SNV analysis with LoFreq.",
 )
 def consensus_illumina(
-    sample_sheet,
-    config_file,
-    output,
-    run_name,
-    reference,
-    segmented_reference,
-    primer_scheme,
-    minimum_coverage,
-    minimum_read_length,
-    threads,
-    threads_total,
-    create_config_only,
-    adapters,
-    trim_head,
-    trim_tail,
-    cut_front_mean_quality,
-    cut_tail_mean_quality,
-    cut_right_window_size,
-    cut_right_mean_quality,
-    af_threshold,
-    af_isnv_threshold,
-    run_isnv,
-    **kwargs,
-):
+    sample_sheet: str,
+    config_file: str,
+    output: str,
+    run_name: str,
+    reference: Optional[str],
+    segmented_reference: Tuple[str, ...],
+    primer_scheme: Optional[str],
+    minimum_coverage: int,
+    minimum_read_length: int,
+    threads: int,
+    threads_total: int,
+    create_config_only: bool,
+    adapters: Optional[str],
+    trim_head: int,
+    trim_tail: int,
+    cut_front_mean_quality: int,
+    cut_tail_mean_quality: int,
+    cut_right_window_size: int,
+    cut_right_mean_quality: int,
+    af_threshold: float,
+    af_isnv_threshold: float,
+    run_isnv: bool,
+    **kwargs: Any,
+) -> None:
     """Run consensus pipeline for Illumina paired-end data.
 
     Performs adapter trimming (fastp), reference alignment (minimap2),
@@ -343,26 +343,26 @@ def consensus_illumina(
     help="Minimum mapping quality (clair3).",
 )
 def consensus_nanopore(
-    sample_sheet,
-    config_file,
-    output,
-    run_name,
-    reference,
-    segmented_reference,
-    primer_scheme,
-    minimum_coverage,
-    minimum_read_length,
-    threads,
-    threads_total,
-    create_config_only,
-    af_threshold,
-    chunk_size,
-    clair3_model,
-    variant_quality,
-    variant_depth,
-    minimum_map_quality,
-    **kwargs,
-):
+    sample_sheet: str,
+    config_file: str,
+    output: str,
+    run_name: str,
+    reference: Optional[str],
+    segmented_reference: Tuple[str, ...],
+    primer_scheme: Optional[str],
+    minimum_coverage: int,
+    minimum_read_length: int,
+    threads: int,
+    threads_total: int,
+    create_config_only: bool,
+    af_threshold: float,
+    chunk_size: int,
+    clair3_model: str,
+    variant_quality: int,
+    variant_depth: int,
+    minimum_map_quality: int,
+    **kwargs: Any,
+) -> None:
     """Run consensus pipeline for Nanopore long-read data.
 
     Performs reference alignment (minimap2), variant calling (Clair3 with a
