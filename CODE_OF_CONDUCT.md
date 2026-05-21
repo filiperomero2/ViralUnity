@@ -9,7 +9,7 @@ joining discussions), you agree to abide by its terms.
 ## Reporting
 
 Reports of unacceptable behavior may be sent to the project maintainer
-at **filiperomero2@gmail.com**. All reports will be reviewed and
+at **filipe.moreira[at]itps.org.br**. All reports will be reviewed and
 investigated; the reporter's identity will be kept confidential.
 
 ## Enforcement
