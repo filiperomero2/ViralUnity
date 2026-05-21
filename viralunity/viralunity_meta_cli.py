@@ -375,7 +375,6 @@ def meta_illumina(**kwargs: Any) -> None:
     ``--run-diamond-contigs``.
     """
     args = _build_meta_args(data_type="illumina", **kwargs)
-    args.update({k: v for k, v in kwargs.items() if k not in args})
     raise SystemExit(meta_main(args))
 
 
@@ -409,5 +408,4 @@ def meta_nanopore(**kwargs: Any) -> None:
     ``--medaka-model``.
     """
     args = _build_meta_args(data_type="nanopore", **kwargs)
-    args.update({k: v for k, v in kwargs.items() if k not in args})
     raise SystemExit(meta_main(args))
