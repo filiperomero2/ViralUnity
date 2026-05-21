@@ -115,6 +115,26 @@ def main(args=None):
         args = parse_args()
     families = [f.strip() for f in args.families.split(",")]
 
+    # Both strategies require a populated genome2taxid mapping: taxid uses it
+    # as the primary accession lookup; similarity uses it to validate that
+    # BLAST hits trace back to a target family. A missing or empty file
+    # would otherwise yield a silent header-only reference_targets.tsv.
+    if not os.path.exists(args.genome2taxid):
+        print(
+            f"ERROR: --viral-taxids path does not exist: {args.genome2taxid}\n"
+            "Run 'viralunity get-databases virus-genome' to download the viral "
+            "genomes database and build the taxid mapping.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    if os.path.getsize(args.genome2taxid) == 0:
+        print(
+            f"ERROR: --viral-taxids file is empty: {args.genome2taxid}\n"
+            "Re-run 'viralunity get-databases virus-genome' to (re)populate it.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     # Load taxdump for family-aware filtering (optional but strongly recommended)
     nodes, tax_names = {}, {}
     taxdump_dir = getattr(args, "taxdump", "") or ""
@@ -202,11 +222,6 @@ def main(args=None):
     out_records = []
 
     if args.strategy == "taxid":
-        # Load genome2taxid
-        if not os.path.exists(args.genome2taxid):
-            print(f"Warning: {args.genome2taxid} not found!")
-            sys.exit(0)
-
         g2t = pd.read_csv(args.genome2taxid, sep="\t", header=None, names=["accession", "taxid"])
         g2t["taxid"] = g2t["taxid"].astype(str)
         g2t["accession"] = g2t["accession"].astype(str)
@@ -275,12 +290,10 @@ def main(args=None):
             sys.exit(1)
 
         # Load genome2taxid for family lookup of BLAST hits (taxdump not required)
-        g2t_dict = {}
-        if os.path.exists(args.genome2taxid):
-            g2t = pd.read_csv(
-                args.genome2taxid, sep="\t", header=None, names=["accession", "taxid"]
-            )
-            g2t_dict = dict(zip(g2t["accession"].astype(str), g2t["taxid"].astype(str)))
+        g2t = pd.read_csv(
+            args.genome2taxid, sep="\t", header=None, names=["accession", "taxid"]
+        )
+        g2t_dict = dict(zip(g2t["accession"].astype(str), g2t["taxid"].astype(str)))
 
         for sample in valid_samples:
             contig_file = os.path.join(args.contigs_dir, f"sample-{sample}.viral_contigs.fa")

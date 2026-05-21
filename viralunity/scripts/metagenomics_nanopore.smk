@@ -166,7 +166,7 @@ rule organize_files:
         run_k2_contigs = run_k2_contigs,
         run_diamond_contigs = run_diamond_contigs
     shell:
-        r"""
+        """
         set -euo pipefail
         mkdir -p {params.outdir}samples/
         for sample in {params.samples}; do
