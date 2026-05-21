@@ -10,7 +10,8 @@ rule run_kraken2_reads:
         mem_mb = config.get("run_kraken2_reads_ram", 4) * 1024
     params:
         database = config["kraken2_database"],
-        minimum_hit_group = config.get("minimum_hit_group", 4)
+        minimum_hit_group = config.get("minimum_hit_group", 4),
+        extra_flags = config.get("kraken2_extra_flags", "--report-minimizer-data")
     log:
         config["output"] + "logs/kraken2_reads/{sample}.log"
     benchmark:
@@ -28,7 +29,7 @@ rule run_kraken2_reads:
             : > {output.report}
             : > {output.outfile}
         else
-            kraken2 --db {params.database} --threads {threads} --report-minimizer-data \
+            kraken2 --db {params.database} --threads {threads} {params.extra_flags} \
                 --minimum-hit-group {params.minimum_hit_group} --report {output.report} \
                 --output {output.outfile} {input.filtered_R1} {input.filtered_R2} 2> {log}
         fi

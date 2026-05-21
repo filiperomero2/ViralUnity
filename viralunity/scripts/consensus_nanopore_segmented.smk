@@ -83,12 +83,13 @@ rule align_consensus_to_reference_genome:
         aln_consensus = config['output'] + "assembly/{segment}/consensus/final_consensus/samples_alignment.fasta"
     params:
         path_consensus = config['output'] + "assembly/{segment}/consensus/final_consensus/",
-        reference = REFERENCE
+        reference = REFERENCE,
+        minimap2_flags = config.get("minimap2_consensus_align_flags", "-a --sam-hit-only --secondary=no --score-N=0")
     shell:
         """
         set -euo pipefail
         cat {params.reference} {params.path_consensus}/*.renamed.fasta > {params.path_consensus}/consensus.fasta;
-        minimap2 -a --sam-hit-only --secondary=no --score-N=0 {params.reference} {params.path_consensus}/consensus.fasta -o {params.path_consensus}/aln.consensus.sam;
+        minimap2 {params.minimap2_flags} {params.reference} {params.path_consensus}/consensus.fasta -o {params.path_consensus}/aln.consensus.sam;
         gofasta sam toMultiAlign --pad -s {params.path_consensus}/aln.consensus.sam -o {output.aln_consensus};
         sed '/^>/ ! s/-/N/g' {output.aln_consensus} > {params.path_consensus}/aln.consensus.indelsMasked.fasta
         """

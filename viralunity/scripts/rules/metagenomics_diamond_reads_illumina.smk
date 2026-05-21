@@ -14,7 +14,8 @@ if run_diamond_reads:
             config["output"] + "logs/diamond_reads/{sample}.benchmark.txt"
         params:
             sensitivity = config.get("diamond_sensitivity", "sensitive"),
-            evalue = config.get("evalue", 0.001)
+            evalue = config.get("evalue", 0.001),
+            max_target_seqs = config.get("diamond_max_target_seqs", 1)
         conda:
             "../envs/taxonomy.yaml"
         shell:
@@ -28,7 +29,7 @@ if run_diamond_reads:
             else
                 diamond blastx --db {input.db} --query {input.fastq} \
                     --out {output.tsv} --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qcovhsp \
-                    --max-target-seqs 1 --evalue {params.evalue} \
+                    --max-target-seqs {params.max_target_seqs} --evalue {params.evalue} \
                     --{params.sensitivity} --threads {threads} 2> {log}
             fi
             """

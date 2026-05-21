@@ -166,6 +166,7 @@ class ConfigGenerator:
         reference: Union[str, Dict[str, str]],
         primer_scheme: str,
         minimum_coverage: int,
+        minimap2_consensus_align_flags: str = "-a --sam-hit-only --secondary=no --score-N=0",
     ) -> None:
         """Add consensus-specific settings to configuration.
 
@@ -174,11 +175,20 @@ class ConfigGenerator:
             segment names to paths for segmented viruses
             primer_scheme: Path to primer scheme file or "NA"
             minimum_coverage: Minimum coverage for consensus
+            minimap2_consensus_align_flags: Flags passed to minimap2 when
+                re-aligning the per-sample consensus FASTA back to the
+                reference for the final multiple-sequence alignment. The
+                default keeps the historical behaviour.
         """
         P = self.SECTION_PARAMETERS
         self._set(ConfigKeys.REFERENCE, reference, P)
         self._set(ConfigKeys.SCHEME, primer_scheme, P)
         self._set(ConfigKeys.MINIMUM_DEPTH, minimum_coverage, P)
+        self._set(
+            ConfigKeys.MINIMAP2_CONSENSUS_ALIGN_FLAGS,
+            minimap2_consensus_align_flags,
+            P,
+        )
 
     def add_metagenomics_settings(
         self,
@@ -202,6 +212,8 @@ class ConfigGenerator:
         negative_controls: Optional[List[str]] = None,
         negative_p_threshold: float = 0.01,
         minimum_hit_group: int = 4,
+        diamond_max_target_seqs: int = 1,
+        kraken2_extra_flags: str = "--report-minimizer-data",
     ) -> None:
         """Add metagenomics-specific settings to configuration.
 
@@ -226,6 +238,10 @@ class ConfigGenerator:
             negative_controls: Sample IDs to use as negative controls
             negative_p_threshold: p-value threshold for negative filter
             minimum_hit_group: Kraken2 --minimum-hit-group (default: 4)
+            diamond_max_target_seqs: DIAMOND --max-target-seqs value (default 1).
+            kraken2_extra_flags: Extra flags appended to every kraken2
+                invocation alongside ``--threads`` and ``--minimum-hit-group``.
+                Defaults to ``--report-minimizer-data``; set to ``""`` to drop it.
         """
         P = self.SECTION_PARAMETERS
         D = self.SECTION_DATABASES
@@ -251,6 +267,8 @@ class ConfigGenerator:
         self._set(ConfigKeys.NEGATIVE_CONTROLS, negative_controls or [], P)
         self._set(ConfigKeys.NEGATIVE_P_THRESHOLD, negative_p_threshold, P)
         self._set(ConfigKeys.MINIMUM_HIT_GROUP, minimum_hit_group, P)
+        self._set(ConfigKeys.DIAMOND_MAX_TARGET_SEQS, diamond_max_target_seqs, P)
+        self._set(ConfigKeys.KRAKEN2_EXTRA_FLAGS, kraken2_extra_flags, P)
 
     def add_reference_assembly_settings(
         self,

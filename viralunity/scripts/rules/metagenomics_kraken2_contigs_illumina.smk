@@ -10,7 +10,8 @@ if run_denovo and run_k2_contigs:
             mem_mb = config.get("run_kraken2_contigs_ram", 4) * 1024
         params:
             database = config["kraken2_database"],
-            minimum_hit_group = config.get("minimum_hit_group", 4)
+            minimum_hit_group = config.get("minimum_hit_group", 4),
+            extra_flags = config.get("kraken2_extra_flags", "--report-minimizer-data")
         log:
             config["output"] + "logs/kraken2_contigs/{sample}.log"
         benchmark:
@@ -24,7 +25,7 @@ if run_denovo and run_k2_contigs:
                 echo "WARNING: {input.fasta} empty. Creating dummy Kraken2 contigs outputs." >> {log}
                 touch {output.report} {output.outfile}
             else
-                kraken2 --db {params.database} --threads {threads} --report-minimizer-data \
+                kraken2 --db {params.database} --threads {threads} {params.extra_flags} \
                     --minimum-hit-group {params.minimum_hit_group} --report {output.report} \
                     --output {output.outfile} {input.fasta} 2> {log}
             fi

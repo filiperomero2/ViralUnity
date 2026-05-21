@@ -121,6 +121,8 @@ def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None
         negative_controls=negative,
         negative_p_threshold=args.get("negative_p_threshold", 0.01),
         minimum_hit_group=args.get("minimum_hit_group", 4),
+        diamond_max_target_seqs=args.get("diamond_max_target_seqs", 1),
+        kraken2_extra_flags=args.get("kraken2_extra_flags", "--report-minimizer-data"),
     )
 
     generator.add_reference_assembly_settings(
