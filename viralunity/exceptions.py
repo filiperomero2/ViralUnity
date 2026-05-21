@@ -13,7 +13,7 @@ class ValidationError(ViralUnityError):
     pass
 
 
-class FileNotFoundError(ViralUnityError):
+class ViralUnityFileNotFoundError(ViralUnityError):
     """Raised when a required file or directory is not found."""
 
     pass

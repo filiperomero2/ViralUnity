@@ -15,7 +15,7 @@ from typing import Dict, List
 import click
 
 from viralunity.constants import SampleSheetPattern, SampleSheetSeparator
-from viralunity.exceptions import FileNotFoundError, ValidationError
+from viralunity.exceptions import ViralUnityFileNotFoundError, ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +72,7 @@ def create_samplesheet(input_dir, output, separator, pattern, level):
         validate_args(args)
         generate_sample_sheet(args)
         logger.info(f"Sample sheet file generated: {output}")
-    except (ValidationError, FileNotFoundError) as e:
+    except (ValidationError, ViralUnityFileNotFoundError) as e:
         raise click.ClickException(str(e))
 
 
@@ -84,12 +84,12 @@ def validate_args(args: Dict[str, any]) -> None:
 
     Raises:
         ValidationError: If validation fails
-        FileNotFoundError: If input directory doesn't exist
+        ViralUnityFileNotFoundError: If input directory doesn't exist
     """
     input_dir = args["input"]
 
     if not os.path.isdir(input_dir):
-        raise FileNotFoundError(f"Input directory does not exist: {input_dir}")
+        raise ViralUnityFileNotFoundError(f"Input directory does not exist: {input_dir}")
 
     logger.info(f"Input data directory: {input_dir}")
 

@@ -9,7 +9,7 @@ from viralunity.constants import DataType
 from viralunity.exceptions import (
     AdaptersNotFoundError,
     DiamondDatabaseNotFoundError,
-    FileNotFoundError,
+    ViralUnityFileNotFoundError,
     Kraken2DatabaseNotFoundError,
     KronaDatabaseNotFoundError,
     PrimerSchemeNotFoundError,
@@ -29,10 +29,10 @@ def validate_file_exists(file_path: str, description: str = "File") -> None:
         description: Description of the file for error messages
 
     Raises:
-        FileNotFoundError: If the file does not exist
+        ViralUnityFileNotFoundError: If the file does not exist
     """
     if not os.path.isfile(file_path):
-        raise FileNotFoundError(f"{description} does not exist: {file_path}")
+        raise ViralUnityFileNotFoundError(f"{description} does not exist: {file_path}")
 
 
 def validate_directory_exists(directory_path: str, description: str = "Directory") -> None:
@@ -43,10 +43,10 @@ def validate_directory_exists(directory_path: str, description: str = "Directory
         description: Description of the directory for error messages
 
     Raises:
-        FileNotFoundError: If the directory does not exist
+        ViralUnityFileNotFoundError: If the directory does not exist
     """
     if not os.path.isdir(directory_path):
-        raise FileNotFoundError(f"{description} does not exist: {directory_path}")
+        raise ViralUnityFileNotFoundError(f"{description} does not exist: {directory_path}")
 
 
 def validate_sample_sheet(sample_sheet_path: str, data_type: str) -> Dict[str, List[str]]:
@@ -61,7 +61,7 @@ def validate_sample_sheet(sample_sheet_path: str, data_type: str) -> Dict[str, L
 
     Raises:
         SampleSheetError: If the sample sheet is invalid
-        FileNotFoundError: If the sample sheet file does not exist
+        ViralUnityFileNotFoundError: If the sample sheet file does not exist
     """
     validate_file_exists(sample_sheet_path, "Sample sheet file")
 
@@ -117,7 +117,7 @@ def validate_illumina_requirements(args: Dict[str, Any]) -> None:
     if adapters and str(adapters).strip() and str(adapters).strip() != "NA":
         try:
             validate_file_exists(adapters, "Illumina adapter sequences file")
-        except FileNotFoundError as e:
+        except ViralUnityFileNotFoundError as e:
             raise AdaptersNotFoundError(
                 f"Illumina adapter sequences file does not exist: {e}"
             ) from e
@@ -188,19 +188,19 @@ def validate_consensus_requirements(args: Dict[str, Any]) -> None:
         for segment_name, segment_path in reference.items():
             try:
                 validate_file_exists(segment_path, f"Reference file for segment '{segment_name}'")
-            except FileNotFoundError as e:
+            except ViralUnityFileNotFoundError as e:
                 raise ReferenceNotFoundError(str(e)) from e
     else:
         try:
             validate_file_exists(reference, "Reference sequence file")
-        except FileNotFoundError as e:
+        except ViralUnityFileNotFoundError as e:
             raise ReferenceNotFoundError(f"Reference sequence file does not exist: {e}") from e
 
     primer_scheme = args.get("primer_scheme")
     if primer_scheme:
         try:
             validate_file_exists(primer_scheme, "Primer scheme file")
-        except FileNotFoundError as e:
+        except ViralUnityFileNotFoundError as e:
             raise PrimerSchemeNotFoundError(f"Primer scheme file does not exist: {e}") from e
 
 
@@ -241,7 +241,7 @@ def validate_metagenomics_requirements(args: Dict[str, Any]) -> None:
             )
         try:
             validate_directory_exists(krona_db, "Krona database directory")
-        except FileNotFoundError as e:
+        except ViralUnityFileNotFoundError as e:
             raise KronaDatabaseNotFoundError(f"Krona database directory does not exist: {e}") from e
 
     # Kraken2 database: required only when Kraken2 is enabled
@@ -254,7 +254,7 @@ def validate_metagenomics_requirements(args: Dict[str, Any]) -> None:
             )
         try:
             validate_directory_exists(kraken2_db, "Kraken2 database directory")
-        except FileNotFoundError as e:
+        except ViralUnityFileNotFoundError as e:
             raise Kraken2DatabaseNotFoundError(
                 f"Kraken2 database directory does not exist: {e}"
             ) from e
@@ -269,7 +269,7 @@ def validate_metagenomics_requirements(args: Dict[str, Any]) -> None:
             )
         try:
             validate_directory_exists(taxdump, "Taxdump directory")
-        except FileNotFoundError as e:
+        except ViralUnityFileNotFoundError as e:
             raise TaxdumpNotFoundError(f"Taxdump directory does not exist: {e}") from e
         nodes = os.path.join(taxdump, "nodes.dmp")
         names = os.path.join(taxdump, "names.dmp")
@@ -300,8 +300,8 @@ def validate_metagenomics_requirements(args: Dict[str, Any]) -> None:
     if deacon_idx and str(deacon_idx).strip() not in ("", "NA"):
         try:
             validate_file_exists(deacon_idx, "Deacon index file")
-        except FileNotFoundError as e:
-            raise FileNotFoundError(f"Deacon index file does not exist: {e}") from e
+        except ViralUnityFileNotFoundError as e:
+            raise ViralUnityFileNotFoundError(f"Deacon index file does not exist: {e}") from e
 
     validate_reference_assembly_requirements(args)
 
@@ -365,12 +365,12 @@ def validate_reference_assembly_requirements(args: Dict[str, Any]) -> None:
 
     viral_genomes = args.get("viral_genomes")
     if viral_genomes and not os.path.isfile(viral_genomes):
-        raise FileNotFoundError(f"Viral genomes file does not exist: {viral_genomes}")
+        raise ViralUnityFileNotFoundError(f"Viral genomes file does not exist: {viral_genomes}")
 
     if strategy == "taxid":
         viral_taxids = args.get("viral_taxids")
         if viral_taxids and not os.path.isfile(viral_taxids):
-            raise FileNotFoundError(f"Viral taxids file does not exist: {viral_taxids}")
+            raise ViralUnityFileNotFoundError(f"Viral taxids file does not exist: {viral_taxids}")
 
 
 # ---------------------------------------------------------------------------
