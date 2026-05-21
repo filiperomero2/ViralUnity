@@ -7,8 +7,9 @@ the command line. The fix is twofold:
 1. ``viralunity_meta.main`` and ``viralunity_consensus.main`` now resolve
    every path-typed CLI argument to an absolute path against ``os.getcwd()``
    *before* validation runs.
-2. ``viralunity_meta.run_snakemake_workflow`` uses ``workdir=os.getcwd()``
-   instead of the config file's parent directory.
+2. ``viralunity_meta.run_snakemake_workflow`` does not pass ``workdir`` to
+   Snakemake, so Snakemake uses the shell's cwd (which is what we want)
+   rather than the config file's parent directory.
 
 These tests pin down both behaviours.
 """
@@ -200,11 +201,16 @@ class TestMetaMainResolvesPaths(unittest.TestCase):
 
 
 class TestMetaWorkdirUsesCwd(unittest.TestCase):
-    """``run_snakemake_workflow`` must pass ``workdir=os.getcwd()`` so the
-    config file's location does not silently change what relative paths
-    mean (this was the bug)."""
+    """``run_snakemake_workflow`` must not pin the working directory to the
+    config file's parent directory (this was the bug).
 
-    def test_workdir_is_current_cwd_not_config_dirname(self):
+    The fix relies on Snakemake's default behaviour: when ``workdir`` is not
+    passed to ``snakemake()``, Snakemake does not ``chdir`` and the shell's
+    cwd is used as-is. This test asserts that ``workdir`` is either omitted
+    or set to cwd — never the config file's directory.
+    """
+
+    def test_workdir_is_not_config_dirname(self):
         captured = {}
 
         def fake_snakemake(*args, **kwargs):
@@ -230,12 +236,17 @@ class TestMetaWorkdirUsesCwd(unittest.TestCase):
             finally:
                 os.chdir(old_cwd)
 
-        self.assertEqual(captured["workdir"], tmp_real)
+        config_dir = os.path.join(tmp_real, "scratch")
+        passed_workdir = captured.get("workdir")
         self.assertNotEqual(
-            captured["workdir"],
-            os.path.join(tmp_real, "scratch"),
+            passed_workdir,
+            config_dir,
             "workdir must NOT be the config file's parent directory",
         )
+        # Either workdir was omitted (Snakemake defaults to cwd) or it was
+        # explicitly set to cwd. Both are acceptable.
+        if passed_workdir is not None:
+            self.assertEqual(passed_workdir, tmp_real)
 
 
 # ---------------------------------------------------------------------------
