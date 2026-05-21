@@ -158,7 +158,15 @@ def _add_resource_options(rules: list):
 
 @click.group(name="consensus")
 def consensus():
-    """Consensus genome assembly pipeline."""
+    """Reference-guided consensus genome assembly pipeline.
+
+    \b
+    Sub-commands branch on input data type:
+    * illumina  paired-end short reads (fastp + minimap2 + LoFreq)
+    * nanopore  long reads (minimap2 + Clair3)
+
+    Run ``viralunity consensus <data_type> --help`` for the full option set.
+    """
 
 
 @consensus.command("illumina")
@@ -252,7 +260,15 @@ def consensus_illumina(
     run_isnv,
     **kwargs,
 ):
-    """Run consensus pipeline for Illumina data."""
+    """Run consensus pipeline for Illumina paired-end data.
+
+    Performs adapter trimming (fastp), reference alignment (minimap2),
+    optional primer trimming (ivar), variant calling (LoFreq), and consensus
+    generation. Enable intra-host SNV analysis with ``--run-isnv``.
+
+    For segmented references (e.g. influenza), pass each segment as
+    ``--segmented-reference SEGMENT=PATH``; otherwise use ``--reference``.
+    """
     args = dict(
         data_type="illumina",
         sample_sheet=sample_sheet,
@@ -347,7 +363,15 @@ def consensus_nanopore(
     minimum_map_quality,
     **kwargs,
 ):
-    """Run consensus pipeline for Nanopore data."""
+    """Run consensus pipeline for Nanopore long-read data.
+
+    Performs reference alignment (minimap2), variant calling (Clair3 with a
+    user-selectable model via ``--clair3-model``), and consensus generation.
+    Reads shorter than ``--minimum-read-length`` are filtered upstream.
+
+    For segmented references (e.g. influenza), pass each segment as
+    ``--segmented-reference SEGMENT=PATH``; otherwise use ``--reference``.
+    """
     args = dict(
         data_type="nanopore",
         sample_sheet=sample_sheet,

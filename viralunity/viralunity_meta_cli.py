@@ -298,7 +298,18 @@ def _build_meta_args(data_type, **kwargs) -> dict:
 
 @click.group(name="meta")
 def meta():
-    """Metagenomics pipeline."""
+    """Viral metagenomics pipeline.
+
+    \b
+    Sub-commands branch on input data type:
+    * illumina  paired-end short reads
+    * nanopore  long reads
+
+    Both flavours run optional Kraken2 / DIAMOND classification on reads
+    and/or contigs, taxonomic summaries, Krona plots, and an optional
+    reference-assembly checkpoint. Run ``viralunity meta <data_type> --help``
+    for the full option set.
+    """
 
 
 @meta.command("illumina")
@@ -353,7 +364,14 @@ def meta():
     help="cut_right mean quality threshold [fastp].",
 )
 def meta_illumina(**kwargs):
-    """Run metagenomics pipeline for Illumina data."""
+    """Run metagenomics pipeline for Illumina paired-end data.
+
+    Performs adapter trimming (fastp), optional host depletion (Deacon),
+    de novo assembly (MEGAHIT), and Kraken2 / DIAMOND classification on reads
+    and/or contigs. Toggle classification stages with ``--run-kraken2-reads``,
+    ``--run-kraken2-contigs``, ``--run-diamond-reads``,
+    ``--run-diamond-contigs``.
+    """
     args = _build_meta_args(data_type="illumina", **kwargs)
     args.update({k: v for k, v in kwargs.items() if k not in args})
     raise SystemExit(meta_main(args))
@@ -380,7 +398,14 @@ def meta_illumina(**kwargs):
     help="Medaka model name (e.g. r941_min_high_g360). Uses Medaka default if omitted.",
 )
 def meta_nanopore(**kwargs):
-    """Run metagenomics pipeline for Nanopore data."""
+    """Run metagenomics pipeline for Nanopore long-read data.
+
+    Performs optional host depletion (Deacon), de novo assembly (MEGAHIT),
+    optional polishing (Racon / Medaka), and Kraken2 / DIAMOND classification
+    on reads and/or contigs. Toggle polishing with ``--run-polish-racon`` /
+    ``--run-polish-medaka`` and select the Medaka model with
+    ``--medaka-model``.
+    """
     args = _build_meta_args(data_type="nanopore", **kwargs)
     args.update({k: v for k, v in kwargs.items() if k not in args})
     raise SystemExit(meta_main(args))

@@ -13,7 +13,18 @@ from viralunity.viralunity_meta_cli import meta
 @click.group()
 @click.version_option(version=__version__, prog_name=__program__)
 def cli():
-    """ViralUnity is a simple tool to perform analysis of viral high-throughput sequencing data."""
+    """ViralUnity is a simple tool to perform analysis of viral high-throughput sequencing data.
+
+    \b
+    Subcommands:
+    * consensus           reference-guided consensus assembly (illumina/nanopore)
+    * meta                metagenomic classification and de novo assembly
+    * create-samplesheet  generate a sample sheet from a sequencing directory
+    * get-databases       download/build reference databases
+    * build-deacon-index  build a Deacon index for host depletion
+
+    Run ``viralunity <subcommand> --help`` for subcommand-specific options.
+    """
 
 
 cli.add_command(consensus)
