@@ -102,6 +102,7 @@ class Test_MetaNanoporeCommand(unittest.TestCase):
         self.assertFalse(args["run_polish_racon"])
         self.assertFalse(args["run_polish_medaka"])
         self.assertIsNone(args["medaka_model"])
+        self.assertIsNone(args["clair3_model"])
 
     def test_kraken2_flags(self):
         """Test --no-kraken2-reads disables reads classification."""

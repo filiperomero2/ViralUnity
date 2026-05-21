@@ -135,6 +135,13 @@ def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None
             trim_head=args.get("trim_head", 0),
             trim_tail=args.get("trim_tail", 0),
         )
+    else:
+        generator.add_nanopore_settings(
+            run_polish_racon=args.get("run_polish_racon", False),
+            run_polish_medaka=args.get("run_polish_medaka", False),
+            medaka_model=args.get("medaka_model"),
+            clair3_model=args.get("clair3_model"),
+        )
 
     # Add resource settings
     shared_rules = ResourceDefaults.META_SHARED_RULES

@@ -398,14 +398,25 @@ def meta_illumina(**kwargs: Any) -> None:
     default=None,
     help="Medaka model name (e.g. r941_min_high_g360). Uses Medaka default if omitted.",
 )
+@click.option(
+    "--clair3-model",
+    default=None,
+    show_default=True,
+    help=(
+        "Clair3 model name used by reference-assembly consensus calling. "
+        "Only used when --run-reference-assembly is set. "
+        "Falls back to r1041_e82_400bps_sup_v500 if omitted."
+    ),
+)
 def meta_nanopore(**kwargs: Any) -> None:
     """Run metagenomics pipeline for Nanopore long-read data.
 
     Performs optional host depletion (Deacon), de novo assembly (MEGAHIT),
     optional polishing (Racon / Medaka), and Kraken2 / DIAMOND classification
     on reads and/or contigs. Toggle polishing with ``--run-polish-racon`` /
-    ``--run-polish-medaka`` and select the Medaka model with
-    ``--medaka-model``.
+    ``--run-polish-medaka``, select the Medaka model with ``--medaka-model``,
+    and (when ``--run-reference-assembly`` is enabled) select the Clair3
+    model with ``--clair3-model``.
     """
     args = _build_meta_args(data_type="nanopore", **kwargs)
     raise SystemExit(meta_main(args))

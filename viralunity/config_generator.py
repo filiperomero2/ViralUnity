@@ -309,19 +309,25 @@ class ConfigGenerator:
         run_polish_racon: bool = False,
         run_polish_medaka: bool = False,
         medaka_model: Optional[str] = None,
+        clair3_model: Optional[str] = None,
     ) -> None:
-        """Add Nanopore-specific settings (polishing: Racon, Medaka).
+        """Add Nanopore-specific settings (polishing: Racon, Medaka; clair3 model).
 
         Args:
             run_polish_racon: Whether to run Racon polishing after MEGAHIT.
             run_polish_medaka: Whether to run Medaka polishing (after Racon if both enabled).
             medaka_model: Medaka model name (e.g. r941_min_high_g360). Optional; Medaka uses default if not set.
+            clair3_model: Clair3 model name used by the reference-assembly
+                consensus path. Optional; the rule falls back to its own
+                default if not set.
         """
         P = self.SECTION_PARAMETERS
         self._set(ConfigKeys.RUN_POLISH_RACON, run_polish_racon, P)
         self._set(ConfigKeys.RUN_POLISH_MEDAKA, run_polish_medaka, P)
         if medaka_model is not None:
             self._set(ConfigKeys.MEDAKA_MODEL, medaka_model, P)
+        if clair3_model is not None:
+            self._set(ConfigKeys.CLAIR3_MODEL, clair3_model, P)
 
     def add_workflow_path(self, workflow_path: str) -> None:
         """Add workflow path to configuration.
