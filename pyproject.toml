@@ -33,7 +33,7 @@ dependencies = [
     "pyyaml>=6.0",
     "click>=8.0",
     "biopython>=1.81",
-    "snakemake==7.32.0",
+    "snakemake>=7.32,<8",
 ]
 
 [project.optional-dependencies]

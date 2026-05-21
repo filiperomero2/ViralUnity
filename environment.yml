@@ -4,14 +4,14 @@ channels:
   - bioconda
   - defaults
 dependencies:
-  - snakemake=7.32
-  - pyyaml=6.0
+  - snakemake>=7.32,<8
+  - pyyaml>=6.0
   - wget
   - blast>=2.16
   - ncbi-datasets-cli=18.23
   - diamond=2.1
   - krona=2.8
-  - biopython=1.81
+  - biopython>=1.81
   - deacon=0.15
   - python>=3.8.0,<3.12.0
   - conda
