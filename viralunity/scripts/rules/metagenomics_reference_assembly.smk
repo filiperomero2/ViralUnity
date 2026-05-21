@@ -43,7 +43,8 @@ rule extract_reference_fasta:
     input:
         tsv = rules.select_references_meta.output.tsv
     output:
-        fasta = config["output"] + "assembly/{ref_key}/references/{sample}.fasta"
+        fasta = config["output"] + "assembly/{ref_key}/references/{sample}.fasta",
+        fai = config["output"] + "assembly/{ref_key}/references/{sample}.fasta.fai"
     params:
         db = config.get("viral_genomes", "databases/virus_genomes/viral.genomes.fasta")
     log:
@@ -68,6 +69,8 @@ rule extract_reference_fasta:
             echo "ERROR: accession $acc not found in {params.db}" | tee -a {log} >&2
             exit 1
         fi
+        # clair3 (and bcftools consensus) require a .fai sibling to the FASTA.
+        samtools faidx {output.fasta}
         echo "Extracted reference $acc for {wildcards.sample}/{wildcards.ref_key}" >> {log}
         """
 
