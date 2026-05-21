@@ -1,0 +1,12 @@
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.11
+  - minimap2=2.30
+  - samtools=1.23
+  - bedtools=2.31
+  - gsalign=1.0
+  - deacon=0.15
+  - gofasta=1.2

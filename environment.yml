@@ -4,17 +4,17 @@ channels:
   - bioconda
   - defaults
 dependencies:
-  - snakemake=7.32
-  - multiqc=1.15
-  - minimap2=2.30
-  - samtools=1.23
-  - bedtools=2.31
-  - pandas=2.0
-  - gofasta=1.2
-  - kraken2=2.1
-  - krona=2.8.1
-  - lofreq=2.1.5
-  - bcftools=1.21
-  - fastp=1.1
-  - gsalign=1.0
-  - clair3=1.2
+  - snakemake>=7.32,<8
+  - pyyaml>=6.0
+  - wget
+  - blast>=2.16
+  - ncbi-datasets-cli=18.23
+  - diamond=2.1
+  - krona=2.8
+  - biopython>=1.81
+  - deacon=0.15
+  - python>=3.8.0,<3.12.0
+  - conda
+  - pip
+  - pip:
+    - .

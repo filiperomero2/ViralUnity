@@ -1,0 +1,23 @@
+# Config for Segmented Nanopore Consensus Dry-run
+samples:
+  SAMPLE_NP_SEG: data/reads/SAMPLE_NP_SEG.fastq.gz
+
+data: nanopore
+output: test/dryrun_output/consensus_nanopore_segmented/
+threads: 4
+reference:
+  SEG1: data/references/segment1.fasta
+  SEG2: data/references/segment2.fasta
+
+scheme: NA
+minimum_depth: 20
+minimum_length: 50
+workflow_path: .
+
+# Nanopore-specific settings
+af_threshold: 0.51
+chunk_size: 10000
+clair3_model: "r1041_e82_400bps_sup_v500"
+variant_quality: 20
+variant_depth: 10
+minimum_map_quality: 30

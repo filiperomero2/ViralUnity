@@ -1,6 +1,6 @@
 FROM continuumio/miniconda3:25.1.1-2
-LABEL version="1.0.3" \
-      description="Docker image for viralunity"
+LABEL version="1.1.0" \
+      description="A pipeline for viral metagenomics analysis."
 
 WORKDIR /app
 

@@ -6,19 +6,23 @@
 
 
 rule calculate_coverage_basewise:
+    conda:
+        "../envs/alignment.yaml"
     input:
         bam = rules.trim_primer_sequences.output.bam,
         bam_index = rules.trim_primer_sequences.output.bam_index
     output:
-        table_cov = config['output'] + f"assembly/{SEGMENT_WILDCARD}coverage_stats/{{sample}}.table_cov_basewise.txt"
+        table_cov = config['output'] + "assembly/" + SEGMENT_WILDCARD + "coverage_stats/{sample}.table_cov_basewise.txt"
     shell:
         "bedtools genomecov -d -ibam {input.bam} > {output.table_cov}"
 
 
 rule rename_sequences:
+    conda:
+        "../envs/utils.yaml"
     input:
         consensus = rules.infer_consensus_sequence.output.consensus
     output:
-        consensus_renamed = config['output'] + f"assembly/{SEGMENT_WILDCARD}consensus/final_consensus/{{sample}}.consensus.renamed.fasta"
+        consensus_renamed = config['output'] + "assembly/" + SEGMENT_WILDCARD + "consensus/final_consensus/{sample}.consensus.renamed.fasta"
     script:
-        "../rename_sequences.py"
+        "../python/rename_sequences.py"

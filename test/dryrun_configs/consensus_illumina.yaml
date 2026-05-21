@@ -1,0 +1,25 @@
+# Config for Illumina Consensus Dry-run (standard)
+samples:
+  SAMPLE1: data/reads/SAMPLE1_R1.fastq.gz data/reads/SAMPLE1_R2.fastq.gz
+  SAMPLE2: data/reads/SAMPLE2_R1.fastq.gz data/reads/SAMPLE2_R2.fastq.gz
+
+data: illumina
+output: test/dryrun_output/consensus_illumina/
+threads: 4
+reference: data/references/reference.fasta  # Path to single FASTA reference
+scheme: NA                                  # NA or path to primers.bed
+minimum_depth: 20
+minimum_length: 50
+workflow_path: .                             # Base path for internal scripts
+
+# Illumina-specific settings
+adapters: NA 
+trim_head: 0
+trim_tail: 0
+cut_front_mean_quality: 10
+cut_tail_mean_quality: 10
+cut_right_window_size: 4
+cut_right_mean_quality: 15
+af_threshold: 0.51
+af_isnv_threshold: 0.05
+run_isnv: false

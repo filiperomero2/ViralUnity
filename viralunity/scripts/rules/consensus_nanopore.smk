@@ -5,34 +5,37 @@
 
 
 rule infer_consensus_sequence:
+    conda:
+        "../envs/clair3.yaml"
     input:
         bam = rules.trim_primer_sequences.output.bam,
         bam_index = rules.trim_primer_sequences.output.bam_index,
         reference = REFERENCE
     output:
-        vcf_raw = config['output'] + f"assembly/{SEGMENT_WILDCARD}clair3/{{sample}}/{{sample}}.raw.vcf.gz",
-        vcf_raw_index = config['output'] + f"assembly/{SEGMENT_WILDCARD}clair3/{{sample}}/{{sample}}.raw.vcf.gz.tbi",
-        vcf_norm = temp(config['output'] + f"assembly/{SEGMENT_WILDCARD}consensus/final_consensus/{{sample}}.norm.vcf.gz"),
-        vcf = config['output'] + f"assembly/{SEGMENT_WILDCARD}consensus/final_consensus/{{sample}}.vcf.gz",
-        vcf_index = config['output'] + f"assembly/{SEGMENT_WILDCARD}consensus/final_consensus/{{sample}}.vcf.gz.tbi",
-        low_cov_bed = config['output'] + f"assembly/{SEGMENT_WILDCARD}consensus/final_consensus/{{sample}}.low_cov.bed",
-        consensus = temp(config['output'] + f"assembly/{SEGMENT_WILDCARD}consensus/final_consensus/{{sample}}.consensus.fasta")
+        vcf_raw = config['output'] + "assembly/" + SEGMENT_WILDCARD + "clair3/{sample}/{sample}.raw.vcf.gz",
+        vcf_raw_index = config['output'] + "assembly/" + SEGMENT_WILDCARD + "clair3/{sample}/{sample}.raw.vcf.gz.tbi",
+        vcf_norm = temp(config['output'] + "assembly/" + SEGMENT_WILDCARD + "consensus/final_consensus/{sample}.norm.vcf.gz"),
+        vcf = config['output'] + "assembly/" + SEGMENT_WILDCARD + "consensus/final_consensus/{sample}.vcf.gz",
+        vcf_index = config['output'] + "assembly/" + SEGMENT_WILDCARD + "consensus/final_consensus/{sample}.vcf.gz.tbi",
+        low_cov_bed = config['output'] + "assembly/" + SEGMENT_WILDCARD + "consensus/final_consensus/{sample}.low_cov.bed",
+        consensus = config['output'] + "assembly/" + SEGMENT_WILDCARD + "consensus/final_consensus/{sample}.consensus.fasta"
     params:
-        output_prefix_dir = config['output'] + f"assembly/{SEGMENT_WILDCARD}clair3/{{sample}}",
-        minimum_depth = config["minimum_depth"],
-        af_threshold = config["af_threshold"],
-        chunk_size = config["chunk_size"],
-        clair3_model = config["clair3_model"],
-        variant_quality = config["variant_quality"],
-        minimum_map_quality = config["minimum_map_quality"],
-        variant_depth = config["variant_depth"]
+        output_prefix_dir = config['output'] + "assembly/" + SEGMENT_WILDCARD + "clair3/{sample}",
+        minimum_depth = config.get("minimum_depth", 10),
+        af_threshold = config.get("af_threshold", 0.7),
+        chunk_size = config.get("chunk_size", 50000),
+        clair3_model = config.get("clair3_model", "r1041_e82_400bps_sup_v500"),
+        variant_quality = config.get("variant_quality", 20),
+        minimum_map_quality = config.get("minimum_map_quality", 20),
+        variant_depth = config.get("variant_depth", 5)
     benchmark:
-        config['output'] + f"assembly/{SEGMENT_WILDCARD}logs/consensus/{{sample}}.benchmark.txt"
-    threads: config["threads"] 
+        config['output'] + "assembly/" + SEGMENT_WILDCARD + "logs/consensus/{sample}.benchmark.txt"
+    threads: config.get("infer_consensus_sequence_cpus", 2)
+    resources:
+        mem_mb = config.get("infer_consensus_sequence_ram", 4) * 1024
     shell:
         """
-        samtools faidx {input.reference}
-
+        set -euo pipefail
         run_clair3.sh \
             --bam_fn={input.bam} \
             --ref_fn={input.reference} \

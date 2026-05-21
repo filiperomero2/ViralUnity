@@ -1,0 +1,28 @@
+# Config for Segmented Illumina Consensus Dry-run
+samples:
+  SAMPLE1: data/reads/SAMPLE1_R1.fastq.gz data/reads/SAMPLE1_R2.fastq.gz
+
+data: illumina
+output: test/dryrun_output/consensus_illumina_segmented/
+threads: 4
+reference:
+  S1: data/references/segment1.fasta
+  S2: data/references/segment2.fasta
+  S3: data/references/segment3.fasta
+
+scheme: NA
+minimum_depth: 20
+minimum_length: 50
+workflow_path: .
+
+# Illumina-specific settings
+adapters: NA 
+trim_head: 0
+trim_tail: 0
+cut_front_mean_quality: 10
+cut_tail_mean_quality: 10
+cut_right_window_size: 4
+cut_right_mean_quality: 15
+af_threshold: 0.51
+af_isnv_threshold: 0.05
+run_isnv: false

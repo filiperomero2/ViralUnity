@@ -3,41 +3,41 @@ SEGMENTS = config["reference"]  # dict: {"S": "/path/S.fa", "L": "/path/L.fa", .
 rule all:
     input:
         expand(
-            config['output'] + "assembly/{segment}/consensus/final_consensus/aln.consensus.fasta",
+            config['output'] + "assembly/{segment}/consensus/final_consensus/samples_alignment.fasta",
             segment=SEGMENTS.keys()
         ),
         config['output'] + "benchmark.tsv"
+
+rule sanitize_reference:
+    conda:
+        "envs/clair3.yaml"
+    input: lambda wildcards: SEGMENTS[wildcards.segment]
+    output:
+        fasta = config["output"] + "reference/{segment}.sanitized.fasta",
+        fai = config["output"] + "reference/{segment}.sanitized.fasta.fai"
+    shell:
+        """
+        set -euo pipefail
+        mkdir -p $(dirname {output.fasta})
+        sed '/^>/s/[\\/|,~ ]/_/g' {input} > {output.fasta}
+        samtools faidx {output.fasta}
+        """
 
 def get_map_input_fastqs(wildcards):
     reads = config["samples"][wildcards.sample].split()
     return(reads)
 
-def get_segment_reference(wildcards):
-    return SEGMENTS[wildcards.segment]
-
-REFERENCE = get_segment_reference
+REFERENCE = rules.sanitize_reference.output.fasta
 SEGMENT_WILDCARD = "{segment}/"
 
 include: "rules/alignment_nanopore.smk"
 include: "rules/consensus_nanopore.smk"
 include: "rules/stats.smk"
-
-rule calculate_assembly_statistics:
-    input:
-        get_map_input_fastqs,
-        get_map_input_fastqs,
-        get_map_input_fastqs,
-        rules.trim_primer_sequences.output.bam,
-        rules.calculate_coverage_basewise.output.table_cov,
-        rules.rename_sequences.output.consensus_renamed
-    output:
-        stats_summary = temp(config['output'] + "assembly/{segment}/coverage_stats/{sample}.stats_summary.csv")
-    params:
-        minimum_depth = config["minimum_depth"]
-    script:
-        "calculate_assembly_stats.py"
+include: "rules/consensus_nanopore_common.smk"
 
 rule unify_assembly_statistics_reports:
+    conda:
+        "envs/utils.yaml"
     input:
         reports = expand(
             rules.calculate_assembly_statistics.output.stats_summary,
@@ -48,32 +48,14 @@ rule unify_assembly_statistics_reports:
         unified_stats_summary = config['output'] + "assembly/assembly_stats_summary.csv"
     shell:
         """
+        set -euo pipefail
         echo \"sample_name,segment,number_of_reads,number_of_trim_paired_reads,number_of_mapped_reads,average_depth,percentage_above_10x,percentage_above_100x,percentage_above_1000x,horizontal_coverage\" > {output.unified_stats_summary} ;
         cat {input.reports} >> {output.unified_stats_summary}
         """
 
-rule align_consensus_to_reference_genome:
-    input:
-        stats = rules.unify_assembly_statistics_reports.output.unified_stats_summary,
-        consensus_files = expand(
-            rules.rename_sequences.output.consensus_renamed,
-            sample=config["samples"],
-            allow_missing=True
-        )
-    output:
-        aln_consensus = config['output'] + "assembly/{segment}/consensus/final_consensus/aln.consensus.fasta"
-    params:
-        path_consensus = config['output'] + "assembly/{segment}/consensus/final_consensus/",
-        reference = get_segment_reference
-    shell:
-        """
-        cat {params.reference} {params.path_consensus}/*.renamed.fasta > {params.path_consensus}/consensus.fasta; 
-        minimap2 -a --sam-hit-only --secondary=no --score-N=0 {params.reference} {params.path_consensus}/consensus.fasta -o {params.path_consensus}/aln.consensus.sam; 
-        gofasta sam toMultiAlign --pad -s {params.path_consensus}/aln.consensus.sam -o {output.aln_consensus}; 
-        sed '/^>/ ! s/-/N/g' {output.aln_consensus} > {params.path_consensus}/aln.consensus.indelsMasked.fasta
-        """
-
 rule organize_files:
+    conda:
+        "envs/utils.yaml"
     input:
         vcf_files = expand(
             rules.infer_consensus_sequence.output.vcf,
@@ -107,6 +89,7 @@ rule organize_files:
         segments = " ".join(SEGMENTS.keys())
     shell:
         """
+        set -euo pipefail
         mkdir -p {params.outdir}samples/
         for sample in {params.samples}; do
             for segment in {params.segments}; do
@@ -154,6 +137,7 @@ rule organize_files:
             ln -sf $PWD/$_file.bai {params.outdir}samples/$sample/$segment/trimmed_mapped_reads.bam.bai;
         done
 
+        # Benchmark aggregation
         echo -e "sample\\tsegment\\ttask\\tseconds\\th:m:s\\tmax_rss\\tmax_vms\\tmax_uss\\tmax_pss\\tio_in\\tio_out\\tmean_load\\tcpu_time" > {output}
         find {params.outdir} -name "*.benchmark.txt" | while read -r file; do
             task=$(basename $(dirname $file))

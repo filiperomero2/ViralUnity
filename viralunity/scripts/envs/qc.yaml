@@ -1,0 +1,9 @@
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.11
+  - setuptools
+  - fastp=1.1
+  - multiqc=1.21

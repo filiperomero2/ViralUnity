@@ -5,21 +5,26 @@
 
 
 rule map_reads:
+    conda:
+        "../envs/alignment.yaml"
     input:
         reference = REFERENCE,
         fastq = get_map_input_fastqs
     params:
-        minimum_map_quality = config["minimum_map_quality"]
+        minimum_map_quality = config.get("minimum_map_quality", 20)
     output:
-        bam = config['output'] + f"assembly/{SEGMENT_WILDCARD}mapped_reads/raw/{{sample}}.sorted.bam",
-        bam_index = config['output'] + f"assembly/{SEGMENT_WILDCARD}mapped_reads/raw/{{sample}}.sorted.bam.bai",
+        bam = config['output'] + "assembly/" + SEGMENT_WILDCARD + "mapped_reads/raw/{sample}.sorted.bam",
+        bam_index = config['output'] + "assembly/" + SEGMENT_WILDCARD + "mapped_reads/raw/{sample}.sorted.bam.bai",
     log:
-        config['output'] + f"assembly/{SEGMENT_WILDCARD}logs/minimap2/{{sample}}.log"
+        config['output'] + "assembly/" + SEGMENT_WILDCARD + "logs/minimap2/{sample}.log"
     benchmark:
-        config['output'] + f"assembly/{SEGMENT_WILDCARD}logs/minimap2/{{sample}}.benchmark.txt"
-    threads: config["threads"] 
+        config['output'] + "assembly/" + SEGMENT_WILDCARD + "logs/minimap2/{sample}.benchmark.txt"
+    threads: config.get("map_reads_cpus", 2)
+    resources:
+        mem_mb = config.get("map_reads_ram", 4) * 1024
     shell:
         """
+        set -euo pipefail
         minimap2 -a -t {threads} -x map-ont {input.reference} {input.fastq} |
         samtools view --min-MQ {params.minimum_map_quality} -bS -F 4 - |
         samtools sort -o {output.bam} - 2> {log}
@@ -27,19 +32,22 @@ rule map_reads:
         """
 
 rule trim_primer_sequences:
+    conda:
+        "../envs/alignment.yaml"
     input:
         bam = rules.map_reads.output.bam,
         bam_index = rules.map_reads.output.bam_index
     output:
-        bam = config['output'] + f"assembly/{SEGMENT_WILDCARD}mapped_reads/trimmed/{{sample}}.sorted.bam",
-        bam_index = config['output'] + f"assembly/{SEGMENT_WILDCARD}mapped_reads/trimmed/{{sample}}.sorted.bam.bai",
-        trimmed_info = config['output'] + f"assembly/{SEGMENT_WILDCARD}mapped_reads/trimmed/{{sample}}.trimmed.txt"
+        bam = config['output'] + "assembly/" + SEGMENT_WILDCARD + "mapped_reads/trimmed/{sample}.sorted.bam",
+        bam_index = config['output'] + "assembly/" + SEGMENT_WILDCARD + "mapped_reads/trimmed/{sample}.sorted.bam.bai",
+        trimmed_info = config['output'] + "assembly/" + SEGMENT_WILDCARD + "mapped_reads/trimmed/{sample}.trimmed.txt"
     params:
-        bed = config["scheme"],
-        minimum_length = config["minimum_length"],
-        path = config['output'] + f"assembly/{SEGMENT_WILDCARD}mapped_reads/raw/"
+        bed = config.get("scheme", "NA"),
+        minimum_length = config.get("minimum_length", 200),
+        path = config['output'] + "assembly/" + SEGMENT_WILDCARD + "mapped_reads/raw/"
     shell:
         """
+        set -euo pipefail
         if [ {params.bed} == NA ]; then
             cp {input.bam} {output.bam};
             cp {input.bam_index} {output.bam_index};

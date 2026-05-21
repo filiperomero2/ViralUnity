@@ -1,241 +1,397 @@
-import argparse
+"""Click CLI for viralunity consensus command."""
+
+from typing import Any, Optional, Tuple
+
+import click
+
+from viralunity.constants import ResourceDefaults
 from viralunity.viralunity_consensus import main as consensus_main
 
-def fill_arg_parser_consensus(subparsers: argparse._SubParsersAction):
-    consensus_parser = subparsers.add_parser('consensus',  description="A script to generate config files and run the viralunity consensus pipeline")
-    consensus_parser.set_defaults(func=consensus_main)
-    
-    
-    ## Add common arguments
-    consensus_parser.add_argument(
-        "--data-type",
-        type=str,
-        help="Sequencing data type (illumina or nanopore).",
-        choices=["illumina", "nanopore"],
-        nargs="?",
-        required=True,
-    )
 
-    consensus_parser.add_argument(
+def _parse_segmented_reference(segmented_reference: Tuple[str, ...]) -> Optional[dict]:
+    """Parse SEGMENT=PATH strings into a dictionary.
+
+    Args:
+        segmented_reference: Tuple of strings in SEGMENT=PATH format
+
+    Returns:
+        Dictionary mapping segment names to paths, or None if empty
+    """
+    if not segmented_reference:
+        return None
+
+    parsed = {}
+    for entry in segmented_reference:
+        if "=" not in entry:
+            raise click.BadParameter(
+                f"Invalid segmented reference format: '{entry}'. "
+                "Expected SEGMENT=PATH (e.g. S=/path/to/S.fasta)"
+            )
+        name, path = entry.split("=", 1)
+        name = name.strip()
+        path = path.strip()
+        if not name or not path:
+            raise click.BadParameter(
+                f"Invalid segmented reference format: '{entry}'. "
+                "Both segment name and path are required."
+            )
+        parsed[name] = path
+    return parsed
+
+
+# Common options (applied to both illumina and nanopore subcommands)
+_COMMON_OPTIONS = [
+    click.option(
         "--sample-sheet",
-        help="Complete path for a csv file with samples data paths and metadata",
         required=True,
-    )
-
-    consensus_parser.add_argument(
+        help="Path to CSV file with sample data paths and metadata.",
+    ),
+    click.option(
         "--config-file",
-        help="Complete path for input (viralunity config) file to be created.",
         required=True,
-    )
-
-    consensus_parser.add_argument(
-        "--output",
-        help="Complete path for output directory to be created by viralunity.",
-        required=True,
-    )
-
-    consensus_parser.add_argument(
+        help="Path for the config YAML file to be created.",
+    ),
+    click.option("--output", required=True, help="Path for the output directory."),
+    click.option(
         "--run-name",
-        type=str,
-        help="Name for the sequencing run (optional).",
-        nargs="?",
-        const=1,
         default="undefined",
-    )
-    
-    consensus_parser.add_argument(
-        "--trim-head",
-        type=int,
-        help="Number of bases to trim from the 5' end of reads (Default = 0) [Illumina QC]",
-        nargs="?",
-        const=1,
-        default=0,
-    )
-
-    consensus_parser.add_argument(
-        "--trim-tail",
-        type=int,
-        help="Number of bases to trim from the 3' end of reads (Default = 0) [Illumina QC]",
-        nargs="?",
-        const=1,
-        default=0,
-    )
-
-    consensus_parser.add_argument(
-        "--cut-front-mean-quality",
-        type=int,
-        help="Mean quality requirement option for cut_front (Default = 10) [Illumina QC]",
-        nargs="?",
-        const=1,
-        default=10,
-    )
-
-    consensus_parser.add_argument(
-        "--cut-tail-mean-quality",
-        type=int,
-        help="Mean quality requirement option for cut_tail (Default = 10) [Illumina QC]",
-        nargs="?",
-        const=1,
-        default=10,
-    )
-
-    consensus_parser.add_argument(
-        "--cut-right-window-size",
-        type=int,
-        help="Window size for cut_right (Default = 4) [Illumina QC]",
-        nargs="?",
-        const=1,
-        default=4,
-    )
-
-    consensus_parser.add_argument(
-        "--cut-right-mean-quality",
-        type=int,
-        help="Mean quality requirement option for cut_right (Default = 15) [Illumina QC]",
-        nargs="?",
-        const=1,
-        default=15,
-    )
-
-    consensus_parser.add_argument(
-        "--af-threshold",
-        type=float,
-        help="Minimum allele frequency threshold to call a variant into consensus (Default = 0.51)",
-        nargs="?",
-        const=1,
-        default=0.51,
-    )
-
-    consensus_parser.add_argument(
-        "--af-isnv-threshold",
-        type=float,
-        help="Minimum allele frequency threshold to call a variant into iSNV analysis (Default = 0)",
-        nargs="?",
-        const=1,
-        default=0,
-    )
-
-    consensus_parser.add_argument(
-        "--run-isnv",
-        help="Run intra-host SNV (iSNV) analysis with LoFreq (Illumina only, default: disabled)",
-        action="store_true",
-    )
-
-    consensus_parser.add_argument(
-        "--create-config-only",
-        help="Only create config file, not running the workflow (boolean)",
-        action="store_true",
-    )
-
-    consensus_parser.add_argument(
-        "--threads",
-        type=int,
-        help="Number of available threads for individual tasks (Default = 1)",
-        nargs="?",
-        const=1,
-        default=1,
-    )
-
-    consensus_parser.add_argument(
-        "--threads-total",
-        type=int,
-        help="Number of available threads for the entire workflow (Default = 1)",
-        nargs="?",
-        const=1,
-        default=1,
-    )
-    
-    ## Add consensus specific arguments
-    consensus_parser.add_argument(
+        show_default=True,
+        help="Name for the sequencing run.",
+    ),
+    click.option(
         "--reference",
-        help="Complete path for the reference genome in fasta format (mutually exclusive with --segmented-reference)",
-        required=False,
         default=None,
-    )
-
-    consensus_parser.add_argument(
+        help="Path to reference genome FASTA (mutually exclusive with --segmented-reference).",
+    ),
+    click.option(
         "--segmented-reference",
-        nargs="+",
-        help=(
-            "Reference genomes for segmented viruses, one per segment, "
-            "in the format SEGMENT=PATH (e.g. --segmented-reference S=/path/S.fasta L=/path/L.fasta M=/path/M.fasta). "
-            "Mutually exclusive with --reference."
-        ),
-        default=None,
-    )
-
-    consensus_parser.add_argument(
+        multiple=True,
+        metavar="SEGMENT=PATH",
+        help="Reference for segmented viruses: SEGMENT=PATH per segment "
+        "(e.g. S=/path/S.fasta). Mutually exclusive with --reference.",
+    ),
+    click.option(
         "--primer-scheme",
-        help="Complete path for the primer scheme bed file (amplicon sequencing only).",
-    )
-
-    consensus_parser.add_argument(
+        default=None,
+        help="Path to primer scheme BED file (amplicon sequencing only).",
+    ),
+    click.option(
         "--minimum-coverage",
-        type=int,
-        help="Minimum sequencing coverage for including base in consensus sequence (Default = 20)",
-        nargs="?",
-        const=1,
         default=20,
-    )
-
-    consensus_parser.add_argument(
-        "--adapters",
-        help="Complete path for adapters sequences in fasta format [Illumina QC]",
-    )
-
-    consensus_parser.add_argument(
+        show_default=True,
+        type=int,
+        help="Minimum coverage depth for consensus base inclusion.",
+    ),
+    click.option(
         "--minimum-read-length",
-        type=int,
-        help="Minimum read length threshold (Default = 50)",
-        nargs="?",
-        const=1,
         default=50,
-    )
-
-    # nanopore specific arguments
-    consensus_parser.add_argument(
-        "--chunk-size",
+        show_default=True,
         type=int,
-        help="Size of chunks to process (clair3) (Default = 10000)",
-        nargs="?",
-        const=1,
-        default=10000,
-    )
-
-    consensus_parser.add_argument(
-        "--clair3-model",
-        type=str,
-        help="Model to use for variant calling (clair3) (Default = r1041_e82_400bps_sup_v500)",
-        nargs="?",
-        const=1,
-        default="r1041_e82_400bps_sup_v500",
-    )
-
-    consensus_parser.add_argument(
-        "--variant-quality",
+        help="Minimum read length threshold.",
+    ),
+    click.option(
+        "--threads",
+        default=1,
+        show_default=True,
         type=int,
-        help="Minimum variant quality to call a variant into consensus (clair3) (Default = 20)",
-        nargs="?",
-        const=1,
-        default=20,
-    )
-
-    consensus_parser.add_argument(
-        "--variant-depth",
+        help="Threads for individual tasks.",
+    ),
+    click.option(
+        "--threads-total",
+        default=1,
+        show_default=True,
         type=int,
-        help="Minimum variant depth (alt allele depth) to call a variant into consensus (clair3) (Default = 10) [Nanopore]",
-        nargs="?",
-        const=1,
-        default=10,
-    )
+        help="Total threads for the entire workflow.",
+    ),
+    click.option(
+        "--create-config-only",
+        is_flag=True,
+        default=False,
+        help="Only create the config file; do not run the workflow.",
+    ),
+]
 
-    consensus_parser.add_argument(
-        "--minimum-map-quality",
-        type=int,
-        help="Minimum map quality to call a variant into consensus (clair3) (Default = 30)",
-        nargs="?",
-        const=1,
-        default=30,
+
+def _add_common_options(func):
+    """Decorator that stacks all shared options onto a click command."""
+    for option in reversed(_COMMON_OPTIONS):
+        func = option(func)
+    return func
+
+
+def _generate_resource_options(rules: list) -> list:
+    """Generate click options for CPUs and RAM for a list of rules."""
+    options = []
+    for rule in rules:
+        cmd_rule = rule.replace("_", "-")
+        options.append(
+            click.option(
+                f"--{cmd_rule}-cpus",
+                default=ResourceDefaults.DEFAULT_CPUS,
+                show_default=True,
+                type=int,
+                help=f"Threads for {rule} rule.",
+            )
+        )
+        options.append(
+            click.option(
+                f"--{cmd_rule}-ram",
+                default=ResourceDefaults.DEFAULT_RAM,
+                show_default=True,
+                type=int,
+                help=f"RAM (GB) for {rule} rule.",
+            )
+        )
+    return options
+
+
+def _add_resource_options(rules: list):
+    """Decorator to add resource options to a click command."""
+
+    def decorator(func):
+        for option in reversed(_generate_resource_options(rules)):
+            func = option(func)
+        return func
+
+    return decorator
+
+
+@click.group(name="consensus")
+def consensus() -> None:
+    """Reference-guided consensus genome assembly pipeline.
+
+    \b
+    Sub-commands branch on input data type:
+    * illumina  paired-end short reads (fastp + minimap2 + LoFreq)
+    * nanopore  long reads (minimap2 + Clair3)
+
+    Run ``viralunity consensus <data_type> --help`` for the full option set.
+    """
+
+
+@consensus.command("illumina")
+@_add_common_options
+@_add_resource_options(ResourceDefaults.CONSENSUS_ILLUMINA_RULES)
+@click.option("--adapters", default=None, help="Path to adapter sequences FASTA [fastp QC].")
+@click.option(
+    "--trim-head",
+    default=0,
+    show_default=True,
+    type=int,
+    help="Bases to trim from 5' end [fastp QC].",
+)
+@click.option(
+    "--trim-tail",
+    default=0,
+    show_default=True,
+    type=int,
+    help="Bases to trim from 3' end [fastp QC].",
+)
+@click.option(
+    "--cut-front-mean-quality",
+    default=10,
+    show_default=True,
+    type=int,
+    help="cut_front mean quality threshold [fastp].",
+)
+@click.option(
+    "--cut-tail-mean-quality",
+    default=10,
+    show_default=True,
+    type=int,
+    help="cut_tail mean quality threshold [fastp].",
+)
+@click.option(
+    "--cut-right-window-size",
+    default=4,
+    show_default=True,
+    type=int,
+    help="cut_right window size [fastp].",
+)
+@click.option(
+    "--cut-right-mean-quality",
+    default=15,
+    show_default=True,
+    type=int,
+    help="cut_right mean quality threshold [fastp].",
+)
+@click.option(
+    "--af-threshold",
+    default=0.51,
+    show_default=True,
+    type=float,
+    help="Minimum allele frequency to call a variant into consensus.",
+)
+@click.option(
+    "--af-isnv-threshold",
+    default=0.0,
+    show_default=True,
+    type=float,
+    help="Minimum allele frequency to call a variant into iSNV analysis.",
+)
+@click.option(
+    "--run-isnv",
+    is_flag=True,
+    default=False,
+    help="Run intra-host SNV analysis with LoFreq.",
+)
+def consensus_illumina(
+    sample_sheet: str,
+    config_file: str,
+    output: str,
+    run_name: str,
+    reference: Optional[str],
+    segmented_reference: Tuple[str, ...],
+    primer_scheme: Optional[str],
+    minimum_coverage: int,
+    minimum_read_length: int,
+    threads: int,
+    threads_total: int,
+    create_config_only: bool,
+    adapters: Optional[str],
+    trim_head: int,
+    trim_tail: int,
+    cut_front_mean_quality: int,
+    cut_tail_mean_quality: int,
+    cut_right_window_size: int,
+    cut_right_mean_quality: int,
+    af_threshold: float,
+    af_isnv_threshold: float,
+    run_isnv: bool,
+    **kwargs: Any,
+) -> None:
+    """Run consensus pipeline for Illumina paired-end data.
+
+    Performs adapter trimming (fastp), reference alignment (minimap2),
+    optional primer trimming (ivar), variant calling (LoFreq), and consensus
+    generation. Enable intra-host SNV analysis with ``--run-isnv``.
+
+    For segmented references (e.g. influenza), pass each segment as
+    ``--segmented-reference SEGMENT=PATH``; otherwise use ``--reference``.
+    """
+    args = dict(
+        data_type="illumina",
+        sample_sheet=sample_sheet,
+        config_file=config_file,
+        output=output,
+        run_name=run_name,
+        reference=reference,
+        segmented_reference=_parse_segmented_reference(segmented_reference),
+        primer_scheme=primer_scheme,
+        minimum_coverage=minimum_coverage,
+        minimum_read_length=minimum_read_length,
+        threads=threads,
+        threads_total=threads_total,
+        create_config_only=create_config_only,
+        adapters=adapters,
+        trim_head=trim_head,
+        trim_tail=trim_tail,
+        cut_front_mean_quality=cut_front_mean_quality,
+        cut_tail_mean_quality=cut_tail_mean_quality,
+        cut_right_window_size=cut_right_window_size,
+        cut_right_mean_quality=cut_right_mean_quality,
+        af_threshold=af_threshold,
+        af_isnv_threshold=af_isnv_threshold,
+        run_isnv=run_isnv,
     )
-    
- 
+    args.update(kwargs)
+    raise SystemExit(consensus_main(args))
+
+
+@consensus.command("nanopore")
+@_add_common_options
+@_add_resource_options(ResourceDefaults.CONSENSUS_NANOPORE_RULES)
+@click.option(
+    "--af-threshold",
+    default=0.51,
+    show_default=True,
+    type=float,
+    help="Minimum allele frequency to call a variant into consensus.",
+)
+@click.option(
+    "--chunk-size",
+    default=10000,
+    show_default=True,
+    type=int,
+    help="Chunk size for clair3 processing.",
+)
+@click.option(
+    "--clair3-model",
+    default="r1041_e82_400bps_sup_v500",
+    show_default=True,
+    help="Clair3 model for variant calling.",
+)
+@click.option(
+    "--variant-quality",
+    default=20,
+    show_default=True,
+    type=int,
+    help="Minimum variant quality (clair3).",
+)
+@click.option(
+    "--variant-depth",
+    default=10,
+    show_default=True,
+    type=int,
+    help="Minimum alt allele depth to call variant (clair3).",
+)
+@click.option(
+    "--minimum-map-quality",
+    default=30,
+    show_default=True,
+    type=int,
+    help="Minimum mapping quality (clair3).",
+)
+def consensus_nanopore(
+    sample_sheet: str,
+    config_file: str,
+    output: str,
+    run_name: str,
+    reference: Optional[str],
+    segmented_reference: Tuple[str, ...],
+    primer_scheme: Optional[str],
+    minimum_coverage: int,
+    minimum_read_length: int,
+    threads: int,
+    threads_total: int,
+    create_config_only: bool,
+    af_threshold: float,
+    chunk_size: int,
+    clair3_model: str,
+    variant_quality: int,
+    variant_depth: int,
+    minimum_map_quality: int,
+    **kwargs: Any,
+) -> None:
+    """Run consensus pipeline for Nanopore long-read data.
+
+    Performs reference alignment (minimap2), variant calling (Clair3 with a
+    user-selectable model via ``--clair3-model``), and consensus generation.
+    Reads shorter than ``--minimum-read-length`` are filtered upstream.
+
+    For segmented references (e.g. influenza), pass each segment as
+    ``--segmented-reference SEGMENT=PATH``; otherwise use ``--reference``.
+    """
+    args = dict(
+        data_type="nanopore",
+        sample_sheet=sample_sheet,
+        config_file=config_file,
+        output=output,
+        run_name=run_name,
+        reference=reference,
+        segmented_reference=_parse_segmented_reference(segmented_reference),
+        primer_scheme=primer_scheme,
+        minimum_coverage=minimum_coverage,
+        minimum_read_length=minimum_read_length,
+        threads=threads,
+        threads_total=threads_total,
+        create_config_only=create_config_only,
+        af_threshold=af_threshold,
+        chunk_size=chunk_size,
+        clair3_model=clair3_model,
+        variant_quality=variant_quality,
+        variant_depth=variant_depth,
+        minimum_map_quality=minimum_map_quality,
+    )
+    args.update(kwargs)
+    raise SystemExit(consensus_main(args))

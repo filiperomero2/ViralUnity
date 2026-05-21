@@ -1,9 +1,24 @@
 SEGMENT_WILDCARD = ""
-REFERENCE = config["reference"]
+rule sanitize_reference:
+    conda:
+        "envs/clair3.yaml"
+    input: config["reference"]
+    output: 
+        fasta = config["output"] + "reference/reference.sanitized.fasta",
+        fai = config["output"] + "reference/reference.sanitized.fasta.fai"
+    shell:
+        """
+        set -euo pipefail
+        mkdir -p $(dirname {output.fasta})
+        sed '/^>/s/[\\/|,~ ]/_/g' {input} > {output.fasta}
+        samtools faidx {output.fasta}
+        """
+
+REFERENCE = rules.sanitize_reference.output.fasta
 
 rule all:
     input:
-        config['output'] + "assembly/consensus/final_consensus/aln.consensus.fasta",
+        config['output'] + "assembly/consensus/final_consensus/samples_alignment.fasta",
         config['output'] + "benchmark.tsv"
 
 def get_map_input_fastqs(wildcards):
@@ -13,55 +28,31 @@ def get_map_input_fastqs(wildcards):
 include: "rules/alignment_nanopore.smk"
 include: "rules/consensus_nanopore.smk"
 include: "rules/stats.smk"
+include: "rules/consensus_nanopore_common.smk"
 
-
-# The calculate_assembly_stats.py expects three fastq inputs: raw_r1, raw_r2 and trimmed
-# Here we employ a workaround by passing the same fastq file for raw_r1 and raw_r2
-# in Nanopore scenario
-rule calculate_assembly_statistics:
-    input:
-        get_map_input_fastqs,
-        get_map_input_fastqs,
-        get_map_input_fastqs,
-        rules.trim_primer_sequences.output.bam,
-        rules.calculate_coverage_basewise.output.table_cov,
-        rules.rename_sequences.output.consensus_renamed
-    output:
-        stats_summary = temp(config['output'] + "assembly/coverage_stats/{sample}.stats_summary.csv")
-    params:
-        minimum_depth = config["minimum_depth"]
-    script:
-        "calculate_assembly_stats.py"
+# ``calculate_assembly_statistics`` and ``align_consensus_to_reference_genome``
+# are defined in the included ``consensus_nanopore_common.smk``. The
+# ``calculate_assembly_stats.py`` helper expects three fastq inputs
+# (raw_r1, raw_r2, trimmed) — Nanopore passes the same fastq for all three.
 
 rule unify_assembly_statistics_reports:
+    conda:
+        "envs/utils.yaml"
     input:
         reports = expand(rules.calculate_assembly_statistics.output.stats_summary, sample=config["samples"])
     output:
         unified_stats_summary = config['output'] + "assembly/assembly_stats_summary.csv"
     shell:
         """
+        set -euo pipefail
         echo \"sample_name,number_of_reads,number_of_trim_paired_reads,number_of_mapped_reads,average_depth,percentage_above_10x,percentage_above_100x,percentage_above_1000x,horizontal_coverage\" > {output.unified_stats_summary} ;
         cat {input.reports} >> {output.unified_stats_summary}
         """
 
 
-rule align_consensus_to_reference_genome:
-    input:
-        rules.unify_assembly_statistics_reports.output.unified_stats_summary
-    output:
-        aln_consensus = config['output'] + "assembly/consensus/final_consensus/aln.consensus.fasta"
-    params:
-        path_consensus = config['output'] + "assembly/consensus/final_consensus/",
-        reference = REFERENCE
-    shell:
-        """
-        cat {params.reference} {params.path_consensus}/*.renamed.fasta > {params.path_consensus}/consensus.fasta; 
-        minimap2 -a --sam-hit-only --secondary=no --score-N=0 {params.reference} {params.path_consensus}/consensus.fasta -o {params.path_consensus}/aln.consensus.sam; 
-        gofasta sam toMultiAlign --pad -s {params.path_consensus}/aln.consensus.sam -o {output.aln_consensus}; 
-        sed '/^>/ ! s/-/N/g' {output.aln_consensus} > {params.path_consensus}/aln.consensus.indelsMasked.fasta
-        """
-
 rule organize_files:
+    conda:
+        "envs/utils.yaml"
     input:
         vcf_files = expand(rules.infer_consensus_sequence.output.vcf, sample=config["samples"]),
         vcf_raw_files = expand(rules.infer_consensus_sequence.output.vcf_raw, sample=config["samples"]),
@@ -76,6 +67,7 @@ rule organize_files:
         samples = " ".join(config["samples"].keys())
     shell:
         """
+        set -euo pipefail
         mkdir -p {params.outdir}samples/
         for sample in {params.samples}; do
             mkdir -p {params.outdir}samples/$sample;
@@ -109,6 +101,7 @@ rule organize_files:
             ln -sf $PWD/$_file.bai {params.outdir}samples/$sample/trimmed_mapped_reads.bam.bai;
         done
 
+        # Benchmark aggregation
         echo -e "sample\\ttask\\tseconds\\th:m:s\\tmax_rss\\tmax_vms\\tmax_uss\\tmax_pss\\tio_in\\tio_out\\tmean_load\\tcpu_time" > {output}
         find {params.outdir} -name "*.benchmark.txt" | while read -r file; do
             task=$(basename $(dirname $file))
