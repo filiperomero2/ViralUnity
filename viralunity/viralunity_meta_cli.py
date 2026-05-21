@@ -119,7 +119,7 @@ _COMMON_META_OPTIONS = [
     ),
     click.option(
         "--evalue",
-        default=0.001,
+        default=0.0000000001,
         show_default=True,
         type=float,
         help="Diamond E-value threshold.",

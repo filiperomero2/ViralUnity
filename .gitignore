@@ -79,6 +79,8 @@ old_*
 my_results*
 scratch/
 teste_*
+my_test_data/
+tmp_*
 
 # Local test assets
 test/dryrun_output/
