@@ -11,11 +11,8 @@ import os
 from pathlib import Path
 from typing import Any, Dict
 
-from snakemake import snakemake
-
-from viralunity.config_generator import ConfigGenerator
+from viralunity import _orchestrator
 from viralunity.constants import DataType, ResourceDefaults
-from viralunity.exceptions import ValidationError
 from viralunity.validators import (
     META_PATH_ARG_KEYS,
     get_samples_from_args,
@@ -72,19 +69,8 @@ def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None
     Raises:
         ValidationError: If config generation fails
     """
-    logger.info("Generating configuration file")
-
     data_type = args["data_type"]
-    run_name = args["run_name"]
-
-    generator = ConfigGenerator(args["config_file"])
-
-    # Add samples
-    generator.add_samples(samples, data_type)
-
-    # Add common settings
-    generator.add_output(args["output"], run_name)
-    generator.add_threads(args["threads"])
+    generator = _orchestrator.start_config(args, samples)
 
     # Add metagenomics-specific settings
     negative = args.get("negative_controls")
@@ -164,77 +150,23 @@ def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None
 
 
 def run_snakemake_workflow(args: Dict[str, Any]) -> bool:
-    """Run the Snakemake workflow.
-
-    Args:
-        args: Dictionary of pipeline arguments
-
-    Returns:
-        True if workflow completed successfully, False otherwise
-    """
-    logger.info("Starting Snakemake workflow")
-
+    """Run the Snakemake workflow for the metagenomics pipeline."""
     thisdir = os.path.abspath(os.path.dirname(__file__))
     workflow_path = os.path.join(thisdir, "scripts", f"metagenomics_{args['data_type']}.smk")
-
-    if not os.path.isfile(workflow_path):
-        raise ValidationError(f"Workflow file not found: {workflow_path}")
-
-    successful = snakemake(
-        workflow_path,
-        configfiles=[args["config_file"]],
-        cores=args["threads_total"],
-        use_conda=True,
-        targets=["all"],
-    )
-
-    if successful:
-        logger.info("Snakemake workflow completed successfully")
-    else:
-        logger.error("Snakemake workflow failed")
-
-    return successful
+    return _orchestrator.run_workflow(workflow_path, args)
 
 
 def main(args: Dict[str, Any]) -> int:
     """Main entry point for the metagenomics pipeline.
 
-    Args:
-        args: Dictionary of pipeline arguments
-
     Returns:
-        Exit code (0 for success, 1 for failure)
+        Exit code (0 for success, 1 for failure).
     """
-    try:
-        # Make every user-supplied path absolute relative to the shell's cwd
-        # *before* validation or config generation looks at them. This means
-        # the meaning of e.g. ``--host-reference databases/host/host.fasta``
-        # no longer depends on where the user happens to place
-        # ``--config-file``.
-        resolve_path_args(args, META_PATH_ARG_KEYS)
-
-        # Validate arguments
-        samples = validate_args(args)
-
-        if samples is None or len(samples) == 0:
-            logger.warning("No samples were provided.")
-            return 0
-
-        # Generate config file
-        generate_config_file(samples, args)
-
-        # If only creating config, exit early
-        if args.get("create_config_only", False):
-            logger.info("Config file created. Exiting without running workflow.")
-            return 0
-
-        # Run workflow
-        successful = run_snakemake_workflow(args)
-        return 0 if successful else 1
-
-    except ValidationError as e:
-        logger.error(f"Validation error: {e}")
-        return 1
-    except Exception as e:
-        logger.exception(f"Unexpected error: {e}")
-        return 1
+    return _orchestrator.run_pipeline(
+        args,
+        resolve_paths=lambda a: resolve_path_args(a, META_PATH_ARG_KEYS),
+        validate=validate_args,
+        generate_config=generate_config_file,
+        run_workflow_fn=run_snakemake_workflow,
+        skip_when_no_samples=True,
+    )

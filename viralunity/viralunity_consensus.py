@@ -11,11 +11,8 @@ import os
 import sys
 from typing import Any, Dict
 
-from snakemake import snakemake
-
-from viralunity.config_generator import ConfigGenerator
+from viralunity import _orchestrator
 from viralunity.constants import DataType, ResourceDefaults
-from viralunity.exceptions import ValidationError
 from viralunity.validators import (
     CONSENSUS_PATH_ARG_KEYS,
     get_samples_from_args,
@@ -60,6 +57,12 @@ def validate_args(args: Dict[str, Any]) -> Dict[str, list]:
     # Validate data-type specific requirements
     validate_illumina_requirements(args)
 
+    # ``validate_consensus_requirements`` parses ``--segmented-reference``
+    # (``L=/path/L.fasta``) into a dict stored under ``reference``. Now
+    # that the dict exists, resolve its values to absolute paths.
+    if isinstance(args.get("reference"), dict):
+        resolve_path_args(args, ("reference",))
+
     logger.info("All arguments validated successfully")
     return samples
 
@@ -74,19 +77,8 @@ def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None
     Raises:
         ValidationError: If config generation fails
     """
-    logger.info("Generating configuration file")
-
     data_type = args["data_type"]
-    run_name = args["run_name"]
-
-    generator = ConfigGenerator(args["config_file"])
-
-    # Add samples
-    generator.add_samples(samples, data_type)
-
-    # Add common settings
-    generator.add_output(args["output"], run_name)
-    generator.add_threads(args["threads"])
+    generator = _orchestrator.start_config(args, samples)
 
     # Add consensus-specific settings
     generator.add_consensus_settings(
@@ -143,83 +135,25 @@ def generate_config_file(samples: Dict[str, list], args: Dict[str, Any]) -> None
 
 
 def run_snakemake_workflow(args: Dict[str, Any]) -> bool:
-    """Run the Snakemake workflow.
-
-    Args:
-        args: Dictionary of pipeline arguments
-
-    Returns:
-        True if workflow completed successfully, False otherwise
-    """
-    logger.info("Starting Snakemake workflow")
-
+    """Run the Snakemake workflow for the consensus pipeline."""
     thisdir = os.path.abspath(os.path.dirname(__file__))
-
-    # Select segmented workflow variant when reference is a dict
     segmented_suffix = "_segmented" if isinstance(args.get("reference"), dict) else ""
     workflow_path = os.path.join(
         thisdir, "scripts", f"consensus_{args['data_type']}{segmented_suffix}.smk"
     )
-
-    if not os.path.isfile(workflow_path):
-        raise ValidationError(f"Workflow file not found: {workflow_path}")
-
-    successful = snakemake(
-        workflow_path,
-        configfiles=[args["config_file"]],
-        cores=args["threads_total"],
-        use_conda=True,
-        targets=["all"],
-    )
-
-    if successful:
-        logger.info("Snakemake workflow completed successfully")
-    else:
-        logger.error("Snakemake workflow failed")
-
-    return successful
+    return _orchestrator.run_workflow(workflow_path, args)
 
 
 def main(args: Dict[str, Any]) -> int:
     """Main entry point for the consensus pipeline.
 
-    Args:
-        args: Dictionary of pipeline arguments
-
     Returns:
-        Exit code (0 for success, 1 for failure)
+        Exit code (0 for success, 1 for failure).
     """
-    try:
-        # Make every user-supplied path absolute relative to the shell's cwd
-        # before anything else looks at them. ``segmented_reference`` is
-        # resolved later (after the validator parses ``SEGMENT=PATH``
-        # entries into a dict).
-        resolve_path_args(args, CONSENSUS_PATH_ARG_KEYS)
-
-        # Validate arguments
-        samples = validate_args(args)
-
-        # ``validate_consensus_requirements`` parses --segmented-reference
-        # ("L=/path/L.fasta") into a dict stored under ``reference``. Resolve
-        # that dict's values now that it exists.
-        if isinstance(args.get("reference"), dict):
-            resolve_path_args(args, ("reference",))
-
-        # Generate config file
-        generate_config_file(samples, args)
-
-        # If only creating config, exit early
-        if args.get("create_config_only", False):
-            logger.info("Config file created. Exiting without running workflow.")
-            return 0
-
-        # Run workflow
-        successful = run_snakemake_workflow(args)
-        return 0 if successful else 1
-
-    except ValidationError as e:
-        logger.error(f"Validation error: {e}")
-        return 1
-    except Exception as e:
-        logger.exception(f"Unexpected error: {e}")
-        return 1
+    return _orchestrator.run_pipeline(
+        args,
+        resolve_paths=lambda a: resolve_path_args(a, CONSENSUS_PATH_ARG_KEYS),
+        validate=validate_args,
+        generate_config=generate_config_file,
+        run_workflow_fn=run_snakemake_workflow,
+    )

@@ -218,7 +218,7 @@ class TestMetaWorkdirUsesCwd(unittest.TestCase):
             return True
 
         with patch(
-            "viralunity.viralunity_meta.snakemake", side_effect=fake_snakemake
+            "viralunity._orchestrator.snakemake", side_effect=fake_snakemake
         ), tempfile.TemporaryDirectory() as tmp:
             tmp_real = os.path.realpath(tmp)
             old_cwd = os.getcwd()
