@@ -79,3 +79,19 @@ ignore = [
 # Snakemake injects a `snakemake` global into `script:` files at runtime.
 # Ruff cannot see this, so silence F821 for those files.
 "viralunity/scripts/python/*.py" = ["F821"]
+
+[tool.mypy]
+python_version = "3.8"
+ignore_missing_imports = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+# Snakemake injects a `snakemake` global into `script:` files at runtime.
+module = "viralunity.scripts.python.*"
+ignore_errors = true
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
+python_files = ["*_test.py"]
+python_classes = ["Test_*", "Test*"]
+python_functions = ["test_*"]
