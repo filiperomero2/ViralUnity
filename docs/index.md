@@ -24,6 +24,7 @@ ViralUnity runs on *nix systems and is able to process entire sequencing runs in
 :maxdepth: 2
 
 installation
+tutorial/index
 usage
 commands
 output
