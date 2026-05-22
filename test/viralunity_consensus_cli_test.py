@@ -1,39 +1,19 @@
-import argparse
+"""Tests for viralunity consensus CLI (click-based)."""
+
 import unittest
-from viralunity.viralunity_consensus_cli import fill_arg_parser_consensus
+from unittest.mock import patch
 
-class Test_FillArgParserConsensus(unittest.TestCase):
+from click.testing import CliRunner
 
-    def test_get_args_required(self):
-        args = [
-            "consensus",
-            "--run-name",
-            "test_run",
-            "--primer-scheme",
-            "scheme",
-            "--minimum-coverage",
-            "20",
-            "--adapters",
-            "--minimum-read-length",
-            "50",
-            "--trim",
-            "0",
-            "--create-config-only",
-            "--threads",
-            "1",
-            "--threads-total",
-            "1",
-        ]
-        with self.assertRaises(SystemExit):
-            parser = argparse.ArgumentParser()
-            subparsers = parser.add_subparsers()
-            fill_arg_parser_consensus(subparsers)
-            parser.parse_args(args)
+from viralunity.viralunity_consensus_cli import consensus
 
-    def test_required_args_success_when_only_required_set(self):
-        args = [
-            "consensus",
-            "--data-type",
+
+class Test_ConsensusIlluminaCommand(unittest.TestCase):
+    """Tests for `viralunity consensus illumina`."""
+
+    def setUp(self):
+        self.runner = CliRunner()
+        self._required = [
             "illumina",
             "--sample-sheet",
             "sample_sheet.csv",
@@ -44,26 +24,98 @@ class Test_FillArgParserConsensus(unittest.TestCase):
             "--reference",
             "reference.fasta",
         ]
-        parser = argparse.ArgumentParser()
-        subparsers = parser.add_subparsers()
-        fill_arg_parser_consensus(subparsers)
-        readArgs = vars(parser.parse_args(args))
-        self.assertDictContainsSubset(
+
+    def _invoke(self, extra_args=None):
+        args = self._required + (extra_args or [])
+        with patch("viralunity.viralunity_consensus_cli.consensus_main", return_value=0):
+            return self.runner.invoke(consensus, args, catch_exceptions=False)
+
+    def test_required_args_missing_causes_error(self):
+        """Missing required args should exit with non-zero code."""
+        result = self.runner.invoke(consensus, ["illumina"])
+        self.assertNotEqual(result.exit_code, 0)
+
+    def test_required_args_success_with_reference(self):
+        result = self._invoke()
+        self.assertEqual(result.exit_code, 0, result.output)
+
+    def test_required_args_success_without_reference(self):
+        """Reference flags are optional at parse time; validated by core logic."""
+        args = [
+            "illumina",
+            "--sample-sheet",
+            "sample_sheet.csv",
+            "--config-file",
+            "config_file.yaml",
+            "--output",
+            "output_dir",
+        ]
+        with patch("viralunity.viralunity_consensus_cli.consensus_main", return_value=0):
+            result = self.runner.invoke(consensus, args, catch_exceptions=False)
+        self.assertEqual(result.exit_code, 0, result.output)
+
+    def test_required_args_success_with_segmented_reference(self):
+        args = [
+            "illumina",
+            "--sample-sheet",
+            "sample_sheet.csv",
+            "--config-file",
+            "config_file.yaml",
+            "--output",
+            "output_dir",
+            "--segmented-reference",
+            "S=/path/to/S.fasta",
+            "--segmented-reference",
+            "L=/path/to/L.fasta",
+        ]
+        with patch(
+            "viralunity.viralunity_consensus_cli.consensus_main", return_value=0
+        ) as mock_main:
+            result = self.runner.invoke(consensus, args, catch_exceptions=False)
+        self.assertEqual(result.exit_code, 0, result.output)
+        called_args = mock_main.call_args[0][0]
+        self.assertEqual(
+            called_args["segmented_reference"],
             {
-                "data_type": "illumina",
-                "sample_sheet": "sample_sheet.csv",
-                "config_file": "config_file.yaml",
-                "output": "output_dir",
-                "reference": "reference.fasta",
+                "S": "/path/to/S.fasta",
+                "L": "/path/to/L.fasta",
             },
-            readArgs,
         )
 
     def test_default_values_optional_args(self):
-        args = [
-            "consensus",
-            "--data-type",
-            "illumina",
+        """Check that all optional args have correct defaults for illumina."""
+        with patch(
+            "viralunity.viralunity_consensus_cli.consensus_main", return_value=0
+        ) as mock_main:
+            result = self.runner.invoke(consensus, self._required, catch_exceptions=False)
+        self.assertEqual(result.exit_code, 0, result.output)
+        args = mock_main.call_args[0][0]
+        self.assertEqual(args["data_type"], "illumina")
+        self.assertEqual(args["run_name"], "undefined")
+        self.assertIsNone(args["adapters"])
+        self.assertEqual(args["trim_head"], 0)
+        self.assertEqual(args["trim_tail"], 0)
+        self.assertEqual(args["cut_front_mean_quality"], 10)
+        self.assertEqual(args["cut_tail_mean_quality"], 10)
+        self.assertEqual(args["cut_right_window_size"], 4)
+        self.assertEqual(args["cut_right_mean_quality"], 15)
+        self.assertEqual(args["af_threshold"], 0.51)
+        self.assertEqual(args["af_isnv_threshold"], 0.0)
+        self.assertFalse(args["run_isnv"])
+        self.assertEqual(args["minimum_coverage"], 20)
+        self.assertEqual(args["minimum_read_length"], 50)
+        self.assertEqual(args["threads"], 1)
+        self.assertEqual(args["threads_total"], 1)
+        self.assertFalse(args["create_config_only"])
+
+
+class Test_ConsensusNanoporeCommand(unittest.TestCase):
+    """Tests for `viralunity consensus nanopore`."""
+
+    def setUp(self):
+        self.runner = CliRunner()
+        self._required = [
+            "nanopore",
             "--sample-sheet",
             "sample_sheet.csv",
             "--config-file",
@@ -73,34 +125,27 @@ class Test_FillArgParserConsensus(unittest.TestCase):
             "--reference",
             "reference.fasta",
         ]
-        parser = argparse.ArgumentParser()
-        subparsers = parser.add_subparsers()
-        fill_arg_parser_consensus(subparsers)
-        readArgs = vars(parser.parse_args(args))
-        
-        self.assertIn("func", readArgs)
-        self.assertIsNotNone(readArgs["func"])
-        readArgs.pop("func")  # Remove 'func' before comparison
-        
-        self.assertDictEqual(
-            readArgs,
-            {
-                "adapters": None,
-                "config_file": "config_file.yaml",
-                "create_config_only": False,
-                "data_type": "illumina",
-                "minimum_coverage": 20,
-                "minimum_read_length": 50,
-                "output": "output_dir",
-                "primer_scheme": None,
-                "reference": "reference.fasta",
-                "run_name": "undefined",
-                "sample_sheet": "sample_sheet.csv",
-                "threads": 1,
-                "threads_total": 1,
-                "trim": 0,
-            },
-        )
+
+    def test_required_args_success(self):
+        with patch("viralunity.viralunity_consensus_cli.consensus_main", return_value=0):
+            result = self.runner.invoke(consensus, self._required, catch_exceptions=False)
+        self.assertEqual(result.exit_code, 0, result.output)
+
+    def test_default_values_optional_args(self):
+        """Check nanopore-specific defaults."""
+        with patch(
+            "viralunity.viralunity_consensus_cli.consensus_main", return_value=0
+        ) as mock_main:
+            result = self.runner.invoke(consensus, self._required, catch_exceptions=False)
+        self.assertEqual(result.exit_code, 0, result.output)
+        args = mock_main.call_args[0][0]
+        self.assertEqual(args["data_type"], "nanopore")
+        self.assertEqual(args["af_threshold"], 0.51)
+        self.assertEqual(args["chunk_size"], 10000)
+        self.assertEqual(args["clair3_model"], "r1041_e82_400bps_sup_v500")
+        self.assertEqual(args["variant_quality"], 20)
+        self.assertEqual(args["variant_depth"], 10)
+        self.assertEqual(args["minimum_map_quality"], 30)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,4 @@
+recursive-include viralunity/scripts *.yaml
+recursive-include viralunity/scripts *.smk
+recursive-exclude viralunity/scripts __pycache__
+recursive-exclude viralunity/scripts *.pyc

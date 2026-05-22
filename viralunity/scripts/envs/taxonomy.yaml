@@ -1,0 +1,9 @@
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.11
+  - kraken2=2.1
+  - krona=2.8.1
+  - diamond=2.1

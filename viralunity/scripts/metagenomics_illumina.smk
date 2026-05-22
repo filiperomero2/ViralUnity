@@ -1,128 +1,275 @@
-rule all:
-    input:
-        config['output'] + "qc/reports/multiqc_report.html"
+def get_exclude_taxids():
+    """TaxIDs to exclude from classification outputs (e.g. human 9606, unclassified 0)."""
+    exclude = []
+    if config.get("remove_human_reads", False):
+        exclude.append("9606")
+    if config.get("remove_unclassified_reads", False):
+        exclude.append("0")
+    return exclude
+
+EXCLUDE_TAXIDS = get_exclude_taxids()
+
+def get_sample_to_fastq():
+    """Map each sample to its merged host-filtered FASTQ for read counting (RPM)."""
+    return {s: config["output"] + "host_filtered/" + s + ".merged.fastq.gz" for s in config["samples"]}
 
 def get_map_input_fastqs(wildcards):
-    reads = config["samples"][wildcards.sample].split()
-    return(reads)
+    """Return [R1, R2] for Trimmomatic / host filtering (Illumina paired-end)."""
+    paths = config["samples"][wildcards.sample].strip().split()
+    return paths
 
-def get_classification_filter():
-    if config['remove_human_reads'] and config['remove_unclassified_reads']:
-        my_filter = "\t9606|\t0"
-    if not config['remove_human_reads'] and config['remove_unclassified_reads']:
-        my_filter = "\t0"
-    if config['remove_human_reads'] and not config['remove_unclassified_reads']:
-        my_filter = "\t9606"
-    if not config['remove_human_reads'] and not config['remove_unclassified_reads']:
-        my_filter = " "
-    print(my_filter)
-    return(my_filter)
+def get_final_input_fastq(wildcards):
+    """Single merged FASTQ per sample for read-level Kraken2/Diamond."""
+    return config["output"] + "host_filtered/" + wildcards.sample + ".merged.fastq.gz"
 
-my_filter = get_classification_filter()
+host_filtering_enabled = (config.get("host_reference", "NA") != "NA") or (config.get("deacon_index", "NA") not in ("NA", "", None))
+dehost_with_deacon = config.get("deacon_index", "NA") not in ("NA", "", None)
+run_denovo = config.get("run_denovo_assembly", False)
+run_k2_reads = config.get("run_kraken2_reads", True)
+run_k2_contigs = config.get("run_kraken2_contigs", True)
+run_diamond_reads = config.get("run_diamond_reads", False)
+run_diamond_contigs = config.get("run_diamond_contigs", False)
+has_negative_controls = bool(config.get("negative_controls", []))
 
-rule perform_qc:
+diamond_db_input_path = config.get("diamond_database", "NA")
+if diamond_db_input_path != "NA":
+    diamond_db_is_ready = diamond_db_input_path.endswith(".dmnd")
+    diamond_db_file = diamond_db_input_path if diamond_db_is_ready else diamond_db_input_path + ".dmnd"
+else:
+    diamond_db_is_ready = False
+    diamond_db_file = "NA"
+
+def _all_inputs():
+    targets = [
+        config["output"] + "qc/reports/multiqc_report.html",
+        config["output"] + "benchmark.tsv"
+    ]
+    if run_k2_reads:
+        if has_negative_controls:
+            targets.append(config["output"] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_taxa_summary_RPM.bleed.neg.tsv")
+        else:
+            targets.append(config["output"] + "metagenomics/taxonomic_assignments/kraken2_reads/kraken2_reads_taxa_summary_RPM.bleed.tsv")
+        targets.extend(expand(
+            config["output"] + "metagenomics/taxonomic_assignments/kraken2_reads/reports/{sample}.output.filtered.krona.html",
+            sample=config["samples"],
+        ))
+    if run_denovo and run_k2_contigs:
+        if has_negative_controls:
+            targets.append(config["output"] + "metagenomics/taxonomic_assignments/kraken2_contigs/kraken2_contigs_taxa_summary_RPM.bleed.neg.tsv")
+        else:
+            targets.append(config["output"] + "metagenomics/taxonomic_assignments/kraken2_contigs/kraken2_contigs_taxa_summary_RPM.bleed.tsv")
+        targets.extend(expand(
+            config["output"] + "metagenomics/taxonomic_assignments/kraken2_contigs/reports/{sample}.output.filtered.krona.html",
+            sample=config["samples"],
+        ))
+    if run_diamond_reads:
+        if has_negative_controls:
+            targets.append(config["output"] + "metagenomics/taxonomic_assignments/diamond_reads/diamond_reads_taxa_summary_RPM.bleed.neg.tsv")
+        else:
+            targets.append(config["output"] + "metagenomics/taxonomic_assignments/diamond_reads/diamond_reads_taxa_summary_RPM.bleed.tsv")
+        targets.extend(expand(
+            config["output"] + "metagenomics/taxonomic_assignments/diamond_reads/reports/{sample}.diamond.filtered.krona.html",
+            sample=config["samples"],
+        ))
+    if run_denovo and run_diamond_contigs:
+        if has_negative_controls:
+            targets.append(config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary_RPM.bleed.neg.tsv")
+        else:
+            targets.append(config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/diamond_contigs_taxa_summary_RPM.bleed.tsv")
+        targets.extend(expand(
+            config["output"] + "metagenomics/taxonomic_assignments/diamond_contigs/reports/{sample}.diamond.supported.filtered.krona.html",
+            sample=config["samples"],
+        ))
+
+    if config.get("run_reference_assembly", False):
+        targets.append(config["output"] + "reference_assembly_done.txt")
+    return targets
+
+rule all:
     input:
-        get_map_input_fastqs,
-    output:
-        paired_R1 = config['output'] + "qc/data/trim.p.{sample}_R1.fastq.gz",
-        unpaired_R1 = config['output'] + "qc/data/trim.u.{sample}_R1.fastq.gz",
-        paired_R2 = config['output'] + "qc/data/trim.p.{sample}_R2.fastq.gz",
-        unpaired_R2 = config['output'] + "qc/data/trim.u.{sample}_R2.fastq.gz"
-    params:
-        minimum_length = config["minimum_length"],
-        adapters = config["adapters"],
-        trim = config["trim"]
-    threads: config["threads"]
-    log:
-        config['output'] + "logs/trimmomatic/{sample}.log"
-    benchmark:
-        config['output'] + "logs/trimmomatic/{sample}.benchmark.txt"
-    shell:
-        "trimmomatic PE -quiet -threads {threads} -phred33 {input} "
-        "{output.paired_R1} {output.unpaired_R1} "
-        "{output.paired_R2} {output.unpaired_R2} "
-        "ILLUMINACLIP:{params.adapters}:2:30:10 "
-        "LEADING:10 TRAILING:10 SLIDINGWINDOW:4:15 "
-        "HEADCROP:{params.trim} MINLEN:{params.minimum_length} 2> {log}"
+        _all_inputs(),
 
-rule generate_qc_report:
-    input:
-        config['output'] + "qc/data/trim.p.{sample}_R1.fastq.gz",
-        config['output'] + "qc/data/trim.p.{sample}_R2.fastq.gz"
-    output:
-        config['output'] + "qc/reports/trim.p.{sample}_R1_fastqc.html",
-        config['output'] + "qc/reports/trim.p.{sample}_R2_fastqc.html",
-        config['output'] + "qc/reports/trim.p.{sample}_R1_fastqc.zip",
-        config['output'] + "qc/reports/trim.p.{sample}_R2_fastqc.zip"
-    threads: config["threads"]
-    params:
-        temp = config['output']
-    shell:
-        "mkdir -p {params.temp}/qc/reports; "
-        "fastqc -q -t {threads} -o {params.temp}/qc/reports/ {input} "
+if (run_diamond_reads or run_diamond_contigs) and not diamond_db_is_ready and diamond_db_input_path != "NA":
+    rule create_diamond_db_shared:
+        input:
+            diamond_db_input_path
+        output:
+            diamond_db_file
+        log:
+            config["output"] + "logs/diamond/diamond_makedb.log"
+        benchmark:
+            config["output"] + "logs/diamond/diamond_makedb.benchmark.log"
+        conda:
+            "envs/taxonomy.yaml"
+        shell:
+            """
+            set -euo pipefail
+            mkdir -p $(dirname {output}) $(dirname {log})
+            diamond makedb --in {input} --db {output} 2> {log}
+            """
 
-rule run_kraken2:
-    input:
-        R1 = config['output'] + "qc/data/trim.p.{sample}_R1.fastq.gz",
-        R2 = config['output'] + "qc/data/trim.p.{sample}_R2.fastq.gz",
-        qc_report_R1 = config['output'] + "qc/reports/trim.p.{sample}_R1_fastqc.html",
-        qc_report_R2 = config['output'] + "qc/reports/trim.p.{sample}_R2_fastqc.html"
-    output:
-        report = config['output'] + "metagenomics/taxonomic_assignments/results/{sample}.report.txt",
-        outfile = config['output'] + "metagenomics/taxonomic_assignments/results/{sample}.output.txt",
-    threads: 2
-    params:
-        database = config['kraken2_database']
-    log:
-        config['output'] + "logs/kraken2/{sample}.log"
-    benchmark:
-        config['output'] + "logs/kraken2/{sample}.benchmark.txt"
-    shell:
-        "kraken2 --db {params.database} --threads {threads} --report-minimizer-data "
-        "--minimum-hit-group 3 --report {output.report} "
-        "--output {output.outfile} --paired {input.R1} {input.R2} 2> {log}"
+include: "rules/qc_illumina.smk"
+include: "rules/metagenomics_dehost_illumina.smk"
+include: "rules/metagenomics_kraken2_reads_illumina.smk"
+include: "rules/metagenomics_diamond_reads_illumina.smk"
+include: "rules/metagenomics_assembly_illumina.smk"
+include: "rules/metagenomics_kraken2_contigs_illumina.smk"
+include: "rules/metagenomics_diamond_contigs_illumina.smk"
+include: "rules/metagenomics_multiqc_illumina.smk"
+if config.get("run_reference_assembly", False):
+    include: "rules/metagenomics_reference_assembly.smk"
 
-rule clean_kraken2_output:
+rule organize_files:
+    conda:
+        "envs/utils.yaml"
     input:
-        config['output'] + "metagenomics/taxonomic_assignments/results/{sample}.output.txt"
+        fastp_reports = expand(rules.perform_qc.output.html, sample=config["samples"]),
+        kraken2_reads_reports = expand(rules.run_kraken2_reads.output.report, sample=config["samples"]) if run_k2_reads else [],
+        kraken2_reads_krona = expand(rules.create_krona_report_from_kraken2_reads.output, sample=config["samples"]) if run_k2_reads else [],
+        kraken2_reads_filtered_krona = expand(rules.create_filtered_krona_report_from_kraken2_reads.output, sample=config["samples"]) if run_k2_reads else [],
+        diamond_reads_tsv = expand(rules.run_diamond_reads.output.tsv, sample=config["samples"]) if run_diamond_reads else [],
+        diamond_reads_krona = expand(rules.create_krona_report_diamond_reads.output, sample=config["samples"]) if run_diamond_reads else [],
+        diamond_reads_filtered_krona = expand(rules.create_filtered_krona_report_diamond_reads.output, sample=config["samples"]) if run_diamond_reads else [],
+        host_filtered_R1 = expand(rules.remove_host_reads.output.filtered_R1, sample=config["samples"]),
+        host_filtered_R2 = expand(rules.remove_host_reads.output.filtered_R2, sample=config["samples"]),
+        megahit_contigs = expand(rules.run_megahit.output.contigs, sample=config["samples"]) if run_denovo else [],
+        kraken2_contigs_reports = expand(rules.run_kraken2_contigs.output.report, sample=config["samples"]) if run_denovo and run_k2_contigs else [],
+        kraken2_contigs_krona = expand(rules.create_krona_report_from_kraken2_contigs.output, sample=config["samples"]) if run_denovo and run_k2_contigs else [],
+        kraken2_contigs_filtered_krona = expand(rules.create_filtered_krona_report_from_kraken2_contigs.output, sample=config["samples"]) if run_denovo and run_k2_contigs else [],
+        diamond_contigs_tsv = expand(rules.diamond_filter_by_idxstats.output.filtered, sample=config["samples"]) if run_denovo and run_diamond_contigs else [],
+        diamond_contigs_krona = expand(rules.create_krona_report_diamond_contigs.output, sample=config["samples"]) if run_denovo and run_diamond_contigs else [],
+        diamond_contigs_filtered_krona = expand(rules.create_filtered_krona_report_diamond_contigs.output, sample=config["samples"]) if run_denovo and run_diamond_contigs else [],
+        viral_bams = expand(rules.remap_reads_to_viral_contigs.output.bam, sample=config["samples"]) if run_denovo and run_diamond_contigs else [],
     output:
-        config['output'] + "metagenomics/taxonomic_assignments/results/{sample}.output.krona.txt"
+        config['output'] + "benchmark.tsv"
     params:
-        to_rm = my_filter
+        outdir = config['output'],
+        samples = " ".join(config["samples"].keys())
     shell:
-        "cat {input} | cut -f 2,3 | egrep -v \"{params.to_rm}\" > {output} "
+        """
+        set -euo pipefail
+        mkdir -p {params.outdir}samples/
+        for sample in {params.samples}; do
+            mkdir -p {params.outdir}samples/$sample;
+        done
 
-rule create_krona_report:
-    input:
-        config['output'] + "metagenomics/taxonomic_assignments/results/{sample}.output.krona.txt"
-    output:
-        config['output'] + "metagenomics/taxonomic_assignments/reports/{sample}.output.krona.html"
-    params:
-        krona_database = config['krona_database']
-    log:
-        config['output'] + "logs/krona/{sample}.log"
-    benchmark:
-        config['output'] + "logs/krona/{sample}.benchmark.txt"
-    shell:
-        "ktImportTaxonomy {input} -tax {params.krona_database} -o {output} 2> {log}"
+        # QC
+        for _file in {input.fastp_reports}; do
+            sample=$(basename $_file _fastp.html | sed 's/^trim.//');
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/fastp.html;
+        done
 
-rule summarize:
-    input:
-        expand(config['output'] + "metagenomics/taxonomic_assignments/reports/{sample}.output.krona.html", sample=config["samples"])
-    output:
-        config['output'] + "metagenomics/metagenomics_summary.txt"
-    params:
-        path = config['output'] + "metagenomics/taxonomic_assignments/results/"
-    shell:
-        "echo \"file,percentage_of_reads,number_of_reads_rooted,number_of_reads_direct,number_of_k-mers,number_of_distinct_k-mers,rank_code,ncbi_taxid,taxon\" > {output}; "
-        "grep \"viridae\" {params.path}*report.txt | sed -E \"s/[	| |:]+/,/g\">> {output}"
+        # Host filtering
+        for _file in {input.host_filtered_R1}; do
+            sample=$(basename $_file .R1.filtered.fastq.gz);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/host_filtered_R1.fastq.gz;
+        done
+        for _file in {input.host_filtered_R2}; do
+            sample=$(basename $_file .R2.filtered.fastq.gz);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/host_filtered_R2.fastq.gz;
+        done
 
-rule generate_multiqc_report:
-    input:
-        config['output'] + "metagenomics/metagenomics_summary.txt"
-    output:
-        config['output'] + "qc/reports/multiqc_report.html"
-    params:
-        temp = config['output']
-    shell:
-        "multiqc -f -s -o {params.temp}/qc/reports/ {params.temp}/qc/reports/"
+        # Taxonomy (Reads)
+        for _file in {input.kraken2_reads_reports} ""; do
+            [ -z "$_file" ] && continue
+            sample=$(basename $_file .report.txt);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/kraken2_reads.report.txt;
+        done
+        for _file in {input.kraken2_reads_krona} ""; do
+            [ -z "$_file" ] && continue
+            sample=$(basename $_file .output.krona.html);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/kraken2_reads.krona.html;
+        done
+        for _file in {input.kraken2_reads_filtered_krona} ""; do
+            [ -z "$_file" ] && continue
+            sample=$(basename $_file .output.filtered.krona.html);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/kraken2_reads.filtered.krona.html;
+        done
+        for _file in {input.diamond_reads_tsv} ""; do
+            [ -z "$_file" ] && continue
+            sample=$(basename $_file .diamond.tsv);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/diamond_reads.tsv;
+        done
+        for _file in {input.diamond_reads_krona} ""; do
+            [ -z "$_file" ] && continue
+            sample=$(basename $_file .diamond.krona.html);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/diamond_reads.krona.html;
+        done
+        for _file in {input.diamond_reads_filtered_krona} ""; do
+            [ -z "$_file" ] && continue
+            sample=$(basename $_file .diamond.filtered.krona.html);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/diamond_reads.filtered.krona.html;
+        done
+
+        # Assembly
+        for _file in {input.megahit_contigs} ""; do
+            [ -z "$_file" ] && continue
+            # path is denovo_assembly/megahit/{{sample}}/final.contigs.fa
+            sample=$(basename $(dirname $_file));
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/denovo_contigs.fasta;
+        done
+
+        # Taxonomy (Contigs)
+        for _file in {input.kraken2_contigs_reports} ""; do
+            [ -z "$_file" ] && continue
+            sample=$(basename $_file .report.txt);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/kraken2_contigs.report.txt;
+        done
+        for _file in {input.kraken2_contigs_krona} ""; do
+            [ -z "$_file" ] && continue
+            sample=$(basename $_file .output.krona.html);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/kraken2_contigs.krona.html;
+        done
+        for _file in {input.kraken2_contigs_filtered_krona} ""; do
+            [ -z "$_file" ] && continue
+            sample=$(basename $_file .output.filtered.krona.html);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/kraken2_contigs.filtered.krona.html;
+        done
+        for _file in {input.diamond_contigs_tsv} ""; do
+            [ -z "$_file" ] && continue
+            sample=$(basename $_file .diamond.supported.tsv);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/diamond_contigs_supported.tsv;
+        done
+        for _file in {input.diamond_contigs_krona} ""; do
+            [ -z "$_file" ] && continue
+            sample=$(basename $_file .diamond.supported.krona.html);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/diamond_contigs.krona.html;
+        done
+        for _file in {input.diamond_contigs_filtered_krona} ""; do
+            [ -z "$_file" ] && continue
+            sample=$(basename $_file .diamond.supported.filtered.krona.html);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/diamond_contigs.filtered.krona.html;
+        done
+
+        # Viral Mapping
+        for _file in {input.viral_bams} ""; do
+            [ -z "$_file" ] && continue
+            sample=$(basename $_file .viral.bam);
+            ln -sf $PWD/$_file {params.outdir}samples/$sample/viral_mapped_reads.bam;
+            ln -sf $PWD/$_file.bai {params.outdir}samples/$sample/viral_mapped_reads.bam.bai;
+        done
+
+        # Benchmark aggregation
+        echo -e "sample\\ttask\\tseconds\\th:m:s\\tmax_rss\\tmax_vms\\tmax_uss\\tmax_pss\\tio_in\\tio_out\\tmean_load\\tcpu_time" > {output}
+        find {params.outdir} -name "*.benchmark.txt" | while read -r file; do
+            task=$(basename $(dirname $file))
+            sample=$(basename $file .benchmark.txt)
+            
+            matched=false
+            for s in {params.samples}; do
+                if [[ "$sample" == "$s" ]]; then
+                    matched=true
+                    break
+                fi
+            done
+            
+            if [[ "$matched" == "false" ]]; then
+                sample="All"
+            else
+                # Optional: handle prefix like 'sample-' if it exists in metagenomics benchmarks
+                sample=$(echo $sample | sed 's/sample-//')
+            fi
+
+            tail -n +2 "$file" | awk -v sample="$sample" -v task="$task" '{{print sample"\\t"task"\\t"$0}}' >> {output}
+        done
+        """

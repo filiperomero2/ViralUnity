@@ -1,50 +1,48 @@
+import io
 import unittest
-import subprocess
-import pandas as pd
 from unittest.mock import patch
-from viralunity.scripts.calculate_assembly_stats import (
-    get_number_of_reads,
-    get_number_of_mapped_reads,
-    get_coverage_info,
+
+import pandas as pd
+
+from viralunity.scripts.python.calculate_assembly_stats import (
     generate_output,
+    get_coverage_info,
+    get_number_of_mapped_reads,
+    get_number_of_reads,
     main,
 )
 
+# Two records (each with a "+" separator line on line 3 of 4).
+_FASTQ_TEXT = "@r1\nACGT\n+\n!!!!\n@r2\nACGT\n+\n!!!!\n"
+
 
 class TestGetNumberOfReads(unittest.TestCase):
+    @patch(
+        "viralunity.scripts.python.calculate_assembly_stats.gzip.open",
+        return_value=io.StringIO(_FASTQ_TEXT),
+    )
+    def test_get_number_of_reads_gz(self, mock_gzip_open):
+        result = get_number_of_reads("sample.fastq.gz")
+        mock_gzip_open.assert_called_once_with("sample.fastq.gz", "rt")
+        self.assertEqual(result, 2)
 
-    @patch("subprocess.Popen")
-    def test_get_number_of_reads_gz(self, mock_popen):
-        mock_popen.return_value.communicate.return_value = (b"4\n", None)
-        fastq = "sample.fastq.gz"
-        result = get_number_of_reads(fastq)
-        mock_popen.assert_called_with(
-            'gunzip -c sample.fastq.gz | grep -cE "^\+$"',
-            stdout=subprocess.PIPE,
-            shell=True,
-        )
-        self.assertEqual(result, 4)
-
-    @patch("subprocess.Popen")
-    def test_get_number_of_reads(self, mock_popen):
-        mock_popen.return_value.communicate.return_value = (b"4\n", None)
-        fastq = "sample.fastq"
-        result = get_number_of_reads(fastq)
-        mock_popen.assert_called_with(
-            'grep -cE "^\+$" sample.fastq', stdout=subprocess.PIPE, shell=True
-        )
-        self.assertEqual(result, 4)
+    @patch("builtins.open", return_value=io.StringIO(_FASTQ_TEXT))
+    def test_get_number_of_reads(self, mock_open):
+        result = get_number_of_reads("sample.fastq")
+        mock_open.assert_called_once_with("sample.fastq", "rt")
+        self.assertEqual(result, 2)
 
 
 class TestGetNumberOfMappedReads(unittest.TestCase):
-
-    @patch("subprocess.Popen")
-    def test_get_number_of_mapped_reads(self, mock_popen):
-        mock_popen.return_value.communicate.return_value = (b"10\n", None)
-        bam = "sample.bam"
-        result = get_number_of_mapped_reads(bam)
-        mock_popen.assert_called_with(
-            "samtools view -c -F 260 sample.bam", stdout=subprocess.PIPE, shell=True
+    @patch("viralunity.scripts.python.calculate_assembly_stats.subprocess.run")
+    def test_get_number_of_mapped_reads(self, mock_run):
+        mock_run.return_value.stdout = "10\n"
+        result = get_number_of_mapped_reads("sample.bam")
+        mock_run.assert_called_once_with(
+            ["samtools", "view", "-c", "-F", "260", "sample.bam"],
+            check=True,
+            capture_output=True,
+            text=True,
         )
         self.assertEqual(result, 10)
 
@@ -74,16 +72,14 @@ class TestGetCoverageInfo(unittest.TestCase):
         self.assertEqual(result[1], expected_percentage_of_sites_above_10x)
         self.assertEqual(result[2], expected_percentage_of_sites_above_100x)
         self.assertEqual(result[3], expected_percentage_of_sites_above_1000x)
-        self.assertEqual(
-            result[4], expected_percentage_of_sites_above_specified_threshold
-        )
+        self.assertEqual(result[4], expected_percentage_of_sites_above_specified_threshold)
 
 
 class TestWriteOutput(unittest.TestCase):
 
-    @patch("viralunity.scripts.calculate_assembly_stats.get_number_of_reads")
-    @patch("viralunity.scripts.calculate_assembly_stats.get_number_of_mapped_reads")
-    @patch("viralunity.scripts.calculate_assembly_stats.get_coverage_info")
+    @patch("viralunity.scripts.python.calculate_assembly_stats.get_number_of_reads")
+    @patch("viralunity.scripts.python.calculate_assembly_stats.get_number_of_mapped_reads")
+    @patch("viralunity.scripts.python.calculate_assembly_stats.get_coverage_info")
     @patch("pandas.DataFrame.to_csv")
     def test_write_output(
         self,
@@ -130,10 +126,16 @@ class TestWriteOutput(unittest.TestCase):
 
 class TestMainFunction(unittest.TestCase):
 
-    @patch("viralunity.scripts.calculate_assembly_stats.generate_output")
+    @patch("viralunity.scripts.python.calculate_assembly_stats.generate_output")
     @patch("pandas.DataFrame.to_csv")
     def test_main(self, mock_to_csv, mock_generate_output):
-        inputs = ["sample.fastq", "", "sample_trim.fastq", "my/dir/sample.sorted.bam", "coverage.txt"]
+        inputs = [
+            "sample.fastq",
+            "",
+            "sample_trim.fastq",
+            "my/dir/sample.sorted.bam",
+            "coverage.txt",
+        ]
         output = "output.csv"
         minimum_depth = 20
 
@@ -151,6 +153,7 @@ class TestMainFunction(unittest.TestCase):
             "sample",
             minimum_depth,
             output,
+            None,
         )
         mock_to_csv.assert_called_once_with(output, header=False, index=False)
 

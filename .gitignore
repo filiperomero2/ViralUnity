@@ -66,7 +66,24 @@ coverage.xml
 ./DATA
 data/
 input/
-output/
-output-*/
+output*
+!docs/output.md
 .snakemake/
 viralunity/meta.yaml
+assets/
+notes.txt
+my_config.yml
+samplesheet.csv
+databases/
+old_*
+my_results*
+scratch/
+teste_*
+my_test_data/
+tmp_*
+
+# Local test assets
+test/dryrun_output/
+# Documentation builds
+docs/_build/
+docs-pt/_build/

@@ -1,0 +1,8 @@
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - clair3=1.2
+  - samtools=1.23
+  - bcftools=1.21

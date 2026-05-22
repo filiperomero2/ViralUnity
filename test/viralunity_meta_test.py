@@ -1,19 +1,18 @@
 import unittest
-from unittest.mock import patch, mock_open
-from viralunity.viralunity_meta import (
-    validate_args,
-    generate_config_file,
-    main,
-)
+from unittest.mock import mock_open, patch
+
 from viralunity.exceptions import (
+    AdaptersNotFoundError,
     Kraken2DatabaseNotFoundError,
     KronaDatabaseNotFoundError,
     SampleConfigurationNotFoundError,
-    AdaptersNotFoundError
 )
-import os
+from viralunity.viralunity_meta import (
+    generate_config_file,
+    main,
+    validate_args,
+)
 
-print(os.environ.get("PATH"))
 
 class Test_ValidateArgs(unittest.TestCase):
     def setUp(self):
@@ -29,7 +28,6 @@ class Test_ValidateArgs(unittest.TestCase):
             "remove_unclassified_reads": False,
             "adapters": "adapters.fasta",
             "minimum_read_length": 50,
-            "trim": 0,
             "create_config_only": False,
             "threads": 1,
             "threads_total": 1,
@@ -43,9 +41,9 @@ class Test_ValidateArgs(unittest.TestCase):
     ):
         """Test successful validation with all validators passing."""
         mock_get_samples.return_value = {"sample1": ["file1_R1.fastq", "file1_R2.fastq"]}
-        
+
         samples = validate_args(self.args)
-        
+
         self.assertIn("sample1", samples)
         mock_get_samples.assert_called_once_with(self.args)
         mock_validate_meta.assert_called_once_with(self.args)
@@ -55,33 +53,33 @@ class Test_ValidateArgs(unittest.TestCase):
     def test_validate_args_sample_sheet_not_exist(self, mock_get_samples):
         """Test validation fails when sample sheet cannot be retrieved."""
         mock_get_samples.side_effect = SampleConfigurationNotFoundError("Sample sheet not found")
-        
+
         with self.assertRaises(SampleConfigurationNotFoundError):
             validate_args(self.args)
-        
+
         mock_get_samples.assert_called_once_with(self.args)
 
     @patch("viralunity.viralunity_meta.validate_metagenomics_requirements")
     @patch("viralunity.viralunity_meta.get_samples_from_args")
-    def test_validate_args_kraken2_db_not_exist(
-        self, mock_get_samples, mock_validate_meta
-    ):
+    def test_validate_args_kraken2_db_not_exist(self, mock_get_samples, mock_validate_meta):
         """Test validation fails when Kraken2 database doesn't exist."""
         mock_get_samples.return_value = {"sample1": ["file1.fastq"]}
-        mock_validate_meta.side_effect = Kraken2DatabaseNotFoundError("Kraken2 database directory does not exist")
-        
+        mock_validate_meta.side_effect = Kraken2DatabaseNotFoundError(
+            "Kraken2 database directory does not exist"
+        )
+
         with self.assertRaises(Kraken2DatabaseNotFoundError):
             validate_args(self.args)
 
     @patch("viralunity.viralunity_meta.validate_metagenomics_requirements")
     @patch("viralunity.viralunity_meta.get_samples_from_args")
-    def test_validate_args_krona_db_not_exist(
-        self, mock_get_samples, mock_validate_meta
-    ):
+    def test_validate_args_krona_db_not_exist(self, mock_get_samples, mock_validate_meta):
         """Test validation fails when Krona database doesn't exist."""
         mock_get_samples.return_value = {"sample1": ["file1.fastq"]}
-        mock_validate_meta.side_effect = KronaDatabaseNotFoundError("Krona database directory does not exist")
-        
+        mock_validate_meta.side_effect = KronaDatabaseNotFoundError(
+            "Krona database directory does not exist"
+        )
+
         with self.assertRaises(KronaDatabaseNotFoundError):
             validate_args(self.args)
 
@@ -94,8 +92,10 @@ class Test_ValidateArgs(unittest.TestCase):
         """Test validation fails when adapters file doesn't exist."""
         mock_get_samples.return_value = {"sample1": ["file1.fastq"]}
         mock_validate_meta.return_value = None
-        mock_validate_illumina.side_effect = AdaptersNotFoundError("Illumina adapter sequences file does not exist")
-        
+        mock_validate_illumina.side_effect = AdaptersNotFoundError(
+            "Illumina adapter sequences file does not exist"
+        )
+
         with self.assertRaises(AdaptersNotFoundError):
             validate_args(self.args)
 
@@ -107,9 +107,9 @@ class Test_ValidateArgs(unittest.TestCase):
     ):
         """Test validation succeeds even if config file already exists."""
         mock_get_samples.return_value = {"sample1": ["file1_R1.fastq", "file1_R2.fastq"]}
-        
+
         samples = validate_args(self.args)
-        
+
         self.assertIn("sample1", samples)
 
     @patch("viralunity.viralunity_meta.validate_illumina_requirements")
@@ -120,9 +120,9 @@ class Test_ValidateArgs(unittest.TestCase):
     ):
         """Test validation succeeds even if output directory already exists."""
         mock_get_samples.return_value = {"sample1": ["file1_R1.fastq", "file1_R2.fastq"]}
-        
+
         samples = validate_args(self.args)
-        
+
         self.assertIn("sample1", samples)
 
 
@@ -139,7 +139,6 @@ class Test_GenerateConfigFile(unittest.TestCase):
             "remove_unclassified_reads": False,
             "adapters": "adapters.fasta",
             "minimum_read_length": 50,
-            "trim": 0,
             "create_config_only": False,
             "threads": 1,
             "threads_total": 1,
@@ -155,12 +154,15 @@ class Test_GenerateConfigFile(unittest.TestCase):
             "sample2": ["sample2_R1.fastq", "sample2_R2.fastq"],
         }
         generate_config_file(self.samples, self.args)
-        mock_makedirs.assert_called_once_with(os.path.dirname("config_file.yaml"), exist_ok=True)
+        # config_file.yaml has no directory component, so makedirs should NOT be called
+        mock_makedirs.assert_not_called()
         mock_open.assert_called_once_with("config_file.yaml", "w")
-        # Check that yaml.dump was called with correct config structure
-        self.assertEqual(mock_yaml_dump.call_count, 1)
-        call_args = mock_yaml_dump.call_args
-        config_dict = call_args[0][0]  # First positional argument
+        # Check that yaml.dump was called (once per section)
+        self.assertGreaterEqual(mock_yaml_dump.call_count, 1)
+        # Aggregate all dumped sections into one dict
+        config_dict = {}
+        for call in mock_yaml_dump.call_args_list:
+            config_dict.update(call[0][0])
         self.assertIn("samples", config_dict)
         self.assertEqual(config_dict["data"], "illumina")
         self.assertEqual(config_dict["kraken2_database"], "kraken2_db")
@@ -169,7 +171,8 @@ class Test_GenerateConfigFile(unittest.TestCase):
         self.assertEqual(config_dict["output"], "output_dir/run_name/")
         self.assertEqual(config_dict["adapters"], "adapters.fasta")
         self.assertEqual(config_dict["minimum_length"], 50)
-        self.assertEqual(config_dict["trim"], 0)
+        self.assertEqual(config_dict["trim_head"], 0)
+        self.assertEqual(config_dict["trim_tail"], 0)
         self.assertEqual(config_dict["remove_human_reads"], True)
         self.assertEqual(config_dict["remove_unclassified_reads"], False)
 
@@ -183,12 +186,15 @@ class Test_GenerateConfigFile(unittest.TestCase):
             "sample2": ["sample2.fastq"],
         }
         generate_config_file(self.samples, self.args)
-        mock_makedirs.assert_called_once_with(os.path.dirname("config_file.yaml"), exist_ok=True)
+        # config_file.yaml has no directory component, so makedirs should NOT be called
+        mock_makedirs.assert_not_called()
         mock_open.assert_called_once_with("config_file.yaml", "w")
-        # Check that yaml.dump was called with correct config structure
-        self.assertEqual(mock_yaml_dump.call_count, 1)
-        call_args = mock_yaml_dump.call_args
-        config_dict = call_args[0][0]  # First positional argument
+        # Check that yaml.dump was called (once per section)
+        self.assertGreaterEqual(mock_yaml_dump.call_count, 1)
+        # Aggregate all dumped sections into one dict
+        config_dict = {}
+        for call in mock_yaml_dump.call_args_list:
+            config_dict.update(call[0][0])
         self.assertIn("samples", config_dict)
         self.assertEqual(config_dict["data"], "nanopore")
         self.assertEqual(config_dict["kraken2_database"], "kraken2_db")
@@ -200,11 +206,15 @@ class Test_GenerateConfigFile(unittest.TestCase):
         # Nanopore should not have Illumina-specific settings
         self.assertNotIn("adapters", config_dict)
         self.assertNotIn("minimum_length", config_dict)
-        self.assertNotIn("trim", config_dict)
+        self.assertNotIn("trim_head", config_dict)
+        self.assertNotIn("trim_tail", config_dict)
 
 
 class Test_MainFunction(unittest.TestCase):
-    @patch("viralunity.viralunity_meta.validate_args", return_value={"sample1": ["file1.fastq"]})
+    @patch(
+        "viralunity.viralunity_meta.validate_args",
+        return_value={"sample1": ["file1.fastq"]},
+    )
     @patch("viralunity.viralunity_meta.generate_config_file")
     @patch("viralunity.viralunity_meta.run_snakemake_workflow", return_value=True)
     def test_main_success(
@@ -213,16 +223,21 @@ class Test_MainFunction(unittest.TestCase):
         mock_generate_config_file,
         mock_validate_args,
     ):
-        result = main({
-            "config_file": "config_file.yaml",
-            "threads_total": 1,
-            "data_type": "illumina",
-            "create_config_only": False,
-        })
+        result = main(
+            {
+                "config_file": "config_file.yaml",
+                "threads_total": 1,
+                "data_type": "illumina",
+                "create_config_only": False,
+            }
+        )
         self.assertEqual(result, 0)
         mock_run_workflow.assert_called_once()
 
-    @patch("viralunity.viralunity_meta.validate_args", return_value={"sample1": ["file1.fastq"]})
+    @patch(
+        "viralunity.viralunity_meta.validate_args",
+        return_value={"sample1": ["file1.fastq"]},
+    )
     @patch("viralunity.viralunity_meta.generate_config_file")
     @patch("viralunity.viralunity_meta.run_snakemake_workflow", return_value=True)
     def test_main_create_config_only(
@@ -231,16 +246,21 @@ class Test_MainFunction(unittest.TestCase):
         mock_generate_config_file,
         mock_validate_args,
     ):
-        result = main({
-            "config_file": "config_file.yaml",
-            "threads_total": 1,
-            "data_type": "illumina",
-            "create_config_only": True,
-        })
+        result = main(
+            {
+                "config_file": "config_file.yaml",
+                "threads_total": 1,
+                "data_type": "illumina",
+                "create_config_only": True,
+            }
+        )
         self.assertEqual(result, 0)
         mock_run_workflow.assert_not_called()
 
-    @patch("viralunity.viralunity_meta.validate_args", return_value={"sample1": ["file1.fastq"]})
+    @patch(
+        "viralunity.viralunity_meta.validate_args",
+        return_value={"sample1": ["file1.fastq"]},
+    )
     @patch("viralunity.viralunity_meta.generate_config_file")
     @patch("viralunity.viralunity_meta.run_snakemake_workflow", return_value=False)
     def test_main_failure(
@@ -249,12 +269,14 @@ class Test_MainFunction(unittest.TestCase):
         mock_generate_config_file,
         mock_validate_args,
     ):
-        result = main({
-            "config_file": "config_file.yaml",
-            "threads_total": 1,
-            "data_type": "illumina",
-            "create_config_only": False,
-        })
+        result = main(
+            {
+                "config_file": "config_file.yaml",
+                "threads_total": 1,
+                "data_type": "illumina",
+                "create_config_only": False,
+            }
+        )
         self.assertEqual(result, 1)
         mock_run_workflow.assert_called_once()
 

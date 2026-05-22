@@ -1,0 +1,10 @@
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.11
+  - pandas=2.0
+  - seqtk=1.5
+  - biopython=1.81
+  - samtools=1.23
