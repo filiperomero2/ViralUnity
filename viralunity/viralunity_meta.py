@@ -12,6 +12,15 @@ from pathlib import Path
 from typing import Any, Dict
 
 from viralunity import _orchestrator
+from viralunity.validators import (
+    get_samples_from_args,
+    normalize_sample_paths,
+    validate_illumina_requirements,
+    validate_nanopore_requirements,
+    validate_metagenomics_requirements,
+)
+from viralunity.config_generator import ConfigGenerator
+from viralunity.exceptions import ValidationError
 from viralunity.constants import DataType, ResourceDefaults
 from viralunity.validators import (
     META_PATH_ARG_KEYS,
@@ -42,6 +51,8 @@ def validate_args(args: Dict[str, Any]) -> Dict[str, list]:
 
     # Get and validate samples
     samples = get_samples_from_args(args)
+    data_type = args.get("data_type")
+    samples = normalize_sample_paths(samples, data_type)
 
     logger.info(f"Found {len(samples)} samples")
 
@@ -49,7 +60,6 @@ def validate_args(args: Dict[str, Any]) -> Dict[str, list]:
     validate_metagenomics_requirements(args)
 
     # Validate data-type specific requirements
-    data_type = args.get("data_type")
     if data_type == DataType.ILLUMINA:
         validate_illumina_requirements(args)
     elif data_type == DataType.NANOPORE:

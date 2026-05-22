@@ -1,5 +1,6 @@
 """Validation functions for ViralUnity pipeline arguments and data."""
 
+import glob
 import os
 from typing import Any, Dict, List
 
@@ -483,6 +484,87 @@ def resolve_path_args(
         args[key] = os.path.abspath(os.path.join(base_dir, value))
 
     return args
+
+
+_READ_GLOB_PATTERNS = (
+    "*.fastq",
+    "*.fastq.gz",
+    "*.fq",
+    "*.fq.gz",
+    "*.fasta",
+    "*.fasta.gz",
+)
+
+
+def _has_glob_magic(path: str) -> bool:
+    return any(char in path for char in "*?[]")
+
+
+def _expand_path_token(token: str) -> List[str]:
+    """Resolve a path token to concrete read file paths."""
+    token = token.strip()
+    if not token:
+        return []
+
+    if os.path.isdir(token):
+        matches: List[str] = []
+        for pattern in _READ_GLOB_PATTERNS:
+            matches.extend(glob.glob(os.path.join(token, pattern)))
+        if not matches:
+            matches = [
+                entry
+                for entry in glob.glob(os.path.join(token, "*"))
+                if os.path.isfile(entry)
+            ]
+        return sorted(set(matches))
+
+    if _has_glob_magic(token) or not os.path.isfile(token):
+        matches = [entry for entry in glob.glob(token) if os.path.isfile(entry)]
+        if matches:
+            return sorted(set(matches))
+
+    if os.path.isfile(token):
+        return [token]
+
+    return []
+
+
+def normalize_sample_paths(
+    samples: Dict[str, List[str]], data_type: str
+) -> Dict[str, List[str]]:
+    """Expand globs and directory paths to concrete read files per sample."""
+    normalized: Dict[str, List[str]] = {}
+
+    for sample_name, path_entries in samples.items():
+        expanded: List[str] = []
+        for path_entry in path_entries:
+            for token in str(path_entry).split():
+                expanded.extend(_expand_path_token(token))
+
+        unique_paths: List[str] = []
+        seen = set()
+        for path in expanded:
+            if path not in seen:
+                seen.add(path)
+                unique_paths.append(path)
+
+        if data_type == DataType.ILLUMINA:
+            if len(unique_paths) != 2:
+                raise ValidationError(
+                    f"Illumina sample {sample_name} must resolve to exactly 2 read files "
+                    f"(R1 and R2), found {len(unique_paths)}."
+                )
+            normalized[sample_name] = unique_paths
+            continue
+
+        if len(unique_paths) == 0:
+            raise ValidationError(
+                f"No read files found for nanopore sample {sample_name}. "
+                "Provide a concrete FASTQ path, a glob (e.g. folder/*), or an existing directory."
+            )
+        normalized[sample_name] = unique_paths
+
+    return normalized
 
 
 def get_samples_from_args(args: Dict[str, Any]) -> Dict[str, List[str]]:

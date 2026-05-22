@@ -1,7 +1,43 @@
+rule merge_nanopore_reads:
+    input:
+        reads = get_map_input_fastqs
+    output:
+        merged = temp(config["output"] + "raw_merged/{sample}.fastq.gz")
+    log:
+        config["output"] + "logs/merge_reads/{sample}.log"
+    benchmark:
+        config["output"] + "logs/merge_reads/{sample}.benchmark.txt"
+    conda:
+        "../envs/utils.yaml"
+    shell:
+        r"""
+        set -euo pipefail
+        mkdir -p "$(dirname {output.merged})" "$(dirname {log})"
+        reads=({input.reads})
+        if [ "${{#reads[@]}}" -eq 1 ]; then
+            f="${{reads[0]}}"
+            if [[ "$f" == *.gz ]]; then
+                cp -f "$f" "{output.merged}"
+            else
+                gzip -c "$f" > "{output.merged}"
+            fi
+        else
+            decompress() {{
+                case "$1" in
+                    *.gz) gzip -dc "$1" 2>/dev/null || true ;;
+                    *) [ -s "$1" ] && cat "$1" || true ;;
+                esac
+            }}
+            for f in "${{reads[@]}}"; do
+                decompress "$f"
+            done | gzip -c > "{output.merged}"
+        fi
+        """
+
 if dehost_with_deacon:
     rule remove_host_reads:
         input:
-            reads = lambda wildcards: config["samples"][wildcards.sample],
+            reads = rules.merge_nanopore_reads.output.merged,
             index = config["deacon_index"]
         output:
             filtered = config["output"] + "host_filtered/{sample}.filtered.fastq.gz",
@@ -45,7 +81,7 @@ elif host_filtering_enabled:
 
     rule remove_host_reads:
         input:
-            reads = lambda wildcards: config["samples"][wildcards.sample],
+            reads = rules.merge_nanopore_reads.output.merged,
             index = config["host_reference"] + ".mmi"
         output:
             filtered = config["output"] + "host_filtered/{sample}.filtered.fastq.gz"
@@ -75,7 +111,7 @@ elif host_filtering_enabled:
 else:
     rule remove_host_reads:
         input:
-            reads = lambda wildcards: config["samples"][wildcards.sample],
+            reads = rules.merge_nanopore_reads.output.merged,
         output:
             filtered = config["output"] + "host_filtered/{sample}.filtered.fastq.gz"
         log:

@@ -58,12 +58,14 @@ class ConfigGenerator:
                     )
                 formatted_samples[key] = f"{file_paths[0]} {file_paths[1]}"
             else:
-                if len(file_paths) != 1:
+                if len(file_paths) < 1:
                     raise ConfigurationError(
-                        f"Nanopore sample {sample_name} must have 1 file, "
+                        f"Nanopore sample {sample_name} must have at least 1 file, "
                         f"found {len(file_paths)}"
                     )
-                formatted_samples[key] = file_paths[0]
+                formatted_samples[key] = (
+                    file_paths[0] if len(file_paths) == 1 else " ".join(file_paths)
+                )
 
         self._set(ConfigKeys.SAMPLES, formatted_samples, self.SECTION_PARAMETERS)
         self._set(ConfigKeys.DATA, data_type, self.SECTION_PARAMETERS)

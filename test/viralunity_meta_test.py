@@ -14,6 +14,10 @@ from viralunity.viralunity_meta import (
 )
 
 
+def _passthrough_normalize(samples, data_type):
+    return samples
+
+
 class Test_ValidateArgs(unittest.TestCase):
     def setUp(self):
         self.args = {
@@ -33,11 +37,15 @@ class Test_ValidateArgs(unittest.TestCase):
             "threads_total": 1,
         }
 
+    @patch(
+        "viralunity.viralunity_meta.normalize_sample_paths",
+        side_effect=_passthrough_normalize,
+    )
     @patch("viralunity.viralunity_meta.validate_illumina_requirements")
     @patch("viralunity.viralunity_meta.validate_metagenomics_requirements")
     @patch("viralunity.viralunity_meta.get_samples_from_args")
     def test_validate_args_success(
-        self, mock_get_samples, mock_validate_meta, mock_validate_illumina
+        self, mock_get_samples, mock_validate_meta, mock_validate_illumina, _mock_norm
     ):
         """Test successful validation with all validators passing."""
         mock_get_samples.return_value = {"sample1": ["file1_R1.fastq", "file1_R2.fastq"]}
@@ -59,9 +67,15 @@ class Test_ValidateArgs(unittest.TestCase):
 
         mock_get_samples.assert_called_once_with(self.args)
 
+    @patch(
+        "viralunity.viralunity_meta.normalize_sample_paths",
+        side_effect=_passthrough_normalize,
+    )
     @patch("viralunity.viralunity_meta.validate_metagenomics_requirements")
     @patch("viralunity.viralunity_meta.get_samples_from_args")
-    def test_validate_args_kraken2_db_not_exist(self, mock_get_samples, mock_validate_meta):
+    def test_validate_args_kraken2_db_not_exist(
+        self, mock_get_samples, mock_validate_meta, _mock_norm
+    ):
         """Test validation fails when Kraken2 database doesn't exist."""
         mock_get_samples.return_value = {"sample1": ["file1.fastq"]}
         mock_validate_meta.side_effect = Kraken2DatabaseNotFoundError(
@@ -71,9 +85,15 @@ class Test_ValidateArgs(unittest.TestCase):
         with self.assertRaises(Kraken2DatabaseNotFoundError):
             validate_args(self.args)
 
+    @patch(
+        "viralunity.viralunity_meta.normalize_sample_paths",
+        side_effect=_passthrough_normalize,
+    )
     @patch("viralunity.viralunity_meta.validate_metagenomics_requirements")
     @patch("viralunity.viralunity_meta.get_samples_from_args")
-    def test_validate_args_krona_db_not_exist(self, mock_get_samples, mock_validate_meta):
+    def test_validate_args_krona_db_not_exist(
+        self, mock_get_samples, mock_validate_meta, _mock_norm
+    ):
         """Test validation fails when Krona database doesn't exist."""
         mock_get_samples.return_value = {"sample1": ["file1.fastq"]}
         mock_validate_meta.side_effect = KronaDatabaseNotFoundError(
@@ -83,11 +103,15 @@ class Test_ValidateArgs(unittest.TestCase):
         with self.assertRaises(KronaDatabaseNotFoundError):
             validate_args(self.args)
 
+    @patch(
+        "viralunity.viralunity_meta.normalize_sample_paths",
+        side_effect=_passthrough_normalize,
+    )
     @patch("viralunity.viralunity_meta.validate_illumina_requirements")
     @patch("viralunity.viralunity_meta.validate_metagenomics_requirements")
     @patch("viralunity.viralunity_meta.get_samples_from_args")
     def test_validate_args_adapters_not_exist(
-        self, mock_get_samples, mock_validate_meta, mock_validate_illumina
+        self, mock_get_samples, mock_validate_meta, mock_validate_illumina, _mock_norm
     ):
         """Test validation fails when adapters file doesn't exist."""
         mock_get_samples.return_value = {"sample1": ["file1.fastq"]}
@@ -99,11 +123,15 @@ class Test_ValidateArgs(unittest.TestCase):
         with self.assertRaises(AdaptersNotFoundError):
             validate_args(self.args)
 
+    @patch(
+        "viralunity.viralunity_meta.normalize_sample_paths",
+        side_effect=_passthrough_normalize,
+    )
     @patch("viralunity.viralunity_meta.validate_illumina_requirements")
     @patch("viralunity.viralunity_meta.validate_metagenomics_requirements")
     @patch("viralunity.viralunity_meta.get_samples_from_args")
     def test_validate_args_config_file_exists(
-        self, mock_get_samples, mock_validate_meta, mock_validate_illumina
+        self, mock_get_samples, mock_validate_meta, mock_validate_illumina, _mock_norm
     ):
         """Test validation succeeds even if config file already exists."""
         mock_get_samples.return_value = {"sample1": ["file1_R1.fastq", "file1_R2.fastq"]}
@@ -112,11 +140,15 @@ class Test_ValidateArgs(unittest.TestCase):
 
         self.assertIn("sample1", samples)
 
+    @patch(
+        "viralunity.viralunity_meta.normalize_sample_paths",
+        side_effect=_passthrough_normalize,
+    )
     @patch("viralunity.viralunity_meta.validate_illumina_requirements")
     @patch("viralunity.viralunity_meta.validate_metagenomics_requirements")
     @patch("viralunity.viralunity_meta.get_samples_from_args")
     def test_validate_args_output_dir_exists(
-        self, mock_get_samples, mock_validate_meta, mock_validate_illumina
+        self, mock_get_samples, mock_validate_meta, mock_validate_illumina, _mock_norm
     ):
         """Test validation succeeds even if output directory already exists."""
         mock_get_samples.return_value = {"sample1": ["file1_R1.fastq", "file1_R2.fastq"]}
