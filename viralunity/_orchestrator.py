@@ -58,6 +58,7 @@ def run_workflow(workflow_path: str, args: Dict[str, Any]) -> bool:
         cores=args["threads_total"],
         use_conda=True,
         targets=["all"],
+        lock=False,
     )
 
     if successful:
