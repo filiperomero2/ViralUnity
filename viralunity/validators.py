@@ -495,9 +495,31 @@ _READ_GLOB_PATTERNS = (
     "*.fasta.gz",
 )
 
+_READ_EXTENSIONS = (
+    ".fastq",
+    ".fastq.gz",
+    ".fq",
+    ".fq.gz",
+    ".fasta",
+    ".fasta.gz",
+)
+
 
 def _has_glob_magic(path: str) -> bool:
     return any(char in path for char in "*?[]")
+
+
+def _is_read_file(path: str) -> bool:
+    """Return True when path is a sequencing read file (not e.g. Zone.Identifier)."""
+    name = os.path.basename(path)
+    if "zone.identifier" in name.lower():
+        return False
+    lower = name.lower()
+    return any(lower.endswith(ext) for ext in _READ_EXTENSIONS)
+
+
+def _filter_read_files(paths: List[str]) -> List[str]:
+    return sorted(set(path for path in paths if _is_read_file(path)))
 
 
 def _expand_path_token(token: str) -> List[str]:
@@ -510,20 +532,14 @@ def _expand_path_token(token: str) -> List[str]:
         matches: List[str] = []
         for pattern in _READ_GLOB_PATTERNS:
             matches.extend(glob.glob(os.path.join(token, pattern)))
-        if not matches:
-            matches = [
-                entry
-                for entry in glob.glob(os.path.join(token, "*"))
-                if os.path.isfile(entry)
-            ]
-        return sorted(set(matches))
+        return _filter_read_files(matches)
 
     if _has_glob_magic(token) or not os.path.isfile(token):
         matches = [entry for entry in glob.glob(token) if os.path.isfile(entry)]
         if matches:
-            return sorted(set(matches))
+            return _filter_read_files(matches)
 
-    if os.path.isfile(token):
+    if os.path.isfile(token) and _is_read_file(token):
         return [token]
 
     return []

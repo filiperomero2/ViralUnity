@@ -13,7 +13,23 @@ rule merge_nanopore_reads:
         r"""
         set -euo pipefail
         mkdir -p "$(dirname {output.merged})" "$(dirname {log})"
-        reads=({input.reads})
+        is_read_file() {{
+            case "$(basename "$1")" in
+                *[Zz][Oo][Nn][Ee].[Ii]dentifier*) return 1 ;;
+                *.fastq|*.fastq.gz|*.fq|*.fq.gz|*.fasta|*.fasta.gz) return 0 ;;
+                *) return 1 ;;
+            esac
+        }}
+        reads=()
+        for _f in {input.reads}; do
+            if is_read_file "$_f"; then
+                reads+=("$_f")
+            fi
+        done
+        if [ "${{#reads[@]}}" -eq 0 ]; then
+            echo "No read files left after filtering non-FASTQ paths (e.g. Zone.Identifier)." >&2
+            exit 1
+        fi
         if [ "${{#reads[@]}}" -eq 1 ]; then
             f="${{reads[0]}}"
             if [[ "$f" == *.gz ]]; then

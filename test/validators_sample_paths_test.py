@@ -41,6 +41,20 @@ class TestNormalizeSamplePaths(unittest.TestCase):
 
             self.assertEqual(normalized["zika"], [fastq_path])
 
+    def test_nanopore_ignores_zone_identifier_files(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fastq_path = os.path.join(tmpdir, "reads.fastq.gz")
+            zone_path = os.path.join(tmpdir, "reads.fastq.gz:Zone.Identifier")
+            with open(fastq_path, "wb"):
+                pass
+            with open(zone_path, "w", encoding="utf-8") as zone_file:
+                zone_file.write("[ZoneTransfer]\nZoneId=3\n")
+
+            samples = {"zika": [os.path.join(tmpdir, "*")]}
+            normalized = normalize_sample_paths(samples, DataType.NANOPORE)
+
+            self.assertEqual(normalized["zika"], [fastq_path])
+
     def test_nanopore_accepts_multiple_matches_sorted(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             paths = []
